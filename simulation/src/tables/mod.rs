@@ -2,10 +2,15 @@
 //! Tables are generic collections that store game data split by (shape) components.
 //!
 mod iterators;
-mod kv;
 mod traits;
+mod btree;
+mod morton;
+mod vector;
+
+pub use btree::*;
+pub use morton::*;
+pub use vector::*;
 pub use self::iterators::*;
-pub use self::kv::*;
 pub use self::traits::*;
 use crate::model::{components::PositionComponent, geometry::Circle, EntityId};
 
