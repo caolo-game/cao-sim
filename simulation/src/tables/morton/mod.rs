@@ -270,7 +270,7 @@ where
             .collect()
     }
 
-    /// Find in Circle
+    /// Filter all in Pos'(P) in Circle (C,r) where ||C-P|| < r
     pub fn find_by_range<'a>(&'a self, center: &Pos, radius: u32, out: &mut Vec<(Pos, &'a Row)>) {
         debug_assert!(
             radius & 0xefff == radius,
