@@ -29,7 +29,7 @@ fn test_range_query_all() {
     let center = Point::new(64, 64);
     table.find_by_range(
         &center,
-        Point::new(0, 0).hex_distance(center) as u32,
+        Point::new(0, 0).hex_distance(center) as u32 + 1,
         &mut res,
     );
 
