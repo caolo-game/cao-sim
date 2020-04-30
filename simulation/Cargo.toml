@@ -1,0 +1,34 @@
+[package]
+name = "caolo-sim"
+version = "0.1.0"
+authors = ["Daniel Kiss <littlesnorrboy@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+profile = ["lazy_static"]
+log_tables = []
+
+[dependencies]
+cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
+cao_storage_derive = { path = "../cao-storage-derive" }
+
+log = "0.4"
+rand = { version= "0.7", features=["small_rng"] }
+chrono = { version= "0.4", features=["serde"] }
+uuid = { version="0.7", features=["serde"] }
+rayon = "1"
+arrayvec = { version="0.5", features=["serde", "array-sizes-33-128"] }
+serde = "1"
+serde_derive = "1"
+
+lazy_static = { version="1", optional=true }
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "simulation_benchmarks"
+harness = false

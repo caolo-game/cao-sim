@@ -1,0 +1,22 @@
+[package]
+name = "cao_storage_derive"
+version = "0.1.0"
+authors = ["Daniel Kiss <littlesnorrboy@gmail.com>"]
+edition = "2018"
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+    "LICENCE",
+    "README.md",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "cao_storage_derive"
+proc-macro = true
+
+[dependencies]
+syn = "1"
+quote = "1"
+proc-macro2 = "1"
