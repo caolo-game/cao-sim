@@ -1,7 +1,7 @@
 use crate::model::{
     components::{EntityComponent, TerrainComponent},
     geometry::Point,
-    terrain::TileTerrainType,
+    terrain,
 };
 use crate::profile;
 use crate::storage::views::View;
@@ -72,7 +72,7 @@ pub fn find_path(
                 res && (
                     // Filter only the free neighbours
                     // End may be in the either tables!
-                    *p == end || (!positions.contains_key(p) && !is_wall(p, terrain.clone()))
+                    *p == end || (!positions.contains_key(p) && is_walkable(p, terrain.clone()))
                 )
             })
             .for_each(|point| {
@@ -113,19 +113,17 @@ pub fn find_path(
     Ok(())
 }
 
-fn is_wall(p: &Point, terrain: View<Point, TerrainComponent>) -> bool {
+fn is_walkable(p: &Point, terrain: View<Point, TerrainComponent>) -> bool {
     terrain
         .get_by_id(p)
-        .map(|tile| match tile.0 {
-            TileTerrainType::Wall => true,
-            _ => false,
-        })
+        .map(|tile| terrain::is_walkable(tile.0))
         .unwrap_or(false)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::terrain::TileTerrainType;
     use crate::tables::MortonTable;
 
     #[test]
@@ -134,9 +132,17 @@ mod tests {
         let to = Point::new(5, 2);
 
         let positions = MortonTable::new();
-        let terrain = MortonTable::from_iterator(
-            (0..=5).map(|i| (Point::new(2, i), TerrainComponent(TileTerrainType::Wall))),
-        )
+        let terrain = MortonTable::from_iterator((0..25).flat_map(|x| {
+            (0..25).map(move |y| {
+                let ty = if x == 3 && y <= 5 {
+                    TileTerrainType::Wall
+                } else {
+                    TileTerrainType::Plain
+                };
+
+                (Point::new(x, y), TerrainComponent(ty))
+            })
+        }))
         .unwrap();
 
         let mut path = vec![];
@@ -153,7 +159,7 @@ mod tests {
         let mut current = from;
         for point in path.iter() {
             assert_eq!(point.hex_distance(current), 1);
-            if point.x == 2 {
+            if point.x == 3 {
                 assert!(point.y > 5, "{:?}", point);
             }
             current = *point;
@@ -167,7 +173,13 @@ mod tests {
         let to = Point::new(7, 16);
 
         let positions = MortonTable::new();
-        let terrain = MortonTable::new();
+        let mut terrain = MortonTable::new();
+
+        for x in 0..25 {
+            for y in 0..25 {
+                terrain.insert(Point::new(x, y), TerrainComponent(TileTerrainType::Plain));
+            }
+        }
 
         let mut path = vec![];
         find_path(

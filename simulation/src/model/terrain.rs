@@ -1,14 +1,21 @@
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Copy, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum TileTerrainType {
-    Empty = 0,
+    Plain = 0,
     Wall,
 }
 
 impl Default for TileTerrainType {
     fn default() -> Self {
-        TileTerrainType::Empty
+        TileTerrainType::Plain
+    }
+}
+
+pub fn is_walkable(tile: TileTerrainType) -> bool {
+    match tile {
+        TileTerrainType::Plain => true,
+        _ => false,
     }
 }

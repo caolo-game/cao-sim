@@ -8,6 +8,6 @@ test:
 bench:
 	cargo bench --bench simulation_benchmarks -- --baseline master
 
-bench-save-baseline:
+bench-save:
 	cargo bench --bench simulation_benchmarks -- --save-baseline master
 
