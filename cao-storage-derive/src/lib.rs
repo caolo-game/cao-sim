@@ -45,7 +45,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
     }
 
     let implementations = groups_by_id.into_iter().map(|(_, (key, fields))| {
-        let fields = fields.as_slice().iter().map(|field| {
+        let deletes = fields.as_slice().iter().map(|field| {
             quote! {
                 self.#field.delete(id);
             }
@@ -53,7 +53,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
         quote! {
             impl #impl_generics Epic<#key> for #name #ty_generics #where_clause {
                 fn delete(&mut self, id: &#key) {
-                    #(#fields);*;
+                    #(#deletes);*;
                 }
             }
         }
