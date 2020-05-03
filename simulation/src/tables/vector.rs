@@ -92,7 +92,7 @@ where
             return false;
         }
         let i = i - self.offset;
-        self.data.get(i).and_then(|x| x.as_ref()).is_some()
+        self.data.get(i).is_some()
     }
 }
 
