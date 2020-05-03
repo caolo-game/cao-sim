@@ -270,8 +270,16 @@ where
             .collect()
     }
 
-    /// Filter all in Pos'(P) in Circle (C,r) where ||C-P|| < r
-    pub fn find_by_range<'a>(&'a self, center: &Pos, radius: u32, out: &mut Vec<(Pos, &'a Row)>) {
+    /// Collect pos' in the AABB (center, radius) where query(pos) is true
+    pub fn query_range<'a, Q>(
+        &'a self,
+        center: &Pos,
+        radius: u32,
+        out: &mut Vec<(Pos, &'a Row)>,
+        query: Q,
+    ) where
+        Q: Fn(&Pos) -> bool,
+    {
         debug_assert!(
             radius & 0xefff == radius,
             "Radius must fit into 31 bits!; {} != {}",
@@ -284,17 +292,26 @@ where
         let min = MortonKey::new((x - r).max(0) as u16, (y - r).max(0) as u16);
         let max = MortonKey::new((x + r) as u16, (y + r) as u16);
 
-        self.find_in_range_impl(center, radius, min, max, out);
+        self.query_range_impl(center, radius, min, max, out, &query);
     }
 
-    fn find_in_range_impl<'a>(
+    /// Filter all in Pos'(P) in Circle (C,r) where ||C-P|| < r
+    /// This is a simplfication of `query_range`, mainly here for backwards compatibility
+    pub fn find_by_range<'a>(&'a self, center: &Pos, radius: u32, out: &mut Vec<(Pos, &'a Row)>) {
+        self.query_range(center, radius, out, move |id| center.dist(id) < radius);
+    }
+
+    fn query_range_impl<'a, Query>(
         &'a self,
         center: &Pos,
         radius: u32,
         min: MortonKey,
         max: MortonKey,
         out: &mut Vec<(Pos, &'a Row)>,
-    ) {
+        query: &Query,
+    ) where
+        Query: Fn(&Pos) -> bool,
+    {
         let (imin, pmin) = self
             .find_key_morton(&min)
             .map(|i| (i, self.positions[i].as_array()))
@@ -329,13 +346,13 @@ where
             let pmax = [x as u32, y as u32];
             let [litmax, bigmin] = litmax_bigmin(min.0, pmin, max.0, pmax);
             // split and recurse
-            self.find_in_range_impl(center, radius, min, litmax, out);
-            self.find_in_range_impl(center, radius, bigmin, max, out);
+            self.query_range_impl(center, radius, min, litmax, out, query);
+            self.query_range_impl(center, radius, bigmin, max, out, query);
             return;
         }
 
         for (i, id) in self.positions[imin..imax].iter().enumerate() {
-            if center.dist(&id) < radius {
+            if query(id) {
                 out.push((*id, &self.values[i + imin]));
             }
         }
