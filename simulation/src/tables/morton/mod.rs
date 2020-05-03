@@ -24,6 +24,7 @@ use litmax_bigmin::litmax_bigmin;
 use morton_key::*;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
+use thiserror::Error;
 
 use crate::profile;
 
@@ -31,8 +32,9 @@ use crate::profile;
 // having the 16th bit set might create problems in find_key
 const POS_MASK: i32 = 0b0111111111111111;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
 pub enum ExtendFailure<Id: SpatialKey2d> {
+    #[error("Failed to insert poision {0:?}")]
     InvalidPosition(Id),
 }
 
@@ -371,6 +373,32 @@ where
         self.positions[min..max]
             .iter()
             .filter(move |id| center.dist(&id) < radius)
+            .count()
+            .try_into()
+            .expect("count to fit into 32 bits")
+    }
+
+    /// Count in AABB
+    pub fn count_in_range_if<'a, Query>(&'a self, center: &Pos, radius: u32, query: Query) -> u32
+    where
+        Query: Fn(&Pos, &Row) -> bool,
+    {
+        profile!("count_in_range");
+
+        let r = i32::try_from(radius).expect("radius to fit into 31 bits");
+        let min = *center + Pos::new(-r, -r);
+        let max = *center + Pos::new(r, r);
+
+        let [min, max] = self.morton_min_max(&min, &max);
+
+        let values = self.values.as_ptr();
+        self.positions[min..max]
+            .iter()
+            .enumerate()
+            .filter(move |(i, id)| {
+                let val = unsafe { &*values.add(min + i) };
+                query(id, val)
+            })
             .count()
             .try_into()
             .expect("count to fit into 32 bits")

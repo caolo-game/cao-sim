@@ -9,9 +9,8 @@ use crate::{
         geometry::point::Point,
         EntityId, OperationResult, UserId,
     },
-    profile,
+    pathfinding, profile,
     storage::views::FromWorld,
-    systems::pathfinding,
     World,
 };
 use std::convert::TryFrom;

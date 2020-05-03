@@ -3,7 +3,6 @@ pub mod energy_system;
 pub mod intent_system;
 pub mod log_system;
 pub mod mineral_system;
-pub mod pathfinding;
 pub mod positions_system;
 pub mod script_execution;
 pub mod spawn_system;

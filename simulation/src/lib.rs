@@ -6,6 +6,8 @@ pub mod model;
 pub mod prelude;
 pub mod storage;
 pub mod tables;
+pub mod pathfinding;
+pub mod map_generation;
 
 mod data_store;
 mod intents;
@@ -36,3 +38,4 @@ pub fn forward(storage: &mut World) -> Result<(), Box<dyn std::error::Error>> {
     info!("-----------Tick {} done-----------", storage.time());
     Ok(())
 }
+
