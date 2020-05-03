@@ -212,7 +212,7 @@ fn get_by_id_in_table_rand(c: &mut Criterion) {
 
 fn random_insert(c: &mut Criterion) {
     let mut group = c.benchmark_group("morton table random_insert");
-    for size in 8..14 {
+    for size in 8..12 {
         let size = 1 << size;
         group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, &size| {
             let mut rng = get_rand();
@@ -238,6 +238,36 @@ fn random_insert(c: &mut Criterion) {
     group.finish();
 }
 
+fn random_update(c: &mut Criterion) {
+    let mut group = c.benchmark_group("morton table random_update");
+    for size in 8..15 {
+        let size = 1 << size;
+        group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, &size| {
+            let mut rng = get_rand();
+            let mut table = MortonTable::<Point, u32>::new();
+            let mut memory = Vec::new();
+
+            for _ in 0..size {
+                let x = rng.gen_range(0, 29000);
+                let y = rng.gen_range(0, 29000);
+                let p = Point::new(x, y);
+                memory.push(p);
+
+                table.insert(p, 420);
+            }
+
+            b.iter(|| {
+                let i = rng.gen_range(0, memory.len());
+                let p = memory[i].clone();
+                let updated = table.update(p, rng.next_u32());
+                debug_assert!(updated);
+                updated
+            });
+        });
+    }
+    group.finish();
+}
+
 criterion_group!(
     morton_benches,
     contains_rand,
@@ -248,4 +278,5 @@ criterion_group!(
     rebuild_morton_table,
     get_by_id_in_table_rand,
     get_by_id_rand,
+    random_update,
 );
