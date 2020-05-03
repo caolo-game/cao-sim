@@ -22,7 +22,6 @@ use super::*;
 use crate::model::{components::EntityComponent, geometry::Point};
 use litmax_bigmin::litmax_bigmin;
 use morton_key::*;
-use rayon::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 
@@ -201,6 +200,18 @@ where
         true
     }
 
+    /// Return false if id is not in the map, otherwise override the first instance found
+    pub fn update(&mut self, id: Pos, row: Row) -> bool {
+        if !self.intersects(&id) {
+            return false;
+        }
+        self.find_key(&id)
+            .map(|ind| {
+                self.values[ind] = row;
+            })
+            .is_ok()
+    }
+
     /// Returns the first item with given id, if any
     pub fn get_by_id<'a>(&'a self, id: &Pos) -> Option<&'a Row> {
         profile!("get_by_id");
@@ -265,7 +276,7 @@ where
     pub fn get_by_ids<'a>(&'a self, ids: &[Pos]) -> Vec<(Pos, &'a Row)> {
         profile!("get_by_ids");
 
-        ids.into_par_iter()
+        ids.into_iter()
             .filter_map(|id| self.get_by_id(id).map(|row| (*id, row)))
             .collect()
     }
