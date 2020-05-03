@@ -92,7 +92,8 @@ where
             return false;
         }
         let i = i - self.offset;
-        self.data.get(i).is_some()
+        // contains if data has this key AND it is Some
+        self.data.get(i).and_then(|x| x.as_ref()).is_some()
     }
 }
 
