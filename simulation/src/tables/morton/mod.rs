@@ -290,7 +290,10 @@ where
 
         let [x, y] = center.as_array();
         let min = MortonKey::new((x - r).max(0) as u16, (y - r).max(0) as u16);
-        let max = MortonKey::new((x + r) as u16, (y + r) as u16);
+        let max = MortonKey::new(
+            ((x + r).min(POS_MASK)) as u16,
+            ((y + r).min(POS_MASK)) as u16,
+        );
 
         self.query_range_impl(center, radius, min, max, out, &query);
     }
