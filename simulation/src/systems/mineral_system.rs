@@ -106,7 +106,10 @@ fn random_uncontested_pos_in_range<'a>(
 
         if position_entities_table.intersects(&pos)
             && position_entities_table.count_in_range(&pos, 1) == 0
-            && terrain_table.count_in_range(&pos, 1) == 0
+            && terrain_table
+                .get_by_id(&pos)
+                .map(|components::TerrainComponent(t)| t.is_walkable())
+                .unwrap_or(false)
         {
             result = Some(pos);
             break;
