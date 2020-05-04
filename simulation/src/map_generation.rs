@@ -77,8 +77,6 @@ pub fn generate_terrain(
 
             let grad = grad + 1.0;
 
-            dbg!(grad);
-
             if grad < 1.0 / 3.0 {
                 return None;
             }
