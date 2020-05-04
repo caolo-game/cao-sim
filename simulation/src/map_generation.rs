@@ -80,7 +80,7 @@ pub fn generate_terrain(
             if grad < 1.0 / 3.0 {
                 return None;
             }
-            let terrain = if grad < 4.0 / 3.0 {
+            let terrain = if grad < 1.0 {
                 TileTerrainType::Wall
             } else if grad < 2.0 {
                 TileTerrainType::Plain
@@ -134,4 +134,6 @@ mod tests {
         assert!(seen_wall);
         assert!(seen_empty);
     }
+    
+    // TODO: any two Plain must be reachable
 }
