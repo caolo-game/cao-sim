@@ -165,10 +165,10 @@ pub fn generate_terrain(
             grad -= min_grad;
             grad /= max_grad - min_grad;
 
-            if grad <= 0.33 {
+            if grad <= 0.43 {
                 return None;
             }
-            let terrain = if grad < 0.76 {
+            let terrain = if grad < 0.8 {
                 TileTerrainType::Plain
             } else if grad <= 1.5 {
                 // accounting for numerical errors

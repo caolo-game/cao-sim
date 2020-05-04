@@ -128,12 +128,15 @@ pub struct DeleteEntityView {
 unsafe impl Send for DeleteEntityView {}
 unsafe impl Sync for DeleteEntityView {}
 
-impl DeleteEntityView {
+impl DeleteEntityView
+where
+    crate::data_store::Storage: super::Epic<EntityId>,
+{
     /// # Safety
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
     pub unsafe fn delete_entity(&mut self, id: &EntityId) {
-        let storage = &mut (*self.storage).store as &mut dyn Epic<EntityId>;
+        let storage: &mut crate::data_store::Storage = &mut (*self.storage).store;
         storage.delete(id);
     }
 }
