@@ -43,7 +43,77 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
                 .push(tokens.next().expect("field name"));
         }
     }
+    // create a deferrer type, to hold deferred generic updates.
+    //
+    let deferrer_by_key = groups_by_id
+        .iter()
+        .map(|(key, _)| {
+            let kname = key.to_lowercase();
+            let kname = quote::format_ident!("{}", kname);
+            let key = quote::format_ident!("{}", key);
+            let tt = quote! {
+                #kname : Vec<#key>
+            };
+            (kname, key, tt)
+        })
+        .collect::<Vec<_>>();
 
+    let dbk = deferrer_by_key.as_slice().iter().map(|(_, _, v)| v);
+    let implementations = deferrer_by_key.iter().map(|(k, ty, _)| {
+        quote! {
+            impl DeferredEpic<#ty> for DeferredDeletes {
+                fn deferred_delete(&mut self, key: #ty) {
+                    self.#k.push(key);
+                }
+                fn clear_defers(&mut self) {
+                    self.#k.clear();
+                }
+                /// Execute deferred deletes, will clear `self`!
+                fn execute<Store: Epic<#ty>>(&mut self, store: &mut Store) {
+                    let mut deletes = Vec::new();
+                    std::mem::swap(&mut deletes, &mut self.#k);
+                    for id in deletes.into_iter() {
+                        store.delete(&id);
+                    }
+                }
+            }
+        }
+    });
+
+    let clears = deferrer_by_key.iter().map(|(k, _, _)| {
+        quote! {
+            self.#k.clear();
+        }
+    });
+
+    let executes = deferrer_by_key.iter().map(|(_, ty, _)| {
+        quote! {
+            <Self as DeferredEpic::<#ty>>::execute(self,store);
+        }
+    });
+
+    let deferrer = quote! {
+        /// Holds delete requests
+        /// Should execute and clear on tick end
+        #[derive(Debug, Clone, Default)]
+        pub struct DeferredDeletes { // name pending
+            #(#dbk),*
+        }
+
+        impl DeferredDeletes {
+            pub fn clear(&mut self) {
+                #(#clears);*;
+            }
+            pub fn execute_all(&mut self, store: &mut Storage) {
+                #(#executes);*;
+            }
+        }
+
+        #(#implementations)*
+    };
+
+    // implement the generic delete for all key types
+    //
     let implementations = groups_by_id.into_iter().map(|(_, (key, fields))| {
         let deletes = fields.as_slice().iter().map(|field| {
             quote! {
@@ -61,6 +131,8 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
     let result = quote! {
         #(#implementations)
         *
+
+        #deferrer
     };
 
     TokenStream::from(result)

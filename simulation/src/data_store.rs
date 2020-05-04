@@ -43,6 +43,8 @@ storage!(
 #[derive(Debug, Serialize)]
 pub struct World {
     pub store: Storage,
+    #[serde(skip)]
+    pub deferred_deletes: DeferredDeletes,
 
     pub time: u64,
     pub next_entity: crate::model::EntityId,
@@ -86,9 +88,11 @@ impl Default for World {
 impl World {
     pub fn new() -> Self {
         let store = Storage::default();
+        let deferred_deletes = DeferredDeletes::default();
         Self {
             time: 0,
             store,
+            deferred_deletes,
             last_tick: Utc::now(),
             next_entity: crate::model::EntityId::default(),
             dt: Duration::zero(),
@@ -126,10 +130,13 @@ impl World {
     }
 
     pub fn signal_done(&mut self, _intents: &Intents) {
+        self.deferred_deletes.execute_all(&mut self.store);
+
         let now = Utc::now();
         self.dt = now - self.last_tick;
         self.last_tick = now;
         self.time += 1;
+
     }
 
     pub fn insert_entity(&mut self) -> EntityId {
@@ -138,6 +145,24 @@ impl World {
         let res = self.next_entity;
         self.next_entity = self.next_entity.next();
         res
+    }
+}
+
+impl<Id> storage::DeferredEpic<Id> for World
+where
+    Id: TableId,
+    DeferredDeletes: storage::DeferredEpic<Id>,
+{
+    fn deferred_delete(&mut self, key: Id) {
+        self.deferred_deletes.deferred_delete(key);
+    }
+
+    fn clear_defers(&mut self) {
+        self.deferred_deletes.clear_defers();
+    }
+
+    fn execute<Store: storage::Epic<Id>>(&mut self, store: &mut Store) {
+        self.deferred_deletes.execute(store);
     }
 }
 

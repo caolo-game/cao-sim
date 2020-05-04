@@ -9,7 +9,7 @@ macro_rules! storage {
         pub mod $module {
             use super::*;
             use crate::storage::views::{UnsafeView, View};
-            use crate::storage::{HasTable, Epic};
+            use crate::storage::{HasTable, Epic, DeferredEpic};
             use serde_derive::{Serialize, Deserialize};
             use cao_storage_derive::CaoStorage;
             use crate::tables::Table;
