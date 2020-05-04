@@ -106,9 +106,18 @@ where
     type Row = Row;
 
     fn delete(&mut self, id: &Id) -> Option<Row> {
+        use std::any::type_name;
+        debug!(
+            "Deleting id {:?} in VecTable<{}, {}>",
+            id,
+            type_name::<Id>(),
+            type_name::<Row>()
+        );
         if !self.contains_id(id) {
+            debug!("Table did not contain {:?}", id);
             return None;
         }
+        debug!("Table contains {:?}, removing", id);
         let ind = id.as_usize() - self.offset;
         self.data.push(None);
         let res = self.data.swap_remove(ind);
