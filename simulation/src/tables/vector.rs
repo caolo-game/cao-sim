@@ -112,7 +112,6 @@ where
         let ind = id.as_usize() - self.offset;
         self.data.push(None);
         let res = self.data.swap_remove(ind);
-        self.data.pop();
         res.map(|(_, row)| row)
     }
 }

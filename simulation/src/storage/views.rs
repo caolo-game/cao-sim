@@ -136,7 +136,7 @@ where
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
     pub unsafe fn delete_entity(&mut self, id: &EntityId) {
-        let storage: &mut crate::data_store::Storage = &mut (*self.storage).store;
+        let storage = &mut (*self.storage).store;
         storage.delete(id);
     }
 }
