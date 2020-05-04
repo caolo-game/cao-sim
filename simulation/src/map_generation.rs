@@ -161,12 +161,9 @@ pub fn generate_terrain(
         .extend(points.into_iter().filter_map(move |p| {
             let mut grad = *gradient.get_by_id(&p)?;
 
-            dbg!(grad, min_grad, max_grad);
-
             // normalize grad
             grad -= min_grad;
             grad /= max_grad - min_grad;
-            dbg!(grad);
 
             if grad <= 0.33 {
                 return None;
