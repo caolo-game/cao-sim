@@ -21,6 +21,7 @@ mod tests;
 use super::*;
 use crate::model::{components::EntityComponent, geometry::Point};
 use litmax_bigmin::litmax_bigmin;
+pub use litmax_bigmin::msb_de_bruijn;
 use morton_key::*;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -445,19 +446,29 @@ where
     type Id = Pos;
     type Row = Row;
 
+    /// delete all values at id and return the first one, if any
     fn delete(&mut self, id: &Pos) -> Option<Row> {
         profile!("delete");
-        if !self.contains_key(id) {
+        if !self.intersects(id) {
             return None;
         }
 
-        self.find_key(&id)
+        let val = self
+            .find_key(&id)
             .map(|ind| {
                 self.keys.remove(ind);
                 self.positions.remove(ind);
                 self.values.remove(ind)
             })
-            .ok()
+            .ok()?;
+
+        while let Ok(ind) = self.find_key(&id) {
+            self.keys.remove(ind);
+            self.positions.remove(ind);
+            self.values.remove(ind);
+        }
+
+        Some(val)
     }
 }
 

@@ -13,6 +13,12 @@ impl Default for TileTerrainType {
     }
 }
 
+impl TileTerrainType {
+    pub fn is_walkable(&self) -> bool {
+        is_walkable(*self)
+    }
+}
+
 pub fn is_walkable(tile: TileTerrainType) -> bool {
     match tile {
         TileTerrainType::Plain => true,
