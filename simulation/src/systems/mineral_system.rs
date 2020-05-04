@@ -33,6 +33,10 @@ impl<'a> System<'a> for MineralSystem {
         let entity_positions_it = unsafe { entity_positions.as_mut().iter_mut() };
         let energy_iter = unsafe { energy.as_mut().iter_mut() };
 
+        // in case of an error we need to clean up the mineral
+        // however best not to clean it inside the iterator, hmmm???
+        let mut to_cleanup = Vec::new();
+
         JoinIterator::new(
             JoinIterator::new(minerals_it, entity_positions_it),
             energy_iter,
@@ -61,12 +65,16 @@ impl<'a> System<'a> for MineralSystem {
                 }
                 None => {
                     error!("Failed to find adequate position for resource {:?}", id);
-                    unsafe {
-                        delete_entity.delete_entity(&id);
-                    }
+                    to_cleanup.push(id);
                 }
             }
         });
+
+        for id in to_cleanup {
+            unsafe {
+                delete_entity.delete_entity(&id);
+            }
+        }
 
         debug!("update minerals system done");
     }
