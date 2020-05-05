@@ -9,8 +9,8 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
 pub enum MapGenerationError {
-    #[error("Got invalid boxes `{from:?}` `{to:?}`")]
-    BadBox { from: Point, to: Point },
+    #[error("Can not generate room with the given parameters: {center:?} {radius}")]
+    BadArguments { center: Point, radius: u32 },
     #[error("Failed to generate the initial layout: {0}")]
     TerrainExtendFailure(ExtendFailure<Point>),
 }
@@ -101,20 +101,25 @@ pub struct HeightMapProperties {
     pub wall_mass: u32,
 }
 
-/// Generate a random terrain in the AABB (from,to)
+/// Generate a random terrain in circle
 /// TODO: clamp the map to from,to (currently will expand the map)
 /// Usese the [Diamond-square algorithm](https://en.wikipedia.org/wiki/Diamond-square_algorithm)
 ///
 /// Return property description of the generated height map
-pub fn generate_terrain(
-    from: Point,
-    to: Point,
+pub fn generate_room(
+    center: Point,
+    radius: u32,
     (mut terrain,): MapTables,
     seed: Option<[u8; 16]>,
 ) -> Result<HeightMapProperties, MapGenerationError> {
-    if from.x >= to.x || from.y >= to.y {
-        return Err(MapGenerationError::BadBox { from, to });
+    if radius == 0 {
+        return Err(MapGenerationError::BadArguments { center, radius });
     }
+
+    let [x, y] = center.as_array();
+    let radius = radius as i32;
+    let from = Point::new(x - radius, y - radius);
+    let to = Point::new(x + radius, y + radius);
 
     let dx = to.x - from.x;
     let dy = to.y - from.y;
@@ -195,6 +200,9 @@ pub fn generate_terrain(
     let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
     terrain
         .extend(points.filter_map(|p| {
+            if center.dist(&p) > radius as u32 {
+                return None;
+            }
             let mut grad = *gradient.get_by_id(&p)?;
 
             {
@@ -272,10 +280,10 @@ mod tests {
     fn basic_generation() {
         let mut terrain = MortonTable::with_capacity(512);
 
-        let [from, to] = [Point::new(0, 0), Point::new(10, 10)];
-        let props = generate_terrain(
-            from,
-            to,
+        let center = Point::new(5,5);
+        let props = generate_room(
+            center,
+            5,
             (UnsafeView::from_table(&mut terrain),),
             Some(*b"deadbeefstewbisc"),
         )
@@ -283,6 +291,8 @@ mod tests {
 
         dbg!(props);
 
+        let from = Point::new(0,0);
+        let to = Point::new(16, 16);
         print_terrain(&from, &to, View::from_table(&terrain));
 
         let mut seen_empty = false;
@@ -311,12 +321,11 @@ mod tests {
         let mut plains = Vec::with_capacity(512);
         let mut terrain = MortonTable::with_capacity(512);
 
-        let from = Point::new(0, 0);
-        let to = Point::new(16, 16);
+        let center = Point::new(8, 8);
 
-        let props = generate_terrain(
-            from,
-            to,
+        let props = generate_room(
+            center,
+            8,
             (UnsafeView::from_table(&mut terrain),),
             None, // Some(*b"deadbeefstewbisc"),
         )
@@ -330,6 +339,9 @@ mod tests {
                 plains.push(p);
             }
         }
+
+        let from = Point::new(0,0);
+        let to = Point::new(16, 16);
 
         print_terrain(&from, &to, View::from_table(&terrain));
 
