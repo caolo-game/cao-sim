@@ -488,7 +488,7 @@ impl PositionTable for MortonTable<Point, EntityComponent> {
         let mut res = Vec::new();
         self.find_by_range(&vision.center, vision.radius * 3 / 2, &mut res);
         res.into_iter()
-            .filter(|(pos, _)| pos.hex_distance(vision.center) <= u64::from(vision.radius))
+            .filter(|(pos, _)| pos.hex_distance(vision.center) <= vision.radius)
             .map(|(pos, id)| (id.0, PositionComponent(pos)))
             .collect()
     }

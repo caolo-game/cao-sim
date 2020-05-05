@@ -5,7 +5,7 @@ use crate::model::{
 };
 use crate::storage::views::View;
 
-pub const DROPOFF_RANGE: u64 = 1;
+pub const DROPOFF_RANGE: u32 = 1;
 
 #[derive(Debug, Clone)]
 pub struct DropoffIntent {

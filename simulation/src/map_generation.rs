@@ -200,7 +200,7 @@ pub fn generate_room(
     let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
     terrain
         .extend(points.filter_map(|p| {
-            if center.hex_distance(p) > radius as u64 {
+            if center.hex_distance(p) > radius as u32 {
                 return None;
             }
             let mut grad = *gradient.get_by_id(&p)?;

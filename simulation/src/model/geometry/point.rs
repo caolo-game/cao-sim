@@ -21,13 +21,13 @@ impl Point {
     /// Return the distance between two points in a hexagonal coordinate space
     /// Interprets points as axial coordiante vectors
     /// See https://www.redblobgames.com/grids/hexagons/#distances for more information
-    pub fn hex_distance(self, other: Point) -> u64 {
+    pub fn hex_distance(self, other: Point) -> u32 {
         let [ax, ay, az] = self.hex_axial_to_cube();
         let [bx, by, bz] = other.hex_axial_to_cube();
         let x = ax - bx;
         let y = ay - by;
         let z = az - bz;
-        ((x.abs() + y.abs() + z.abs()) / 2) as u64
+        x.abs().max(y.abs()).max(z.abs()) as u32
     }
 
     /// Convert self from a hexagonal axial vector to a hexagonal cube vector
@@ -124,7 +124,7 @@ pub struct Circle {
 
 impl Circle {
     pub fn is_inside(&self, point: Point) -> bool {
-        point.hex_distance(self.center) < u64::from(self.radius)
+        point.hex_distance(self.center) < self.radius
     }
 }
 
