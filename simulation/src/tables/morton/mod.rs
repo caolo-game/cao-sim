@@ -18,10 +18,10 @@ mod sorting;
 #[cfg(test)]
 mod tests;
 
+pub use self::litmax_bigmin::msb_de_bruijn;
 use super::*;
 use crate::model::{components::EntityComponent, geometry::Point};
 use litmax_bigmin::litmax_bigmin;
-pub use litmax_bigmin::msb_de_bruijn;
 use morton_key::*;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -287,6 +287,15 @@ where
     /// Filter all in Pos'(P) in Circle (C,r) where ||C-P|| < r
     /// This is a simplfication of `query_range`, mainly here for backwards compatibility
     pub fn find_by_range<'a>(&'a self, center: &Pos, radius: u32, out: &mut Vec<(Pos, &'a Row)>) {
+        self.query_range(center, radius, &mut |id, v| {
+            out.push((id, v));
+        });
+    }
+
+    pub fn query_range<'a, Op>(&'a self, center: &Pos, radius: u32, op: &mut Op)
+    where
+        Op: FnMut(Pos, &'a Row) -> (),
+    {
         debug_assert!(
             radius & 0xefff == radius,
             "Radius must fit into 31 bits!; {} != {}",
@@ -301,7 +310,7 @@ where
             ((x + r).min(POS_MASK)) as u16,
             ((y + r).min(POS_MASK)) as u16,
         );
-        self.query_range_impl(center, radius, min, max, out);
+        self.query_range_impl(center, radius, min, max, op);
     }
 
     fn query_range_impl<'a>(
@@ -310,7 +319,7 @@ where
         radius: u32,
         min: MortonKey,
         max: MortonKey,
-        out: &mut Vec<(Pos, &'a Row)>,
+        op: &mut impl FnMut(Pos, &'a Row) -> (),
     ) {
         let (imin, pmin) = self
             .find_key_morton(&min)
@@ -346,8 +355,8 @@ where
             let pmax = [x as u32, y as u32];
             let [litmax, bigmin] = litmax_bigmin(min.0, pmin, max.0, pmax);
             // split and recurse
-            self.query_range_impl(center, radius, min, litmax, out);
-            self.query_range_impl(center, radius, bigmin, max, out);
+            self.query_range_impl(center, radius, min, litmax, op);
+            self.query_range_impl(center, radius, bigmin, max, op);
             return;
         }
 
@@ -356,7 +365,7 @@ where
         for (i, id) in self.positions[imin..imax].iter().enumerate() {
             if center.dist(id) < radius {
                 let val = unsafe { &*values.add(i + imin) };
-                out.push((*id, val));
+                op(*id, val);
             }
         }
     }
