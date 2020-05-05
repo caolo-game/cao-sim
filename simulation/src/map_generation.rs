@@ -200,7 +200,7 @@ pub fn generate_room(
     let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
     terrain
         .extend(points.filter_map(|p| {
-            if center.dist(&p) > radius as u32 {
+            if center.hex_distance(p) > radius as u64 {
                 return None;
             }
             let mut grad = *gradient.get_by_id(&p)?;
@@ -280,7 +280,7 @@ mod tests {
     fn basic_generation() {
         let mut terrain = MortonTable::with_capacity(512);
 
-        let center = Point::new(5,5);
+        let center = Point::new(5, 5);
         let props = generate_room(
             center,
             5,
@@ -291,7 +291,7 @@ mod tests {
 
         dbg!(props);
 
-        let from = Point::new(0,0);
+        let from = Point::new(0, 0);
         let to = Point::new(16, 16);
         print_terrain(&from, &to, View::from_table(&terrain));
 
@@ -340,7 +340,7 @@ mod tests {
             }
         }
 
-        let from = Point::new(0,0);
+        let from = Point::new(0, 0);
         let to = Point::new(16, 16);
 
         print_terrain(&from, &to, View::from_table(&terrain));
