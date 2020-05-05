@@ -96,6 +96,9 @@ pub struct HeightMapProperties {
     pub depth: f32,
     pub width: i32,
     pub height: i32,
+
+    pub plain_mass: u32,
+    pub wall_mass: u32,
 }
 
 /// Generate a random terrain in the AABB (from,to)
@@ -187,6 +190,8 @@ pub fn generate_terrain(
     let mut mean = 0.0;
     let mut std = 0.0;
     let mut i = 1.0;
+    let mut plain_mass = 0;
+    let mut wall_mass = 0;
     let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
     terrain
         .extend(points.filter_map(|p| {
@@ -207,8 +212,10 @@ pub fn generate_terrain(
                 return None;
             }
             let terrain = if grad < 0.6 {
+                plain_mass += 1;
                 TileTerrainType::Plain
             } else if grad <= 1.1 {
+                wall_mass += 1;
                 // accounting for numerical errors
                 TileTerrainType::Wall
             } else {
@@ -229,6 +236,8 @@ pub fn generate_terrain(
         depth: max_grad - min_grad,
         width: dsides,
         height: dsides,
+        wall_mass,
+        plain_mass,
     };
 
     Ok(props)
