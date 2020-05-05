@@ -121,6 +121,34 @@ impl<Id: TableId, C: Component<Id>> Deref for UnsafeView<Id, C> {
     }
 }
 
+pub struct DeferredDeleteEntityView {
+    world: *mut World,
+}
+
+unsafe impl Send for DeferredDeleteEntityView {}
+unsafe impl Sync for DeferredDeleteEntityView {}
+
+impl DeferredDeleteEntityView
+where
+    crate::data_store::World: super::DeferredEpic<EntityId>,
+{
+    /// # Safety
+    /// This function should only be called if the pointed to Storage is in memory and no other
+    /// threads have access to it at this time!
+    pub unsafe fn delete_entity(&mut self, id: EntityId) {
+        use super::DeferredEpic;
+
+        let world = &mut (*self.world);
+        world.deferred_delete(id);
+    }
+}
+
+impl FromWorldMut for DeferredDeleteEntityView {
+    fn new(w: &mut World) -> Self {
+        Self { world: w as *mut _ }
+    }
+}
+
 pub struct DeleteEntityView {
     storage: *mut World,
 }

@@ -136,7 +136,6 @@ impl World {
         self.dt = now - self.last_tick;
         self.last_tick = now;
         self.time += 1;
-
     }
 
     pub fn insert_entity(&mut self) -> EntityId {

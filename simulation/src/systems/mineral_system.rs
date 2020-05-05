@@ -1,6 +1,6 @@
 use super::System;
 use crate::model::{components, geometry::Point, EntityId};
-use crate::storage::views::{DeleteEntityView, UnsafeView, View};
+use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View};
 use crate::tables::JoinIterator;
 use rand::Rng;
 
@@ -10,7 +10,7 @@ impl<'a> System<'a> for MineralSystem {
     type Mut = (
         UnsafeView<EntityId, components::PositionComponent>,
         UnsafeView<EntityId, components::EnergyComponent>,
-        DeleteEntityView,
+        DeferredDeleteEntityView,
     );
     type Const = (
         View<'a, Point, components::EntityComponent>,
@@ -20,7 +20,7 @@ impl<'a> System<'a> for MineralSystem {
 
     fn update(
         &mut self,
-        (mut entity_positions, mut energy, mut delete_entity): Self::Mut,
+        (mut entity_positions, mut energy, mut delete_entity_deferred): Self::Mut,
         (position_entities, terrain_table, resources): Self::Const,
     ) {
         debug!("update minerals system called");
@@ -35,8 +35,6 @@ impl<'a> System<'a> for MineralSystem {
 
         // in case of an error we need to clean up the mineral
         // however best not to clean it inside the iterator, hmmm???
-        let mut to_cleanup = Vec::new();
-
         JoinIterator::new(
             JoinIterator::new(minerals_it, entity_positions_it),
             energy_iter,
@@ -65,16 +63,12 @@ impl<'a> System<'a> for MineralSystem {
                 }
                 None => {
                     error!("Failed to find adequate position for resource {:?}", id);
-                    to_cleanup.push(id);
+                    unsafe {
+                        delete_entity_deferred.delete_entity(id);
+                    }
                 }
             }
         });
-
-        for id in to_cleanup {
-            unsafe {
-                delete_entity.delete_entity(&id);
-            }
-        }
 
         debug!("update minerals system done");
     }
