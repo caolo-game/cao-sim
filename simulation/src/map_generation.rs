@@ -25,76 +25,90 @@ fn pot(size: u32) -> u32 {
     1 << msb
 }
 
-fn fheight(
-    _gradient: &GradientMap,
-    _p: Point,
-    radius: i32,
-    mean_heights: f32,
-    rng: &mut impl Rng,
-) -> f32 {
-    mean_heights + (rng.gen_range(0.0, 1.0) - 0.5) * radius as f32
-}
-
 /// returns the new gradient
-fn square(gradient: &mut GradientMap, p: Point, radius: i32, rng: &mut impl Rng) -> f32 {
+fn square(
+    gradient: &mut GradientMap,
+    p: Point,
+    radius: i32,
+    fheight: &mut impl FnMut(&GradientMap, Point, i32, f32) -> f32,
+) -> f32 {
     let mut sum = 0.0;
     let mut num = 0;
 
     let [x, y] = p.as_array();
-    for point in [
+    for grad in [
         Point::new(x - radius, y - radius),
         Point::new(x - radius, y + radius),
         Point::new(x + radius, y - radius),
         Point::new(x + radius, y + radius),
     ]
     .iter()
+    .filter_map(|point| gradient.get_by_id(point))
     {
-        if let Some(grad) = gradient.get_by_id(point) {
-            sum += grad;
-            num += 1;
-        }
+        sum += grad;
+        num += 1;
     }
 
-    let grad = fheight(&gradient, p, radius, sum / num as f32, rng);
+    let grad = fheight(&gradient, p, radius, sum / num as f32);
     gradient.update(p, grad);
     grad
 }
 
 /// returns the new gradient at point p
-fn diamond(gradient: &mut GradientMap, p: Point, radius: i32, rng: &mut impl Rng) -> f32 {
+fn diamond(
+    gradient: &mut GradientMap,
+    p: Point,
+    radius: i32,
+    fheight: &mut impl FnMut(&GradientMap, Point, i32, f32) -> f32,
+) -> f32 {
     let mut sum = 0.0;
     let mut num = 0;
 
     let [x, y] = p.as_array();
 
-    for point in [
+    for grad in [
         Point::new(x - radius, y),
         Point::new(x + radius, y),
         Point::new(x, y - radius),
         Point::new(x, y + radius),
     ]
     .iter()
+    .filter_map(|point| gradient.get_by_id(point))
     {
-        if let Some(grad) = gradient.get_by_id(point) {
-            sum += grad;
-            num += 1;
-        }
+        sum += grad;
+        num += 1;
     }
 
-    let grad = fheight(&gradient, p, radius, sum / num as f32, rng);
+    let grad = fheight(&gradient, p, radius, sum / num as f32);
     gradient.update(p, grad);
     grad
+}
+
+#[derive(Debug, Clone)]
+pub struct HeightMapProperties {
+    /// standard deviation of the height map
+    pub std: f32,
+    /// mean height of the map
+    pub mean: f32,
+    pub min: f32,
+    pub max: f32,
+    /// max - min
+    pub depth: f32,
+    pub width: i32,
+    pub height: i32,
 }
 
 /// Generate a random terrain in the AABB (from,to)
 /// TODO: clamp the map to from,to (currently will expand the map)
 /// Usese the [Diamond-square algorithm](https://en.wikipedia.org/wiki/Diamond-square_algorithm)
+///
+/// Return property description of the generated height map
 pub fn generate_terrain(
     from: Point,
     to: Point,
     (mut terrain,): MapTables,
     seed: Option<[u8; 16]>,
-) -> Result<(), MapGenerationError> {
+) -> Result<HeightMapProperties, MapGenerationError> {
     if from.x >= to.x || from.y >= to.y {
         return Err(MapGenerationError::BadBox { from, to });
     }
@@ -116,11 +130,27 @@ pub fn generate_terrain(
     )
     .map_err(|e| MapGenerationError::TerrainExtendFailure(e))?;
 
+    let mut fheight = move |gradient: &GradientMap, p: Point, radius: i32, mean_heights: f32| {
+        let mut mean = 0.0;
+        let mut cnt = 1.0;
+        let mut std = 0.0;
+        gradient.query_range(&p, radius as u32, &mut |_, g| {
+            let tmp = g - mean;
+            mean += tmp / cnt;
+            std += tmp * (g - mean);
+            cnt += 1.0;
+        });
+        mean_heights
+            + std * rng.gen_range(1.0, 2.0) * mean
+            + (rng.gen_range(0.0, 1.0) - 0.5) * radius as f32
+    };
+    let fheight = &mut fheight;
+
     // init corners
     let corners = [from, Point::new(to.x, from.y), Point::new(from.x, to.y), to];
     for edge in corners.iter() {
         gradient.delete(&edge);
-        gradient.insert(*edge, fheight(&gradient, from, 3, 0.0, &mut rng));
+        gradient.insert(*edge, fheight(&gradient, from, 8, 0.0));
     }
 
     let mut d = dsides / 2;
@@ -130,21 +160,21 @@ pub fn generate_terrain(
     while 1 <= d {
         for x in (d..dsides).step_by(2 * d as usize) {
             for y in (d..dsides).step_by(2 * d as usize) {
-                let g = square(&mut gradient, Point::new(x, y), d, &mut rng);
+                let g = square(&mut gradient, Point::new(x, y), d, fheight);
                 max_grad = max_grad.max(g);
                 min_grad = min_grad.min(g);
             }
         }
         for x in (d..dsides).step_by(2 * d as usize) {
             for y in (from.y..=dsides).step_by(2 * d as usize) {
-                let g = diamond(&mut gradient, Point::new(x, y), d, &mut rng);
+                let g = diamond(&mut gradient, Point::new(x, y), d, fheight);
                 max_grad = max_grad.max(g);
                 min_grad = min_grad.min(g);
             }
         }
         for x in (from.x..=dsides).step_by(2 * d as usize) {
             for y in (d..dsides).step_by(2 * d as usize) {
-                let g = diamond(&mut gradient, Point::new(x, y), d, &mut rng);
+                let g = diamond(&mut gradient, Point::new(x, y), d, fheight);
                 max_grad = max_grad.max(g);
                 min_grad = min_grad.min(g);
             }
@@ -154,34 +184,54 @@ pub fn generate_terrain(
 
     let terrain = unsafe { terrain.as_mut() };
     terrain.clear();
-    let points = (from.x..=to.x)
-        .flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)))
-        .collect::<Vec<_>>();
+    let mut mean = 0.0;
+    let mut std = 0.0;
+    let mut i = 1.0;
+    let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
     terrain
-        .extend(points.into_iter().filter_map(move |p| {
+        .extend(points.filter_map(|p| {
             let mut grad = *gradient.get_by_id(&p)?;
 
+            {
+                // let's do some stats
+                let tmp = grad - mean;
+                mean += tmp / i;
+                std += tmp * (grad - mean);
+                i += 1.0;
+            }
             // normalize grad
             grad -= min_grad;
             grad /= max_grad - min_grad;
 
-            if grad <= 0.43 {
+            if grad <= 0.33 {
                 return None;
             }
-            let terrain = if grad < 0.8 {
+            let terrain = if grad < 0.6 {
                 TileTerrainType::Plain
-            } else if grad <= 1.5 {
+            } else if grad <= 1.1 {
                 // accounting for numerical errors
                 TileTerrainType::Wall
             } else {
-                // Should we add more terrain
-                unreachable!("grad {}", grad);
+                warn!("Logic error in map generation: unreachable code executed");
+                return None;
             };
             Some((p, TerrainComponent(terrain)))
         }))
         .map_err(|e| MapGenerationError::TerrainExtendFailure(e))?;
 
-    Ok(())
+    std = (std / i).sqrt();
+
+    let props = HeightMapProperties {
+        std,
+        mean,
+        min: min_grad,
+        max: max_grad,
+        depth: max_grad - min_grad,
+        width: dsides,
+        height: dsides,
+    };
+
+    Ok(props)
 }
 
 /// Print a 2D TerrainComponent map to the console, intended for debugging small maps.
@@ -214,7 +264,7 @@ mod tests {
         let mut terrain = MortonTable::with_capacity(512);
 
         let [from, to] = [Point::new(0, 0), Point::new(10, 10)];
-        generate_terrain(
+        let props = generate_terrain(
             from,
             to,
             (UnsafeView::from_table(&mut terrain),),
@@ -222,11 +272,13 @@ mod tests {
         )
         .unwrap();
 
+        dbg!(props);
+
+        print_terrain(&from, &to, View::from_table(&terrain));
+
         let mut seen_empty = false;
         let mut seen_wall = false;
         let mut seen_plain = false;
-
-        print_terrain(&from, &to, View::from_table(&terrain));
 
         // assert that the terrain is not homogeneous
         for x in 0..=10 {
@@ -251,15 +303,17 @@ mod tests {
         let mut terrain = MortonTable::with_capacity(512);
 
         let from = Point::new(0, 0);
-        let to = Point::new(8, 8);
+        let to = Point::new(16, 16);
 
-        generate_terrain(
+        let props = generate_terrain(
             from,
             to,
             (UnsafeView::from_table(&mut terrain),),
             None, // Some(*b"deadbeefstewbisc"),
         )
         .unwrap();
+
+        dbg!(props);
 
         for (p, t) in terrain.iter() {
             let TerrainComponent(tile) = t;
@@ -272,17 +326,18 @@ mod tests {
 
         let positions = MortonTable::<Point, EntityComponent>::new();
         let mut path = Vec::with_capacity(1024);
-        for (i, a) in plains.iter().enumerate() {
-            for b in plains.iter().skip(i) {
-                path.clear();
-                find_path(
-                    *a,
-                    *b,
-                    (View::from_table(&positions), View::from_table(&terrain)),
-                    1024,
-                    &mut path,
-                )
-                .expect("pathfinding");
+
+        let first = plains.iter().next().expect("at least 1 plain");
+        for b in plains.iter().skip(1) {
+            path.clear();
+            if let Err(e) = find_path(
+                *first,
+                *b,
+                (View::from_table(&positions), View::from_table(&terrain)),
+                1024,
+                &mut path,
+            ) {
+                panic!("Failed to find path from {:?} to {:?}: {:?}", first, b, e);
             }
         }
     }
