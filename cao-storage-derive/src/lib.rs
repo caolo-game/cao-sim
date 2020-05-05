@@ -61,7 +61,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
     let dbk = deferrer_by_key.as_slice().iter().map(|(_, _, v)| v);
     let implementations = deferrer_by_key.iter().map(|(k, ty, _)| {
         quote! {
-            impl DeferredEpic<#ty> for DeferredDeletes {
+            impl DeferredDeleteById<#ty> for DeferredDeletes {
                 fn deferred_delete(&mut self, key: #ty) {
                     self.#k.push(key);
                 }
@@ -69,7 +69,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
                     self.#k.clear();
                 }
                 /// Execute deferred deletes, will clear `self`!
-                fn execute<Store: Epic<#ty>>(&mut self, store: &mut Store) {
+                fn execute<Store: DeleteById<#ty>>(&mut self, store: &mut Store) {
                     let mut deletes = Vec::new();
                     std::mem::swap(&mut deletes, &mut self.#k);
                     for id in deletes.into_iter() {
@@ -88,7 +88,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
 
     let executes = deferrer_by_key.iter().map(|(_, ty, _)| {
         quote! {
-            <Self as DeferredEpic::<#ty>>::execute(self,store);
+            <Self as DeferredDeleteById::<#ty>>::execute(self,store);
         }
     });
 
@@ -96,7 +96,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
         /// Holds delete requests
         /// Should execute and clear on tick end
         #[derive(Debug, Clone, Default)]
-        pub struct DeferredDeletes { // name pending
+        pub struct DeferredDeletes {
             #(#dbk),*
         }
 
@@ -121,7 +121,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
             }
         });
         quote! {
-            impl #impl_generics Epic<#key> for #name #ty_generics #where_clause {
+            impl #impl_generics DeleteById<#key> for #name #ty_generics #where_clause {
                 fn delete(&mut self, id: &#key) {
                     #(#deletes);*;
                 }

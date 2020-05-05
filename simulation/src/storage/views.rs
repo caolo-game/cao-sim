@@ -26,7 +26,7 @@
 //! update_minerals(FromWorldMut::new(&mut storage), FromWorld::new(&storage));
 //! ```
 //!
-use super::{Component, Epic, TableId};
+use super::{Component, DeleteById, TableId};
 use crate::model::EntityId;
 use crate::World;
 use std::ops::Deref;
@@ -130,13 +130,13 @@ unsafe impl Sync for DeferredDeleteEntityView {}
 
 impl DeferredDeleteEntityView
 where
-    crate::data_store::World: super::DeferredEpic<EntityId>,
+    crate::data_store::World: super::DeferredDeleteById<EntityId>,
 {
     /// # Safety
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
     pub unsafe fn delete_entity(&mut self, id: EntityId) {
-        use super::DeferredEpic;
+        use super::DeferredDeleteById;
 
         let world = &mut (*self.world);
         world.deferred_delete(id);
@@ -158,7 +158,7 @@ unsafe impl Sync for DeleteEntityView {}
 
 impl DeleteEntityView
 where
-    crate::data_store::Storage: super::Epic<EntityId>,
+    crate::data_store::Storage: super::DeleteById<EntityId>,
 {
     /// # Safety
     /// This function should only be called if the pointed to Storage is in memory and no other

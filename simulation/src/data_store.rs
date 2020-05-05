@@ -115,9 +115,9 @@ impl World {
 
     pub fn delete<Id: TableId>(&mut self, id: &Id)
     where
-        Storage: storage::Epic<Id>,
+        Storage: storage::DeleteById<Id>,
     {
-        let storage = &mut self.store as &mut dyn storage::Epic<Id>;
+        let storage = &mut self.store as &mut dyn storage::DeleteById<Id>;
         storage.delete(id);
     }
 
@@ -147,10 +147,10 @@ impl World {
     }
 }
 
-impl<Id> storage::DeferredEpic<Id> for World
+impl<Id> storage::DeferredDeleteById<Id> for World
 where
     Id: TableId,
-    DeferredDeletes: storage::DeferredEpic<Id>,
+    DeferredDeletes: storage::DeferredDeleteById<Id>,
 {
     fn deferred_delete(&mut self, key: Id) {
         self.deferred_deletes.deferred_delete(key);
@@ -160,7 +160,7 @@ where
         self.deferred_deletes.clear_defers();
     }
 
-    fn execute<Store: storage::Epic<Id>>(&mut self, store: &mut Store) {
+    fn execute<Store: storage::DeleteById<Id>>(&mut self, store: &mut Store) {
         self.deferred_deletes.execute(store);
     }
 }
