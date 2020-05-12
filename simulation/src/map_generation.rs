@@ -194,7 +194,6 @@ pub fn generate_room(
     }
 
     let terrain = unsafe { terrain.as_mut() };
-    terrain.clear();
     let mut mean = 0.0;
     let mut std = 0.0;
     let mut i = 1.0;
