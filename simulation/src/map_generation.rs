@@ -230,7 +230,10 @@ pub fn generate_room(
                 // accounting for numerical errors
                 TileTerrainType::Wall
             } else {
-                warn!("Logic error in map generation: unreachable code executed");
+                warn!(
+                    "Logic error in map generation: unreachable code executed p: {:?} grad: {:?}",
+                    p, grad
+                );
                 return None;
             };
             Some((p, TerrainComponent(terrain)))
