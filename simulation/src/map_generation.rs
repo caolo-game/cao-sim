@@ -193,14 +193,14 @@ pub fn generate_room(
         d /= 2;
     }
 
-    let terrain = unsafe { terrain.as_mut() };
     let mut mean = 0.0;
     let mut std = 0.0;
     let mut i = 1.0;
     let mut plain_mass = 0;
     let mut wall_mass = 0;
     let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
-    terrain
+
+    unsafe { terrain.as_mut() }
         .extend(points.filter_map(|p| {
             if center.hex_distance(p) > radius as u32 {
                 return None;

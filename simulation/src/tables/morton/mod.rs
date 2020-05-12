@@ -460,6 +460,7 @@ where
                 self.positions.remove(i);
             }
         }
+        self.rebuild_skip_list();
         self
     }
 }
