@@ -194,3 +194,30 @@ fn from_iterator_inserts_correctly() {
         assert_eq!(val, v);
     }
 }
+
+#[test]
+fn dedupe_simple() {
+    let mut rng = rand::thread_rng();
+
+    let mut table = MortonTable::from_iterator((0..128).flat_map(|_| {
+        let pos = Point {
+            x: rng.gen_range(0, 3900),
+            y: rng.gen_range(0, 3900),
+        };
+        vec![(pos, 0), (pos, 1), (pos, 3)]
+    }))
+    .unwrap();
+    table.dedupe();
+
+    let mut cnt = 0;
+
+    let positions = table
+        .iter()
+        .map(|(p, _)| {
+            cnt += 1;
+            p
+        })
+        .collect::<HashSet<_>>();
+    assert_eq!(positions.len(), 128);
+    assert_eq!(cnt, 128);
+}

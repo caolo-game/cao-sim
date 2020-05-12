@@ -31,7 +31,7 @@ use crate::profile;
 
 // at most 15 bits long non-negative integers
 // having the 16th bit set might create problems in find_key
-const POS_MASK: i32 = 0b0111111111111111;
+pub const MORTON_POS_MAX: i32 = 0b0111111111111111;
 
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure<Id: SpatialKey2d> {
@@ -307,8 +307,8 @@ where
         let [x, y] = center.as_array();
         let min = MortonKey::new((x - r).max(0) as u16, (y - r).max(0) as u16);
         let max = MortonKey::new(
-            ((x + r).min(POS_MASK)) as u16,
-            ((y + r).min(POS_MASK)) as u16,
+            ((x + r).min(MORTON_POS_MAX)) as u16,
+            ((y + r).min(MORTON_POS_MAX)) as u16,
         );
         self.query_range_impl(center, radius, min, max, op);
     }
@@ -438,12 +438,29 @@ where
     /// Return wether point is within the bounds of this node
     pub fn intersects(&self, point: &Pos) -> bool {
         let [x, y] = point.as_array();
-        (x & POS_MASK) == x && (y & POS_MASK) == y
+        (x & MORTON_POS_MAX) == x && (y & MORTON_POS_MAX) == y
     }
 
     /// Return [min, max) of the bounds of this table
     pub fn bounds(&self) -> (Pos, Pos) {
-        (Pos::new(0, 0), Pos::new(POS_MASK + 1, POS_MASK + 1))
+        (
+            Pos::new(0, 0),
+            Pos::new(MORTON_POS_MAX + 1, MORTON_POS_MAX + 1),
+        )
+    }
+
+    /// Remove duplicate values from self, leaving one.
+    /// Note that during sorting the order of values may alter from the order which they were
+    /// inserted.
+    pub fn dedupe(&mut self) -> &mut Self {
+        for i in (1..self.keys.len()).rev() {
+            if self.keys[i] == self.keys[i - 1] {
+                self.keys.remove(i);
+                self.values.remove(i);
+                self.positions.remove(i);
+            }
+        }
+        self
     }
 }
 

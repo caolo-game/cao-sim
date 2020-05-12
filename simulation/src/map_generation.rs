@@ -3,7 +3,7 @@ use crate::model::geometry::Point;
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::msb_de_bruijn;
-use crate::tables::{ExtendFailure, MortonTable, SpatialKey2d, Table};
+use crate::tables::{ExtendFailure, MortonTable, SpatialKey2d, Table, MORTON_POS_MAX};
 use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
 use thiserror::Error;
 
@@ -134,7 +134,10 @@ pub fn generate_room(
     });
     let mut rng = SmallRng::from_seed(seed);
     let mut gradient = GradientMap::from_iterator(
-        (from.x..=to.x).flat_map(|x| (from.y..=to.y).map(move |y| (Point::new(x, y), 0.0))),
+        (from.x..=to.x)
+            .flat_map(|x| (from.y..=to.y).map(move |y| (Point::new(x, y), 0.0)))
+            .filter(|(p, _)| p.x >= 0 && p.y >= 0)
+            .filter(|(p, _)| p.x <= MORTON_POS_MAX && p.y <= MORTON_POS_MAX),
     )
     .map_err(|e| MapGenerationError::TerrainExtendFailure(e))?;
 
