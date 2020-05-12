@@ -219,7 +219,7 @@ pub fn generate_room(
             grad -= min_grad;
             grad /= max_grad - min_grad;
 
-            if grad <= 0.33 || grad.is_nan() {
+            if grad <= 0.33 || !rad.is_normal() {
                 return None;
             }
             let terrain = if grad < 0.6 {
