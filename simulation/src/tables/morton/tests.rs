@@ -3,6 +3,31 @@ use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 #[test]
+fn simple_from_iterator() {
+    let mut rng = rand::thread_rng();
+    let mut points = [
+        Point::new(1, 23),
+        Point::new(2, 42),
+        Point::new(1 << 15 - 1, 23),
+        Point::new(1, 1 << 14 - 2),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+    ];
+    points.shuffle(&mut rng);
+    MortonTable::from_iterator(points.iter().enumerate().map(|(i, p)| (*p, i))).unwrap();
+}
+
+#[test]
 fn insertions() {
     let mut table = MortonTable::new();
 
@@ -109,11 +134,7 @@ fn regression_get_by_id_bug1() {
         .map(|(i, p)| (p, i))
         .collect();
 
-    let mut table = MortonTable::<Point, usize>::new();
-    for (p, e) in points.iter() {
-        let inserted = table.insert(p.clone(), *e);
-        assert!(inserted);
-    }
+    let table = MortonTable::<Point, usize>::from_iterator(points.iter().cloned()).unwrap();
 
     for p in points {
         let found = table.get_by_id(&p.0);
