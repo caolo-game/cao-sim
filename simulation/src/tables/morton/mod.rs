@@ -107,6 +107,10 @@ where
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.keys.len()
+    }
+
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = (Pos, &'a Row)> + 'a {
         let values = self.values.as_ptr();
         self.positions.iter().enumerate().map(move |(i, id)| {
