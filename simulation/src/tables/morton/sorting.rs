@@ -1,6 +1,14 @@
 use super::morton_key::MortonKey;
+use super::msb_de_bruijn;
+use rayon::prelude::*;
 
-pub fn sort<Pos: Send, Row: Send>(
+const RADIX_MASK_LEN: u8 = 2;
+const RADIX_MASK: u32 = (1 << (RADIX_MASK_LEN + 1)) - 1;
+
+// TODO: create a Sorter struct that holds the temp buffer, so MortonTable may hold one and only
+// allocate these once per lifetime, should speed up rebuilds
+
+pub fn sort<Pos: Clone, Row: Clone>(
     keys: &mut [MortonKey],
     positions: &mut [Pos],
     values: &mut [Row],
@@ -20,65 +28,80 @@ pub fn sort<Pos: Send, Row: Send>(
     if keys.len() < 2 {
         return;
     }
-    let pivot = sort_partition(keys, positions, values);
-    let (klo, khi) = keys.split_at_mut(pivot);
-    let (plo, phi) = positions.split_at_mut(pivot);
-    let (vlo, vhi) = values.split_at_mut(pivot);
-    rayon::join(
-        || sort(klo, plo, vlo),
-        || sort(&mut khi[1..], &mut phi[1..], &mut vhi[1..]),
-    );
+
+    let mut input: Vec<(MortonKey, usize)> = keys
+        .iter()
+        .cloned()
+        .enumerate()
+        .map(|(k, v)| (v, k))
+        .collect();
+    let mut output = Vec::with_capacity(keys.len());
+
+    let mut inpdx = 0;
+
+    let mut buckets = vec![Vec::with_capacity(keys.len() / 2); RADIX_MASK as usize + 1];
+
+    let msb = keys.iter().map(|k| msb_de_bruijn(k.0)).max().unwrap();
+
+    for k in (0..=msb).step_by(RADIX_MASK_LEN as usize) {
+        if inpdx == 0 {
+            radix_round(k as u8, &input[..], &mut output, &mut buckets[..]);
+        } else {
+            radix_round(k as u8, &output[..], &mut input, &mut buckets[..]);
+        }
+        inpdx = 1 - inpdx;
+    }
+
+    // TODO: calculate minimum swaps required
+    // TODO: execute swaps
+
+    let mut ks = Vec::with_capacity(keys.len());
+    let mut ps = Vec::with_capacity(keys.len());
+    let mut vs = Vec::with_capacity(keys.len());
+
+    for (_, i) in output.iter() {
+        let i = *i;
+        ks.push(keys[i]);
+        ps.push(positions[i].clone());
+        vs.push(values[i].clone());
+    }
+
+    ks.swap_with_slice(keys);
+    ps.swap_with_slice(positions);
+    vs.swap_with_slice(values);
 }
 
-/// Assumes that all 3 slices are equal in size.
-/// Assumes that the slices are not empty
-fn sort_partition<Pos, Row>(
-    keys: &mut [MortonKey],
-    positions: &mut [Pos],
-    values: &mut [Row],
-) -> usize {
-    debug_assert!(!keys.is_empty());
+fn radix_round(
+    k: u8,
+    keys: &[(MortonKey, usize)], // key, index pairs
+    out: &mut Vec<(MortonKey, usize)>,
+    // reusable buffers to save on allocation
+    buckets: &mut [Vec<(MortonKey, usize)>],
+) {
+    buckets.par_iter_mut().for_each(|b| {
+        b.clear();
+    });
+    radix_filter(k, keys, buckets);
 
-    macro_rules! swap {
-        ($i: expr, $j: expr) => {
-            keys.swap($i, $j);
-            positions.swap($i, $j);
-            values.swap($i, $j);
-        };
-    };
-
-    let len = keys.len();
-    let lim = len - 1;
-
-    let (pivot, pivot_ind) = {
-        use std::mem::swap;
-        // choose the median of the first, middle and last elements as the pivot
-
-        let mut first = 0;
-        let mut last = lim;
-        let mut median = len / 2;
-
-        if keys[last] < keys[median] {
-            swap(&mut median, &mut last);
-        }
-        if keys[last] < keys[first] {
-            swap(&mut last, &mut first);
-        }
-        if keys[median] < keys[first] {
-            swap(&mut median, &mut first);
-        }
-        (keys[median], median)
-    };
-
-    swap!(pivot_ind, lim);
-
-    let mut i = 0; // index of the last item <= pivot
-    for j in 0..lim {
-        if keys[j] < pivot {
-            swap!(i, j);
-            i += 1;
-        }
+    // concat
+    out.clear();
+    for b in buckets.iter() {
+        out.extend_from_slice(&b);
     }
-    swap!(i, lim);
-    i
+    debug_assert_eq!(out.len(), keys.len());
+}
+
+fn radix_filter(k: u8, keys: &[(MortonKey, usize)], buckets: &mut [Vec<(MortonKey, usize)>]) {
+    let mask: u32 = RADIX_MASK << k;
+
+    buckets.par_iter_mut().enumerate().for_each(|(ind, b)| {
+        for key in keys.iter() {
+            let i = (key.0).0 & mask;
+            let i = i >> k;
+            let i = i as usize;
+            if i == ind {
+                b.push(*key);
+            }
+        }
+    });
 }

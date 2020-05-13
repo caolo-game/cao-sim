@@ -52,6 +52,7 @@ where
     skipstep: u32,
     // ---- 9 * 4 bytes so far
     // assuming 64 byte long L1 cache lines we can fit 10 keys
+    //
     // keys is 24 bytes in memory
     keys: Vec<MortonKey>,
     positions: Vec<Pos>,
@@ -147,9 +148,9 @@ where
             self.values.push(value);
         }
         sorting::sort(
-            self.keys.as_mut_slice(),
-            self.positions.as_mut_slice(),
-            self.values.as_mut_slice(),
+            &mut self.keys,
+            &mut self.positions,
+            &mut self.values,
         );
         self.rebuild_skip_list();
         Ok(())
