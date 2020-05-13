@@ -22,9 +22,6 @@ pub fn sort<Pos: Send + Clone, Row: Send + Clone>(
         keys.len(),
         values.len()
     );
-    if keys.len() < 2 {
-        return;
-    }
     if keys.len() < 2050 {
         sort_radix(keys, positions, values);
         return;
