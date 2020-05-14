@@ -118,8 +118,10 @@ pub fn generate_room(
 
     let [x, y] = center.as_array();
     let radius = radius as i32;
-    let from = Point::new(x - radius, y - radius);
-    let to = Point::new(x + radius, y + radius);
+    let offset = Point::new(x - radius, y - radius);
+
+    let from = Point::new(0, 0);
+    let to = Point::new(radius, radius);
 
     let dx = to.x - from.x;
     let dy = to.y - from.y;
@@ -218,10 +220,10 @@ pub fn generate_room(
             grad -= min_grad;
             grad /= max_grad - min_grad;
 
-            if grad <= 0.33 || !grad.is_finite() {
+            if grad <= 0.2 || !grad.is_finite() {
                 return None;
             }
-            let terrain = if grad < 0.6 {
+            let terrain = if grad < 0.7 {
                 plain_mass += 1;
                 TileTerrainType::Plain
             } else if grad <= 1.1 {
@@ -235,7 +237,7 @@ pub fn generate_room(
                 );
                 return None;
             };
-            Some((p, TerrainComponent(terrain)))
+            Some((p + offset, TerrainComponent(terrain)))
         }))
         .map_err(|e| MapGenerationError::TerrainExtendFailure(e))?;
 
