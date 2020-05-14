@@ -145,8 +145,8 @@ pub fn generate_room(
 
     let mut fheight = move |gradient: &GradientMap, p: Point, radius: i32, mean_heights: f32| {
         let mut mean = 0.0;
-        let mut cnt = 1.0;
         let mut std = 0.0;
+        let mut cnt = 1.0;
         gradient.query_range(&p, radius as u32, &mut |_, g| {
             let tmp = g - mean;
             mean += tmp / cnt;
@@ -154,7 +154,7 @@ pub fn generate_room(
             cnt += 1.0;
         });
         mean_heights
-            + std * rng.gen_range(1.0, 2.0) * mean
+            + (0.2 + std) * rng.gen_range(1.0, 2.0) * (0.2 + mean)
             + (rng.gen_range(0.0, 1.0) - 0.5) * radius as f32
     };
     let fheight = &mut fheight;
@@ -163,7 +163,7 @@ pub fn generate_room(
     let corners = [from, Point::new(to.x, from.y), Point::new(from.x, to.y), to];
     for edge in corners.iter() {
         gradient.delete(&edge);
-        gradient.insert(*edge, fheight(&gradient, from, 8, 0.0));
+        gradient.insert(*edge, fheight(&gradient, from, 2, 0.0));
     }
 
     let mut d = dsides / 2;
