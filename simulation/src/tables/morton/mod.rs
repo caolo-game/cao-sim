@@ -4,7 +4,6 @@
 //! This is a severe restriction on the keys that can be used, however dense queries and
 //! constructing from iterators is much faster than quadtrees.
 //!
-#![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;
@@ -151,11 +150,7 @@ where
             self.positions.push(id);
             self.values.push(value);
         }
-        sorting::sort(
-            &mut self.keys,
-            &mut self.positions,
-            &mut self.values,
-        );
+        sorting::sort(&mut self.keys, &mut self.positions, &mut self.values);
         self.rebuild_skip_list();
         Ok(())
     }
@@ -257,11 +252,17 @@ where
             return self.keys.binary_search(&key);
         }
 
-        let index = if is_x86_feature_detected!("sse2") {
-            unsafe { find_key_partition_sse2(&self.skiplist, &key) }
-        } else {
-            sse_panic()
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        let index = {
+            if is_x86_feature_detected!("sse2") {
+                unsafe { find_key_partition_sse2(&self.skiplist, &key) }
+            } else {
+                find_key_partition_serial(&self.skiplist, &key)
+            }
         };
+        #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+        let index = find_key_partition_serial(&self.skiplist, &key);
+
         let (begin, end) = {
             if index < 8 {
                 let begin = index * step;
@@ -524,7 +525,8 @@ impl PositionTable for MortonTable<Point, EntityComponent> {
 }
 
 /// Find the index of the partition where `key` _might_ reside.
-/// This is the index of the second to first item in the `skiplist` that is greater than the `key`
+/// This is the index of the first item in the `skiplist` that is greater than the `key`
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[inline(always)]
 unsafe fn find_key_partition_sse2(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -> usize {
     let key = key.0 as i32;
@@ -546,22 +548,10 @@ unsafe fn find_key_partition_sse2(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -
     let index = _popcnt32(mask_a) + _popcnt32(mask_b);
     // because the mask was created from 8 bit wide items every key in skip list is counted
     // 4 times.
-    // We know that index is unsigned to we can optimize by using bitshifting instead
-    //   of division.
-    //   This resulted in a 1ns speedup on my Intel Code i7-8700 CPU.
-    let index = index >> 2;
-    index as usize
+    index as usize / 4
 }
 
-#[inline(never)]
-fn sse_panic() -> usize {
-    println!(
-        r#"
-AVX: {}
-SSE: {}
-                "#,
-        is_x86_feature_detected!("avx"),
-        is_x86_feature_detected!("sse"),
-    );
-    unimplemented!("find_key is not implemented for the current CPU")
+fn find_key_partition_serial(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -> usize {
+    let key = &key.0;
+    skiplist.iter().filter(|skip| *skip <= key).count()
 }
