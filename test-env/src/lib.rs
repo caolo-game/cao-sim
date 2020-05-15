@@ -1,5 +1,6 @@
 mod utils;
 
+use cao_math::mat::mat3f32::JsMatrix;
 use cao_math::vec::vec2f32::Point;
 use caolo_sim::model::geometry::Point as P;
 use caolo_sim::model::terrain::TileTerrainType;
@@ -17,7 +18,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 pub struct MapRender {
     map: MortonTable<P, caolo_sim::model::components::TerrainComponent>,
     cells: Vec<(Point, TileTerrainType)>,
-    transform: cao_math::mat::mat2f32::JsMatrix,
+    transform: JsMatrix,
     bounds: [Point; 2],
 }
 
@@ -29,7 +30,7 @@ impl MapRender {
         Self {
             map: Default::default(),
             cells: Vec::with_capacity(512),
-            transform: cao_math::hex::axial_to_pixel_mat_pointy(),
+            transform: cao_math::hex::axial_to_pixel_mat_pointy().as_mat3f(),
             bounds: [Point::new(0., 0.), Point::new(0., 0.)],
         }
     }
@@ -56,21 +57,14 @@ impl MapRender {
                 let [x, y] = p.as_array();
                 let [x, y] = [x as f32, y as f32];
                 let p = Point::new(x, y);
+                let p = p.to_3d_vector();
                 let p = self.transform.right_prod(&p);
                 let [x, y] = [p.x, p.y];
-                if x < min.x {
-                    min.x = x;
-                }
-                if y < min.y {
-                    min.y = y;
-                }
-                if x > max.x {
-                    max.x = x;
-                }
-                if y > max.y {
-                    max.y = y;
-                }
-                (p, t.0)
+                min.x = min.x.min(x);
+                min.y = min.y.min(y);
+                max.x = max.x.max(x);
+                max.y = max.y.max(y);
+                (Point::new(x, y), t.0)
             })
             .collect();
 

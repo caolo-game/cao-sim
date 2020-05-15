@@ -6,7 +6,7 @@ const CELL_SIZE = 5;
 const mapRender = new wasm.MapRender();
 
 const run = () => {
-  const mapGenRes = mapRender.generateMap(64, 64, 64);
+  const mapGenRes = mapRender.generateMap(128, 128, 80);
 
   document.getElementById("mapGenRes").innerHTML = `<pre>${mapGenRes}</pre>`;
 
@@ -35,12 +35,7 @@ const run = () => {
       let { x, y } = cell[0];
       x -= offsetx;
       y -= offsety;
-      ctx.fillRect(
-        x * (CELL_SIZE + 1) + 1,
-        y * (CELL_SIZE + 1) + 1,
-        CELL_SIZE,
-        CELL_SIZE
-      );
+      ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
     }
 
     ctx.stroke();
