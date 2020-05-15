@@ -6,7 +6,6 @@ use super::*;
 use std::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
-use std::mem;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[inline(always)]
@@ -30,7 +29,7 @@ unsafe fn find_key_partition_sse2(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -
     let key = key.0 as i32;
     let keys4 = _mm_set_epi32(key, key, key, key);
 
-    let [s0, s1, s2, s3, s4, s5, s6, s7]: [i32; SKIP_LEN] = mem::transmute(*skiplist);
+    let [s0, s1, s2, s3, s4, s5, s6, s7]: [i32; SKIP_LEN] = std::mem::transmute(*skiplist);
     let skiplist_a: __m128i = _mm_set_epi32(s0, s1, s2, s3);
     let skiplist_b: __m128i = _mm_set_epi32(s4, s5, s6, s7);
 
