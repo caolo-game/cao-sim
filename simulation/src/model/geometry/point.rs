@@ -38,15 +38,15 @@ impl Point {
         [x, y, z]
     }
 
-    /// Get the neighbours of this point starting at top left and going clockwise
+    /// Get the neighbours of this point starting at top left and going counter-clockwise
     pub fn hex_neighbours(self) -> [Point; 6] {
         [
-            Point::new(self.x, self.y - 1),
-            Point::new(self.x + 1, self.y - 1),
             Point::new(self.x + 1, self.y),
-            Point::new(self.x, self.y + 1),
-            Point::new(self.x - 1, self.y + 1),
+            Point::new(self.x + 1, self.y - 1),
+            Point::new(self.x, self.y - 1),
             Point::new(self.x - 1, self.y),
+            Point::new(self.x - 1, self.y + 1),
+            Point::new(self.x, self.y + 1),
         ]
     }
 }

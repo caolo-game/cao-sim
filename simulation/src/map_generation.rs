@@ -216,17 +216,21 @@ pub fn generate_room(
     let depth = max_grad - min_grad;
     let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
 
-    debug!("Building terrain from height-map");
+    debug!("Building terrain from height-map, offset: {:?}", offset);
 
     unsafe { terrain.as_mut() }
         .extend(points.filter_map(|p| {
-            let mut grad = *gradient.get_by_id(&p)?;
+            let mut grad = *gradient.get_by_id(&p).or_else(|| {
+                trace!("{:?} has no gradient", p);
+                None
+            })?;
+            trace!("p: {:?} grad: {}", p, grad);
             let p = p + offset;
-            if center.hex_distance(p) > radius as u32  {
+
+            if center.hex_distance(p) > radius as u32 {
+                trace!("{:?} has been cut, radius: {} distance: {}", p, radius, center.hex_distance(p));
                 return None;
             }
-
-            trace!("p: {:?} grad: {}", p, grad);
 
             {
                 // let's do some stats
@@ -238,6 +242,8 @@ pub fn generate_room(
             // normalize grad
             grad -= min_grad;
             grad /= depth;
+
+            trace!("Normalized grad: {}", grad);
 
             if grad <= 0.2 || !grad.is_finite() {
                 return None;
