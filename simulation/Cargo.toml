@@ -10,6 +10,8 @@ edition = "2018"
 default = []
 profile = ["lazy_static"]
 log_tables = []
+# this option is provided for testing purposes and will NOT disable most parallelism in the engine.
+disable-parallelism = []
 
 [dependencies]
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
@@ -19,7 +21,7 @@ log = "0.4"
 rand = { version= "0.7", features=["small_rng"] }
 chrono = { version= "0.4", features=["serde"] }
 uuid = { version="0.7", features=["serde"] }
-rayon = "1"
+rayon = { version="1" }
 arrayvec = { version="0.5", features=["serde", "array-sizes-33-128"] }
 serde = "1"
 serde_derive = "1"

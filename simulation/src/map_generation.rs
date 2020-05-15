@@ -113,7 +113,7 @@ pub fn generate_room(
     seed: Option<[u8; 16]>,
 ) -> Result<HeightMapProperties, MapGenerationError> {
     debug!(
-        "Generating Room center:{:?} radius:{} seed:{:?}",
+        "Generating Room center: {:?} radius: {} seed: {:?}",
         center, radius, seed
     );
     if radius == 0 {
@@ -139,13 +139,18 @@ pub fn generate_room(
         bytes
     });
     let mut rng = SmallRng::from_seed(seed);
+    debug!("Initializing GradientMap");
     let mut gradient = GradientMap::from_iterator(
         (from.x..=to.x)
             .flat_map(|x| (from.y..=to.y).map(move |y| (Point::new(x, y), 0.0)))
             .filter(|(p, _)| p.x >= 0 && p.y >= 0)
             .filter(|(p, _)| p.x <= MORTON_POS_MAX && p.y <= MORTON_POS_MAX),
     )
-    .map_err(|e| MapGenerationError::TerrainExtendFailure(e))?;
+    .map_err(|e| {
+        error!("Initializing GradientMap failed {:?}", e);
+        MapGenerationError::TerrainExtendFailure(e)
+    })?;
+    debug!("Initializing GradientMap done");
 
     let mut fheight = move |gradient: &GradientMap, p: Point, radius: i32, mean_heights: f32| {
         let mut mean = 0.0;
@@ -174,6 +179,8 @@ pub fn generate_room(
     let mut max_grad = 0.0f32;
     let mut min_grad = 0.0f32;
 
+    debug!("Running diamond-square");
+
     while 1 <= d {
         for x in (d..dsides).step_by(2 * d as usize) {
             for y in (d..dsides).step_by(2 * d as usize) {
@@ -199,6 +206,8 @@ pub fn generate_room(
         d /= 2;
     }
 
+    debug!("Running diamond-square done");
+
     let mut mean = 0.0;
     let mut std = 0.0;
     let mut i = 1.0;
@@ -207,15 +216,17 @@ pub fn generate_room(
     let depth = max_grad - min_grad;
     let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
 
+    debug!("Building terrain from height-map");
+
     unsafe { terrain.as_mut() }
         .extend(points.filter_map(|p| {
-            if center.hex_distance(p+offset) > radius as u32 {
-                return None;
-            }
             let mut grad = *gradient.get_by_id(&p)?;
             let p = p + offset;
+            if center.hex_distance(p) > radius as u32  {
+                return None;
+            }
 
-            trace!("grad: {}", grad);
+            trace!("p: {:?} grad: {}", p, grad);
 
             {
                 // let's do some stats
@@ -247,7 +258,12 @@ pub fn generate_room(
             };
             Some((p, TerrainComponent(terrain)))
         }))
-        .map_err(|e| MapGenerationError::TerrainExtendFailure(e))?;
+        .map_err(|e| {
+            error!("Terrain building failed {:?}", e);
+            MapGenerationError::TerrainExtendFailure(e)
+        })?;
+
+    debug!("Building terrain from height-map done");
 
     std = (std / i).sqrt();
 

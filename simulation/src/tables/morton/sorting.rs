@@ -30,10 +30,17 @@ pub fn sort<Pos: Send + Clone, Row: Send + Clone>(
     let (klo, khi) = keys.split_at_mut(pivot);
     let (plo, phi) = positions.split_at_mut(pivot);
     let (vlo, vhi) = values.split_at_mut(pivot);
+
+    #[cfg(not(feature = "disable-parallelism"))]
     rayon::join(
         || sort(klo, plo, vlo),
         || sort(&mut khi[1..], &mut phi[1..], &mut vhi[1..]),
     );
+    #[cfg(feature = "disable-parallelism")]
+    {
+        sort(klo, plo, vlo);
+        sort(&mut khi[1..], &mut phi[1..], &mut vhi[1..]);
+    }
 }
 
 /// Assumes that all 3 slices are equal in size.

@@ -135,6 +135,7 @@ where
     where
         It: Iterator<Item = (Pos, Row)>,
     {
+        trace!("MortonTable extend");
         for (id, value) in it {
             if !self.intersects(&id) {
                 return Err(ExtendFailure::InvalidPosition(id));
@@ -146,8 +147,11 @@ where
             self.positions.push(id);
             self.values.push(value);
         }
+        trace!("MortonTable extend sort");
         sorting::sort(&mut self.keys, &mut self.positions, &mut self.values);
+        trace!("MortonTable extend sort done\nRebuilding skip_list");
         self.rebuild_skip_list();
+        trace!("MortonTable extend done");
         Ok(())
     }
 
