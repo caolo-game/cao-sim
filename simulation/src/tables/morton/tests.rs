@@ -3,6 +3,30 @@ use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 #[test]
+fn aabb_simple() {
+    let points = [
+        Point::new(12, 50),
+        Point::new(8, 1),
+        Point::new(20, 32),
+        Point::new(23, 12),
+    ];
+
+    let table = MortonTable::from_iterator(points.iter().cloned().map(|p| (p, 1))).unwrap();
+    let [min, max] = table.aabb().unwrap();
+
+    let min = min.as_array();
+    let max = max.as_array();
+
+    let [x, y] = min;
+    assert!(x <= 8);
+    assert!(y <= 1);
+
+    let [x, y] = max;
+    assert!(23 <= x);
+    assert!(50 <= y);
+}
+
+#[test]
 fn simple_from_iterator() {
     let mut rng = rand::thread_rng();
     let mut points = [

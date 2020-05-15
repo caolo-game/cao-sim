@@ -18,7 +18,7 @@ use systems::execute_world_update;
 use systems::intent_system::execute_intents;
 use systems::script_execution::execute_scripts;
 
-pub use data_store::{init_inmemory_storage, World};
+pub use data_store::{init_inmemory_storage, World, Storage};
 
 pub fn forward(storage: &mut World) -> Result<(), Box<dyn std::error::Error>> {
     info!("Executing scripts");

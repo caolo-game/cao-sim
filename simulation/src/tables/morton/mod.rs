@@ -13,6 +13,7 @@ mod sorting;
 mod tests;
 
 pub use self::litmax_bigmin::msb_de_bruijn;
+use self::litmax_bigmin::round_down_to_one_less_than_pow_two;
 use super::*;
 use crate::model::{components::EntityComponent, geometry::Point};
 use litmax_bigmin::litmax_bigmin;
@@ -441,6 +442,26 @@ where
             Pos::new(0, 0),
             Pos::new(MORTON_POS_MAX + 1, MORTON_POS_MAX + 1),
         )
+    }
+
+    /// Compute the minimum and maximum positions for this table's AABB.
+    /// Note that this might be (a lot) larger than the minimum bounding box that might hold this table!
+    pub fn aabb(&self) -> Option<[Pos; 2]> {
+        let min = self.keys.get(0)?;
+        let [minx, miny] = self.positions[0].as_array();
+        let min_loc = round_down_to_one_less_than_pow_two(min.0) + 1;
+        let [ax, ay] = MortonKey(min_loc).as_point();
+        let [minx, miny] = [minx.min(ax as i32), miny.min(ay as i32)];
+
+        let max = *self.keys.last().unwrap_or(min);
+        let max = round_down_to_one_less_than_pow_two(max.0) + 1;
+        let max = MortonKey(max);
+        let [maxx, maxy] = self.positions[self.positions.len() - 1].as_array();
+        let [bx, by] = max.as_point();
+        let [maxx, maxy] = [maxx.max(bx as i32), maxy.max(by as i32)];
+
+        let res = [Pos::new(minx, miny), Pos::new(maxx, maxy)];
+        Some(res)
     }
 
     /// Remove duplicate values from self, leaving one.

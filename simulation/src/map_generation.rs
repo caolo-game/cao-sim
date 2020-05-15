@@ -112,6 +112,10 @@ pub fn generate_room(
     (mut terrain,): MapTables,
     seed: Option<[u8; 16]>,
 ) -> Result<HeightMapProperties, MapGenerationError> {
+    debug!(
+        "Generating Room center:{:?} radius:{} seed:{:?}",
+        center, radius, seed
+    );
     if radius == 0 {
         return Err(MapGenerationError::BadArguments { center, radius });
     }
@@ -200,14 +204,18 @@ pub fn generate_room(
     let mut i = 1.0;
     let mut plain_mass = 0;
     let mut wall_mass = 0;
+    let depth = max_grad - min_grad;
     let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
 
     unsafe { terrain.as_mut() }
         .extend(points.filter_map(|p| {
-            if center.hex_distance(p) > radius as u32 {
+            if center.hex_distance(p+offset) > radius as u32 {
                 return None;
             }
             let mut grad = *gradient.get_by_id(&p)?;
+            let p = p + offset;
+
+            trace!("grad: {}", grad);
 
             {
                 // let's do some stats
@@ -218,7 +226,7 @@ pub fn generate_room(
             }
             // normalize grad
             grad -= min_grad;
-            grad /= max_grad - min_grad;
+            grad /= depth;
 
             if grad <= 0.2 || !grad.is_finite() {
                 return None;
@@ -237,7 +245,7 @@ pub fn generate_room(
                 );
                 return None;
             };
-            Some((p + offset, TerrainComponent(terrain)))
+            Some((p, TerrainComponent(terrain)))
         }))
         .map_err(|e| MapGenerationError::TerrainExtendFailure(e))?;
 
@@ -248,7 +256,7 @@ pub fn generate_room(
         mean,
         min: min_grad,
         max: max_grad,
-        depth: max_grad - min_grad,
+        depth,
         width: dsides,
         height: dsides,
         wall_mass,
