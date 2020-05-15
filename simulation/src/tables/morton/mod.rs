@@ -242,12 +242,14 @@ where
     /// Find the position of `key` or the position where it needs to be inserted to keep the
     /// container sorted
     fn find_key_morton(&self, key: &MortonKey) -> Result<usize, usize> {
+        use find_key_partition::find_key_partition;
+
         let step = self.skipstep as usize;
         if step == 0 {
             return self.keys.binary_search(&key);
         }
 
-        let index = find_key_partition::find_key_partition(&self.skiplist, &key);
+        let index = find_key_partition(&self.skiplist, &key);
 
         let (begin, end) = {
             if index < 8 {

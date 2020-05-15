@@ -52,5 +52,10 @@ unsafe fn find_key_partition_sse2(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -
 #[inline]
 fn find_key_partition_serial(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -> usize {
     let key = &key.0;
-    skiplist.iter().filter(|skip| *skip <= key).count()
+    for (i, skip) in skiplist.iter().enumerate() {
+        if skip > key {
+            return i;
+        }
+    }
+    SKIP_LEN
 }
