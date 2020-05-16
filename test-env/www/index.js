@@ -6,7 +6,7 @@ const CELL_SIZE = 5;
 const mapRender = new wasm.MapRender();
 
 const run = () => {
-  const mapGenRes = mapRender.generateMap(128, 128, 80);
+  const mapGenRes = mapRender.generateMap(70, 60, 32);
 
   document.getElementById("mapGenRes").innerHTML = `<pre>${mapGenRes}</pre>`;
 
@@ -17,6 +17,7 @@ const run = () => {
     const cells = mapRender.getCells();
 
     console.log(cells);
+    console.log("bounds", bounds);
 
     ctx.beginPath();
 
@@ -46,8 +47,6 @@ const run = () => {
   const bounds = mapRender.bounds();
   const width = bounds[1].x - bounds[0].x;
   const height = bounds[1].y - bounds[0].y;
-
-  console.log(bounds);
 
   canvas.height = (CELL_SIZE + 1) * height + 1;
   canvas.width = (CELL_SIZE + 1) * width + 1;

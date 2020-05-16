@@ -3,7 +3,7 @@ use crate::model::geometry::Point;
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::msb_de_bruijn;
-use crate::tables::{ExtendFailure, MortonTable, SpatialKey2d, Table, MORTON_POS_MAX};
+use crate::tables::{ExtendFailure, MortonTable, SpatialKey2d, Table};
 use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
 use thiserror::Error;
 
@@ -21,8 +21,12 @@ type GradientMap = MortonTable<Point, f32>;
 
 /// find the smallest power of two that can hold `size`
 fn pot(size: u32) -> u32 {
-    let msb = msb_de_bruijn(size);
-    1 << msb
+    if size & (size - 1) == 0 {
+        size
+    } else {
+        let msb = msb_de_bruijn(size);
+        1 << (msb + 1)
+    }
 }
 
 /// returns the new gradient
@@ -99,6 +103,8 @@ pub struct HeightMapProperties {
 
     pub plain_mass: u32,
     pub wall_mass: u32,
+
+    pub dsides: i32,
 }
 
 /// Generate a random terrain in circle
@@ -125,12 +131,7 @@ pub fn generate_room(
     let offset = Point::new(x - radius, y - radius);
 
     let from = Point::new(0, 0);
-    let to = Point::new(radius, radius);
-
-    let dx = to.x - from.x;
-    let dy = to.y - from.y;
-
-    let dsides = pot(dx.max(dy) as u32) as i32;
+    let dsides = pot(radius as u32*2) as i32;
     let to = Point::new(from.x + dsides, from.y + dsides);
 
     let seed = seed.unwrap_or_else(|| {
@@ -141,10 +142,7 @@ pub fn generate_room(
     let mut rng = SmallRng::from_seed(seed);
     debug!("Initializing GradientMap");
     let mut gradient = GradientMap::from_iterator(
-        (from.x..=to.x)
-            .flat_map(|x| (from.y..=to.y).map(move |y| (Point::new(x, y), 0.0)))
-            .filter(|(p, _)| p.x >= 0 && p.y >= 0)
-            .filter(|(p, _)| p.x <= MORTON_POS_MAX && p.y <= MORTON_POS_MAX),
+        (from.x..=to.x).flat_map(|x| (from.y..=to.y).map(move |y| (Point::new(x, y), 0.0))),
     )
     .map_err(|e| {
         error!("Initializing GradientMap failed {:?}", e);
@@ -177,7 +175,7 @@ pub fn generate_room(
 
     let mut d = dsides / 2;
     let mut max_grad = 0.0f32;
-    let mut min_grad = 0.0f32;
+    let mut min_grad = 1e15f32;
 
     debug!("Running diamond-square");
 
@@ -214,23 +212,38 @@ pub fn generate_room(
     let mut plain_mass = 0;
     let mut wall_mass = 0;
     let depth = max_grad - min_grad;
-    let points = (from.x..=to.x).flat_map(move |x| (from.y..=to.y).map(move |y| Point::new(x, y)));
+
+    let points = {
+        // the process so far produced a sheared rectangle
+        // we'll choose points that cut the result into a hexagonal shape
+        let center = Point::new(dsides / 2, dsides / 2);
+        debug!(
+            "Calculating points of a hexagon in the height map around center: {:?}",
+            center
+        );
+        (-radius..=radius).flat_map(move |x| {
+            let fromy = (-radius).max(-x - radius);
+            let toy = radius.min(-x + radius);
+            (fromy..=toy).map(move |y| {
+                let p = Point::new(x, -x - y);
+                p + center
+            })
+        })
+    };
 
     debug!("Building terrain from height-map, offset: {:?}", offset);
 
     unsafe { terrain.as_mut() }
         .extend(points.filter_map(|p| {
+            trace!("Computing terrain of gradient point: {:?}", p);
             let mut grad = *gradient.get_by_id(&p).or_else(|| {
-                trace!("{:?} has no gradient", p);
+                error!("{:?} has no gradient", p);
+                debug_assert!(false);
                 None
             })?;
             trace!("p: {:?} grad: {}", p, grad);
-            let p = p + offset;
 
-            if center.hex_distance(p) > radius as u32 {
-                trace!("{:?} has been cut, radius: {} distance: {}", p, radius, center.hex_distance(p));
-                return None;
-            }
+            let p = p + offset;
 
             {
                 // let's do some stats
@@ -274,6 +287,7 @@ pub fn generate_room(
     std = (std / i).sqrt();
 
     let props = HeightMapProperties {
+        dsides,
         std,
         mean,
         min: min_grad,

@@ -18,24 +18,28 @@ impl Point {
         Self { x, y }
     }
 
-    /// Return the distance between two points in a hexagonal coordinate space
-    /// Interprets points as axial coordiante vectors
+    /// Return the "Manhattan" distance between two points in a hexagonal coordinate space
+    /// Interprets points as axial coordiantes
     /// See https://www.redblobgames.com/grids/hexagons/#distances for more information
     pub fn hex_distance(self, other: Point) -> u32 {
         let [ax, ay, az] = self.hex_axial_to_cube();
         let [bx, by, bz] = other.hex_axial_to_cube();
-        let x = ax - bx;
-        let y = ay - by;
-        let z = az - bz;
-        x.abs().max(y.abs()).max(z.abs()) as u32
+        let x = (ax - bx).abs() as u32;
+        let y = (ay - by).abs() as u32;
+        let z = (az - bz).abs() as u32;
+        x.max(y).max(z)
     }
 
     /// Convert self from a hexagonal axial vector to a hexagonal cube vector
-    fn hex_axial_to_cube(self) -> [i32; 3] {
+    pub fn hex_axial_to_cube(self) -> [i32; 3] {
         let x = self.x;
         let z = self.y;
         let y = -x - z;
         [x, y, z]
+    }
+
+    pub fn hex_cube_to_axial([q, _, r]: [i32; 3]) -> Self {
+        Self { x: q, y: r }
     }
 
     /// Get the neighbours of this point starting at top left and going counter-clockwise

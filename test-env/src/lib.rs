@@ -1,5 +1,3 @@
-mod utils;
-
 use cao_math::mat::mat3f32::JsMatrix;
 use cao_math::vec::vec2f32::Point;
 use caolo_sim::model::geometry::Point as P;
@@ -22,11 +20,17 @@ pub struct MapRender {
     bounds: [Point; 2],
 }
 
+pub fn init() {
+    console_error_panic_hook::set_once();
+    // console_log::init_with_level(log::Level::Trace).unwrap();
+    console_log::init_with_level(log::Level::Debug).unwrap();
+}
+
 #[wasm_bindgen]
 impl MapRender {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        utils::init();
+        init();
         Self {
             map: Default::default(),
             cells: Vec::with_capacity(512),
