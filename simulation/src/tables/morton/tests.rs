@@ -1,6 +1,7 @@
 use super::*;
 use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
+use crate::model::geometry::Axial;
 
 #[test]
 fn aabb_simple() {

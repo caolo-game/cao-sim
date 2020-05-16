@@ -5,7 +5,7 @@
 //!
 //! ```
 //! use caolo_sim::model::{EntityId,components::{Bot, SpawnComponent, PositionComponent,
-//! EnergyComponent, EntityComponent, ResourceComponent} ,geometry::Axial, self};
+//! EnergyComponent, EntityComponent, ResourceComponent} ,WorldPosition, self};
 //! use caolo_sim::prelude::*;
 //! use caolo_sim::tables::{VecTable,BTreeTable, MortonTable};
 //!
@@ -15,7 +15,7 @@
 //!         UnsafeView<EntityId, EnergyComponent>,
 //!     ),
 //!     (position_entities, resources): (
-//!         View<Axial, EntityComponent>,
+//!         View<WorldPosition, EntityComponent>,
 //!         View<EntityId, ResourceComponent>,
 //!     ),
 //! ) {

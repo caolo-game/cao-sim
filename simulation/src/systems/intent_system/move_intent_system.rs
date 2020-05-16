@@ -2,8 +2,7 @@ use super::IntentExecutionSystem;
 use crate::intents::MoveIntent;
 use crate::model::{
     components::{Bot, EntityComponent, PositionComponent},
-    geometry::Axial,
-    EntityId,
+    EntityId, WorldPosition,
 };
 use crate::storage::views::{UnsafeView, View};
 
@@ -11,13 +10,17 @@ pub struct MoveSystem;
 
 impl<'a> IntentExecutionSystem<'a> for MoveSystem {
     type Mut = (UnsafeView<EntityId, PositionComponent>,);
-    type Const = (View<'a, EntityId, Bot>, View<'a, Axial, EntityComponent>);
+    type Const = (
+        View<'a, EntityId, Bot>,
+        View<'a, EntityId, PositionComponent>,
+        View<'a, WorldPosition, EntityComponent>,
+    );
     type Intent = MoveIntent;
 
     fn execute(
         &mut self,
         (mut positions,): Self::Mut,
-        (bots, pos_entities): Self::Const,
+        (bots, const_positions, pos_entities): Self::Const,
         intents: &[Self::Intent],
     ) {
         for intent in intents {
@@ -28,23 +31,35 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
                 continue;
             }
 
-            if !pos_entities.intersects(&intent.position) {
-                debug!(
-                    "PositionTable insert failed {:?}, out of bounds",
-                    intent.position
-                );
-                continue;
-            }
+            let current_pos = match const_positions.get_by_id(&intent.bot) {
+                Some(current_pos) => current_pos,
+                None => {
+                    warn!(
+                        "Bot {:?} attempts to move but has no position component",
+                        intent.bot
+                    );
+                    continue;
+                }
+            };
 
-            if pos_entities.get_by_id(&intent.position).is_some() {
+            if pos_entities
+                .table
+                .get_by_id(&current_pos.0.room)
+                .and_then(|room| room.get_by_id(&intent.position))
+                .is_some()
+            {
                 debug!("Occupied {:?} ", intent.position);
                 continue;
             }
 
             unsafe {
-                positions
-                    .as_mut()
-                    .insert_or_update(intent.bot, PositionComponent(intent.position));
+                positions.as_mut().insert_or_update(
+                    intent.bot,
+                    PositionComponent(WorldPosition {
+                        room: current_pos.0.room,
+                        pos: intent.position,
+                    }),
+                );
             }
 
             debug!("Move successful");

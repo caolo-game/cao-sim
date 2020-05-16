@@ -7,7 +7,8 @@ use crate::{
     model::{
         components::{self, PathCacheComponent, Resource, PATH_CACHE_LEN},
         geometry::point::Axial,
-        EntityId, OperationResult, UserId,
+        RoomPosition,
+        EntityId, OperationResult, UserId, WorldPosition,
     },
     pathfinding, profile,
     storage::views::FromWorld,
@@ -142,7 +143,7 @@ pub fn move_bot_to_position(
     let storage = aux.storage();
     let user_id = aux.user_id.expect("user_id to be set");
 
-    let point: Axial = vm.get_value(point).ok_or_else(|| {
+    let point: WorldPosition = vm.get_value(point).ok_or_else(|| {
         warn!("move_bot called without a point");
         ExecutionError::InvalidArgument
     })?;
@@ -167,7 +168,7 @@ pub fn move_bot_to_position(
 
 fn move_to_pos(
     bot: EntityId,
-    to: Axial,
+    to: WorldPosition,
     user_id: UserId,
     storage: &World,
 ) -> Result<
@@ -186,7 +187,10 @@ fn move_to_pos(
         .get_by_id(&bot)
     {
         if let Some(position) = cache.0.last().cloned() {
-            let intent = MoveIntent { bot, position };
+            let intent = MoveIntent {
+                bot,
+                position: position.0,
+            };
             if let OperationResult::Ok =
                 check_move_intent(&intent, user_id, FromWorld::new(storage))
             {
@@ -233,7 +237,11 @@ fn move_to_pos(
             let cache_intent = CachePathIntent {
                 bot,
                 cache: PathCacheComponent(
-                    path.into_iter().skip(skip).take(PATH_CACHE_LEN).collect(),
+                    path.into_iter()
+                        .skip(skip)
+                        .take(PATH_CACHE_LEN)
+                        .map(|p: Axial| RoomPosition(p))
+                        .collect(),
                 ),
             };
 

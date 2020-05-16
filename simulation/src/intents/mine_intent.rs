@@ -62,7 +62,7 @@ pub fn check_mine_intent(
         }
     }
 
-    if botpos.0.hex_distance(mineralpos.0) > 1 {
+    if botpos.0.room != mineralpos.0.room || botpos.0.pos.hex_distance(mineralpos.0.pos) > 1 {
         return OperationResult::NotInRange;
     }
 

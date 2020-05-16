@@ -15,7 +15,6 @@ mod tests;
 pub use self::litmax_bigmin::msb_de_bruijn;
 use self::litmax_bigmin::round_down_to_one_less_than_pow_two;
 use super::*;
-use crate::model::{components::EntityComponent, geometry::Axial};
 use litmax_bigmin::litmax_bigmin;
 use morton_key::*;
 use serde_derive::{Deserialize, Serialize};
@@ -130,7 +129,7 @@ where
         self.positions.clear();
     }
 
-    /// Extend the map by the items provided. Panics on invalid items.
+    /// Extend the map by the items provided.
     pub fn extend<It>(&mut self, it: It) -> Result<(), ExtendFailure<Pos>>
     where
         It: Iterator<Item = (Pos, Row)>,
@@ -153,6 +152,13 @@ where
         self.rebuild_skip_list();
         trace!("MortonTable extend done");
         Ok(())
+    }
+
+    /// Extend the map by the items provided.
+    /// Note that `Row`s are cloned!
+    pub fn extend_from_slice(&mut self, items: &[(Pos, Row)]) -> Result<(), ExtendFailure<Pos>> {
+        trace!("MortonTable extend_from_slice");
+        self.extend(items.iter().map(|(pos, row)| (*pos, row.clone())))
     }
 
     fn rebuild_skip_list(&mut self) {
@@ -526,24 +532,5 @@ where
         }
 
         Some(val)
-    }
-}
-
-impl PositionTable for MortonTable<Axial, EntityComponent> {
-    fn get_entities_in_range(&self, vision: &Circle) -> Vec<(EntityId, PositionComponent)> {
-        profile!("get_entities_in_range");
-
-        let mut res = Vec::new();
-        self.find_by_range(&vision.center, vision.radius * 3 / 2, &mut res);
-        res.into_iter()
-            .filter(|(pos, _)| pos.hex_distance(vision.center) <= vision.radius)
-            .map(|(pos, id)| (id.0, PositionComponent(pos)))
-            .collect()
-    }
-
-    fn count_entities_in_range(&self, vision: &Circle) -> usize {
-        profile!("count_entities_in_range");
-
-        self.count_in_range(&vision.center, vision.radius * 3 / 2) as usize
     }
 }
