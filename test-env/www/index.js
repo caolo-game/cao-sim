@@ -48,8 +48,8 @@ const run = () => {
   const width = bounds[1].x - bounds[0].x;
   const height = bounds[1].y - bounds[0].y;
 
-  canvas.height = (CELL_SIZE + 1) * height + 1;
-  canvas.width = (CELL_SIZE + 1) * width + 1;
+  canvas.height = CELL_SIZE * height + 2;
+  canvas.width = CELL_SIZE * width + 2;
   const ctx = canvas.getContext("2d");
 
   drawCells(ctx, mapRender);

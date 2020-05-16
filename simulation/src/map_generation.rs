@@ -103,15 +103,12 @@ pub struct HeightMapProperties {
 
     pub plain_mass: u32,
     pub wall_mass: u32,
-
-    pub dsides: i32,
 }
 
 /// Generate a random terrain in circle
-/// TODO: clamp the map to from,to (currently will expand the map)
-/// Usese the [Diamond-square algorithm](https://en.wikipedia.org/wiki/Diamond-square_algorithm)
+/// Uses the [Diamond-square algorithm](https://en.wikipedia.org/wiki/Diamond-square_algorithm)
 ///
-/// Return property description of the generated height map
+/// Returns property description of the generated height map
 pub fn generate_room(
     center: Point,
     radius: u32,
@@ -131,7 +128,7 @@ pub fn generate_room(
     let offset = Point::new(x - radius, y - radius);
 
     let from = Point::new(0, 0);
-    let dsides = pot(radius as u32*2) as i32;
+    let dsides = pot(radius as u32 * 2) as i32;
     let to = Point::new(from.x + dsides, from.y + dsides);
 
     let seed = seed.unwrap_or_else(|| {
@@ -161,7 +158,7 @@ pub fn generate_room(
             cnt += 1.0;
         });
         mean_heights
-            + (0.2 + std) * rng.gen_range(1.0, 2.0) * (0.2 + mean)
+            + rng.gen_range(1.0, 2.0) * (0.2 + mean+std)
             + (rng.gen_range(0.0, 1.0) - 0.5) * radius as f32
     };
     let fheight = &mut fheight;
@@ -170,7 +167,7 @@ pub fn generate_room(
     let corners = [from, Point::new(to.x, from.y), Point::new(from.x, to.y), to];
     for edge in corners.iter() {
         gradient.delete(&edge);
-        gradient.insert(*edge, fheight(&gradient, from, 2, 0.0));
+        gradient.insert(*edge, fheight(&gradient, from, 8, 0.0));
     }
 
     let mut d = dsides / 2;
@@ -287,7 +284,6 @@ pub fn generate_room(
     std = (std / i).sqrt();
 
     let props = HeightMapProperties {
-        dsides,
         std,
         mean,
         min: min_grad,
