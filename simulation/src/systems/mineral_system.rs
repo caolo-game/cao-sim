@@ -1,5 +1,5 @@
 use super::System;
-use crate::model::{components, geometry::Point, EntityId};
+use crate::model::{components, geometry::Axial, EntityId};
 use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View};
 use crate::tables::JoinIterator;
 use rand::Rng;
@@ -13,8 +13,8 @@ impl<'a> System<'a> for MineralSystem {
         DeferredDeleteEntityView,
     );
     type Const = (
-        View<'a, Point, components::EntityComponent>,
-        View<'a, Point, components::TerrainComponent>,
+        View<'a, Axial, components::EntityComponent>,
+        View<'a, Axial, components::TerrainComponent>,
         View<'a, EntityId, components::ResourceComponent>,
     );
 
@@ -75,13 +75,13 @@ impl<'a> System<'a> for MineralSystem {
 }
 
 fn random_uncontested_pos_in_range<'a>(
-    position_entities_table: View<'a, Point, components::EntityComponent>,
-    terrain_table: View<'a, Point, components::TerrainComponent>,
+    position_entities_table: View<'a, Axial, components::EntityComponent>,
+    terrain_table: View<'a, Axial, components::TerrainComponent>,
     rng: &mut rand::rngs::ThreadRng,
-    around: Point,
+    around: Axial,
     range: u16,
     max_tries: u16,
-) -> Option<Point> {
+) -> Option<Axial> {
     let range = range as i32;
     let x = around.q as i32;
     let y = around.r as i32;
@@ -96,7 +96,7 @@ fn random_uncontested_pos_in_range<'a>(
         let x = (x + dx).max(bfrom.q).min(bto.q);
         let y = (y + dy).max(bfrom.r).min(bto.r);
 
-        let pos = Point::new(x, y);
+        let pos = Axial::new(x, y);
 
         if position_entities_table.intersects(&pos)
             && position_entities_table.count_in_range(&pos, 1) == 0

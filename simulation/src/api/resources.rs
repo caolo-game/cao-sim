@@ -29,7 +29,7 @@ pub fn find_closest_resource_by_range(
 
     let mut candidates = Vec::with_capacity(MAX_SEARCH_RADIUS as usize * 2);
     storage
-        .view::<Point, EntityComponent>()
+        .view::<Axial, EntityComponent>()
         .reborrow()
         .find_by_range(&position.0, MAX_SEARCH_RADIUS, &mut candidates);
 

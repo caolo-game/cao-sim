@@ -1,7 +1,7 @@
 use crate::model::{
     self,
     components::{self, EntityComponent, PositionComponent},
-    geometry::Point,
+    geometry::Axial,
     terrain, EntityId, OperationResult,
 };
 use crate::storage::views::View;
@@ -9,15 +9,15 @@ use crate::storage::views::View;
 #[derive(Debug, Clone)]
 pub struct MoveIntent {
     pub bot: EntityId,
-    pub position: Point,
+    pub position: Axial,
 }
 
 type CheckInput<'a> = (
     View<'a, EntityId, components::OwnedEntity>,
     View<'a, EntityId, PositionComponent>,
     View<'a, EntityId, components::Bot>,
-    View<'a, Point, components::TerrainComponent>,
-    View<'a, Point, EntityComponent>,
+    View<'a, Axial, components::TerrainComponent>,
+    View<'a, Axial, EntityComponent>,
 );
 
 pub fn check_move_intent(

@@ -6,7 +6,7 @@ use crate::{
     },
     model::{
         components::{self, PathCacheComponent, Resource, PATH_CACHE_LEN},
-        geometry::point::Point,
+        geometry::point::Axial,
         EntityId, OperationResult, UserId,
     },
     pathfinding, profile,
@@ -142,7 +142,7 @@ pub fn move_bot_to_position(
     let storage = aux.storage();
     let user_id = aux.user_id.expect("user_id to be set");
 
-    let point: Point = vm.get_value(point).ok_or_else(|| {
+    let point: Axial = vm.get_value(point).ok_or_else(|| {
         warn!("move_bot called without a point");
         ExecutionError::InvalidArgument
     })?;
@@ -167,7 +167,7 @@ pub fn move_bot_to_position(
 
 fn move_to_pos(
     bot: EntityId,
-    to: Point,
+    to: Axial,
     user_id: UserId,
     storage: &World,
 ) -> Result<

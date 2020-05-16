@@ -1,6 +1,6 @@
-use super::geometry::point::Point;
+use super::geometry::point::Axial;
 
 #[derive(Debug, Clone)]
 pub struct Path {
-    pub path: Vec<Point>,
+    pub path: Vec<Axial>,
 }

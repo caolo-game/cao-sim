@@ -7,12 +7,12 @@ pub mod terrain;
 pub use self::indices::*;
 pub use cao_lang::prelude::*;
 
-use self::geometry::point::Point;
+use self::geometry::point::Axial;
 use crate::tables::SpatialKey2d;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-impl SpatialKey2d for Point {
+impl SpatialKey2d for Axial {
     fn as_array(&self) -> [i32; 2] {
         [self.q, self.r]
     }

@@ -1,5 +1,5 @@
 use crate::model::components::TerrainComponent;
-use crate::model::geometry::Point;
+use crate::model::geometry::Axial;
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::msb_de_bruijn;
@@ -10,14 +10,14 @@ use thiserror::Error;
 #[derive(Debug, Clone, Error)]
 pub enum MapGenerationError {
     #[error("Can not generate room with the given parameters: {center:?} {radius}")]
-    BadArguments { center: Point, radius: u32 },
+    BadArguments { center: Axial, radius: u32 },
     #[error("Failed to generate the initial layout: {0}")]
-    TerrainExtendFailure(ExtendFailure<Point>),
+    TerrainExtendFailure(ExtendFailure<Axial>),
 }
 
-type MapTables = (UnsafeView<Point, TerrainComponent>,);
+type MapTables = (UnsafeView<Axial, TerrainComponent>,);
 
-type GradientMap = MortonTable<Point, f32>;
+type GradientMap = MortonTable<Axial, f32>;
 
 /// find the smallest power of two that can hold `size`
 fn pot(size: u32) -> u32 {
@@ -32,19 +32,19 @@ fn pot(size: u32) -> u32 {
 /// returns the new gradient
 fn square(
     gradient: &mut GradientMap,
-    p: Point,
+    p: Axial,
     radius: i32,
-    fheight: &mut impl FnMut(&GradientMap, Point, i32, f32) -> f32,
+    fheight: &mut impl FnMut(&GradientMap, Axial, i32, f32) -> f32,
 ) -> f32 {
     let mut sum = 0.0;
     let mut num = 0;
 
     let [x, y] = p.as_array();
     for grad in [
-        Point::new(x - radius, y - radius),
-        Point::new(x - radius, y + radius),
-        Point::new(x + radius, y - radius),
-        Point::new(x + radius, y + radius),
+        Axial::new(x - radius, y - radius),
+        Axial::new(x - radius, y + radius),
+        Axial::new(x + radius, y - radius),
+        Axial::new(x + radius, y + radius),
     ]
     .iter()
     .filter_map(|point| gradient.get_by_id(point))
@@ -61,9 +61,9 @@ fn square(
 /// returns the new gradient at point p
 fn diamond(
     gradient: &mut GradientMap,
-    p: Point,
+    p: Axial,
     radius: i32,
-    fheight: &mut impl FnMut(&GradientMap, Point, i32, f32) -> f32,
+    fheight: &mut impl FnMut(&GradientMap, Axial, i32, f32) -> f32,
 ) -> f32 {
     let mut sum = 0.0;
     let mut num = 0;
@@ -71,10 +71,10 @@ fn diamond(
     let [x, y] = p.as_array();
 
     for grad in [
-        Point::new(x - radius, y),
-        Point::new(x + radius, y),
-        Point::new(x, y - radius),
-        Point::new(x, y + radius),
+        Axial::new(x - radius, y),
+        Axial::new(x + radius, y),
+        Axial::new(x, y - radius),
+        Axial::new(x, y + radius),
     ]
     .iter()
     .filter_map(|point| gradient.get_by_id(point))
@@ -110,7 +110,7 @@ pub struct HeightMapProperties {
 ///
 /// Returns property description of the generated height map
 pub fn generate_room(
-    center: Point,
+    center: Axial,
     radius: u32,
     (mut terrain,): MapTables,
     seed: Option<[u8; 16]>,
@@ -125,11 +125,11 @@ pub fn generate_room(
 
     let [x, y] = center.as_array();
     let radius = radius as i32;
-    let offset = Point::new(x - radius, y - radius);
+    let offset = Axial::new(x - radius, y - radius);
 
-    let from = Point::new(0, 0);
+    let from = Axial::new(0, 0);
     let dsides = pot(radius as u32 * 2) as i32;
-    let to = Point::new(from.q + dsides, from.r + dsides);
+    let to = Axial::new(from.q + dsides, from.r + dsides);
 
     let seed = seed.unwrap_or_else(|| {
         let mut bytes = [0; 16];
@@ -139,7 +139,7 @@ pub fn generate_room(
     let mut rng = SmallRng::from_seed(seed);
     debug!("Initializing GradientMap");
     let mut gradient = GradientMap::from_iterator(
-        (from.q..=to.q).flat_map(|x| (from.r..=to.r).map(move |y| (Point::new(x, y), 0.0))),
+        (from.q..=to.q).flat_map(|x| (from.r..=to.r).map(move |y| (Axial::new(x, y), 0.0))),
     )
     .map_err(|e| {
         error!("Initializing GradientMap failed {:?}", e);
@@ -147,7 +147,7 @@ pub fn generate_room(
     })?;
     debug!("Initializing GradientMap done");
 
-    let mut fheight = move |gradient: &GradientMap, p: Point, radius: i32, mean_heights: f32| {
+    let mut fheight = move |gradient: &GradientMap, p: Axial, radius: i32, mean_heights: f32| {
         let mut mean = 0.0;
         let mut std = 0.0;
         let mut cnt = 1.0;
@@ -164,7 +164,7 @@ pub fn generate_room(
     let fheight = &mut fheight;
 
     // init corners
-    let corners = [from, Point::new(to.q, from.r), Point::new(from.q, to.r), to];
+    let corners = [from, Axial::new(to.q, from.r), Axial::new(from.q, to.r), to];
     for edge in corners.iter() {
         gradient.delete(&edge);
         gradient.insert(*edge, fheight(&gradient, from, 8, 0.0));
@@ -179,21 +179,21 @@ pub fn generate_room(
     while 1 <= d {
         for x in (d..dsides).step_by(2 * d as usize) {
             for y in (d..dsides).step_by(2 * d as usize) {
-                let g = square(&mut gradient, Point::new(x, y), d, fheight);
+                let g = square(&mut gradient, Axial::new(x, y), d, fheight);
                 max_grad = max_grad.max(g);
                 min_grad = min_grad.min(g);
             }
         }
         for x in (d..dsides).step_by(2 * d as usize) {
             for y in (from.r..=dsides).step_by(2 * d as usize) {
-                let g = diamond(&mut gradient, Point::new(x, y), d, fheight);
+                let g = diamond(&mut gradient, Axial::new(x, y), d, fheight);
                 max_grad = max_grad.max(g);
                 min_grad = min_grad.min(g);
             }
         }
         for x in (from.q..=dsides).step_by(2 * d as usize) {
             for y in (d..dsides).step_by(2 * d as usize) {
-                let g = diamond(&mut gradient, Point::new(x, y), d, fheight);
+                let g = diamond(&mut gradient, Axial::new(x, y), d, fheight);
                 max_grad = max_grad.max(g);
                 min_grad = min_grad.min(g);
             }
@@ -213,7 +213,7 @@ pub fn generate_room(
     let points = {
         // the process so far produced a sheared rectangle
         // we'll choose points that cut the result into a hexagonal shape
-        let center = Point::new(dsides / 2, dsides / 2);
+        let center = Axial::new(dsides / 2, dsides / 2);
         debug!(
             "Calculating points of a hexagon in the height map around center: {:?}",
             center
@@ -222,7 +222,7 @@ pub fn generate_room(
             let fromy = (-radius).max(-x - radius);
             let toy = radius.min(-x + radius);
             (fromy..=toy).map(move |y| {
-                let p = Point::new(x, -x - y);
+                let p = Axial::new(x, -x - y);
                 p + center
             })
         })
@@ -300,13 +300,13 @@ pub fn generate_room(
 
 /// Print a 2D TerrainComponent map to the console, intended for debugging small maps.
 #[allow(unused)]
-fn print_terrain(from: &Point, to: &Point, terrain: View<Point, TerrainComponent>) {
+fn print_terrain(from: &Axial, to: &Axial, terrain: View<Axial, TerrainComponent>) {
     assert!(from.q < to.q);
     assert!(from.r < to.r);
 
     for y in (from.r..=to.r) {
         for x in (from.q..=to.q) {
-            match terrain.get_by_id(&Point::new(x, y)) {
+            match terrain.get_by_id(&Axial::new(x, y)) {
                 Some(TerrainComponent(TileTerrainType::Wall)) => print!("#"),
                 Some(TerrainComponent(TileTerrainType::Plain)) => print!("."),
                 None => print!(" "),
@@ -327,7 +327,7 @@ mod tests {
     fn basic_generation() {
         let mut terrain = MortonTable::with_capacity(512);
 
-        let center = Point::new(5, 5);
+        let center = Axial::new(5, 5);
         let props = generate_room(
             center,
             5,
@@ -338,8 +338,8 @@ mod tests {
 
         dbg!(props);
 
-        let from = Point::new(0, 0);
-        let to = Point::new(16, 16);
+        let from = Axial::new(0, 0);
+        let to = Axial::new(16, 16);
         print_terrain(&from, &to, View::from_table(&terrain));
 
         let mut seen_empty = false;
@@ -349,7 +349,7 @@ mod tests {
         // assert that the terrain is not homogeneous
         for x in 0..=10 {
             for y in 0..=10 {
-                match terrain.get_by_id(&Point::new(x, y)) {
+                match terrain.get_by_id(&Axial::new(x, y)) {
                     None => seen_empty = true,
                     Some(TerrainComponent(TileTerrainType::Plain)) => seen_plain = true,
                     Some(TerrainComponent(TileTerrainType::Wall)) => seen_wall = true,
@@ -368,7 +368,7 @@ mod tests {
         let mut plains = Vec::with_capacity(512);
         let mut terrain = MortonTable::with_capacity(512);
 
-        let center = Point::new(8, 8);
+        let center = Axial::new(8, 8);
 
         let props = generate_room(
             center,
@@ -387,12 +387,12 @@ mod tests {
             }
         }
 
-        let from = Point::new(0, 0);
-        let to = Point::new(16, 16);
+        let from = Axial::new(0, 0);
+        let to = Axial::new(16, 16);
 
         print_terrain(&from, &to, View::from_table(&terrain));
 
-        let positions = MortonTable::<Point, EntityComponent>::new();
+        let positions = MortonTable::<Axial, EntityComponent>::new();
         let mut path = Vec::with_capacity(1024);
 
         let first = plains.iter().next().expect("at least 1 plain");

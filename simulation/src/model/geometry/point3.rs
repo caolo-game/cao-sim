@@ -1,4 +1,4 @@
-use super::point::Point;
+use super::point::Axial;
 use cao_lang::traits::AutoByteEncodeProperties;
 use serde_derive::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
@@ -27,7 +27,7 @@ impl Point3 {
     }
 
     /// Convert a point from a hexagonal axial vector to a hexagonal cube vector
-    pub fn hex_axial_to_cube(p: Point) -> Self {
+    pub fn hex_axial_to_cube(p: Axial) -> Self {
         let x = p.q;
         let z = p.r;
         let y = -x - z;
@@ -35,10 +35,10 @@ impl Point3 {
     }
 
     /// Convert self to an axial vector
-    pub fn into_axial(self) -> Point {
+    pub fn into_axial(self) -> Axial {
         let q = self.x;
         let r = self.z;
-        Point { q, r }
+        Axial { q, r }
     }
 }
 

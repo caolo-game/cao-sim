@@ -3,7 +3,7 @@ pub use self::store_impl::*;
 use super::storage;
 use crate::intents::Intents;
 use crate::model::components::*;
-use crate::model::geometry::Point;
+use crate::model::geometry::Axial;
 use crate::model::*;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
@@ -34,8 +34,8 @@ storage!(
 
     key UserId, table UserComponent = useruser,
 
-    key Point, table TerrainComponent = pointterrain,
-    key Point, table EntityComponent = pointentity,
+    key Axial, table TerrainComponent = pointterrain,
+    key Axial, table EntityComponent = pointentity,
 
     key ScriptId, table ScriptComponent = scriptscript
 );

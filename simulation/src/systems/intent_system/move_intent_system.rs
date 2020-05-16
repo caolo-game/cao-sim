@@ -2,7 +2,7 @@ use super::IntentExecutionSystem;
 use crate::intents::MoveIntent;
 use crate::model::{
     components::{Bot, EntityComponent, PositionComponent},
-    geometry::Point,
+    geometry::Axial,
     EntityId,
 };
 use crate::storage::views::{UnsafeView, View};
@@ -11,7 +11,7 @@ pub struct MoveSystem;
 
 impl<'a> IntentExecutionSystem<'a> for MoveSystem {
     type Mut = (UnsafeView<EntityId, PositionComponent>,);
-    type Const = (View<'a, EntityId, Bot>, View<'a, Point, EntityComponent>);
+    type Const = (View<'a, EntityId, Bot>, View<'a, Axial, EntityComponent>);
     type Intent = MoveIntent;
 
     fn execute(

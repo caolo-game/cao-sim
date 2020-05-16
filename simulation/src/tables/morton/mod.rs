@@ -15,7 +15,7 @@ mod tests;
 pub use self::litmax_bigmin::msb_de_bruijn;
 use self::litmax_bigmin::round_down_to_one_less_than_pow_two;
 use super::*;
-use crate::model::{components::EntityComponent, geometry::Point};
+use crate::model::{components::EntityComponent, geometry::Axial};
 use litmax_bigmin::litmax_bigmin;
 use morton_key::*;
 use serde_derive::{Deserialize, Serialize};
@@ -518,7 +518,7 @@ where
     }
 }
 
-impl PositionTable for MortonTable<Point, EntityComponent> {
+impl PositionTable for MortonTable<Axial, EntityComponent> {
     fn get_entities_in_range(&self, vision: &Circle) -> Vec<(EntityId, PositionComponent)> {
         profile!("get_entities_in_range");
 

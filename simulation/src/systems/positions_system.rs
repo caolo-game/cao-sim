@@ -1,7 +1,7 @@
 use super::System;
 use crate::model::{
     components::{EntityComponent, PositionComponent},
-    geometry::Point,
+    geometry::Axial,
     EntityId,
 };
 use crate::storage::views::{UnsafeView, View};
@@ -9,7 +9,7 @@ use crate::storage::views::{UnsafeView, View};
 pub struct PositionSystem;
 
 impl<'a> System<'a> for PositionSystem {
-    type Mut = UnsafeView<Point, EntityComponent>;
+    type Mut = UnsafeView<Axial, EntityComponent>;
     type Const = View<'a, EntityId, PositionComponent>;
 
     /// Reset the entity positions table

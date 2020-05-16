@@ -7,12 +7,12 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
     Debug, Clone, Default, Copy, Eq, PartialEq, Serialize, Deserialize, Ord, PartialOrd, Hash,
 )]
 #[serde(rename_all = "camelCase")]
-pub struct Point {
+pub struct Axial {
     pub q: i32,
     pub r: i32,
 }
 
-impl Point {
+impl Axial {
     pub fn new(q: i32, r: i32) -> Self {
         Self { q, r }
     }
@@ -20,7 +20,7 @@ impl Point {
     /// Return the "Manhattan" distance between two points in a hexagonal coordinate space
     /// Interprets points as axial coordiantes
     /// See https://www.redblobgames.com/grids/hexagons/#distances for more information
-    pub fn hex_distance(self, other: Point) -> u32 {
+    pub fn hex_distance(self, other: Axial) -> u32 {
         let [ax, ay, az] = self.hex_axial_to_cube();
         let [bx, by, bz] = other.hex_axial_to_cube();
         let x = (ax - bx).abs() as u32;
@@ -42,59 +42,59 @@ impl Point {
     }
 
     /// Get the neighbours of this point starting at top left and going counter-clockwise
-    pub fn hex_neighbours(self) -> [Point; 6] {
+    pub fn hex_neighbours(self) -> [Axial; 6] {
         [
-            Point::new(self.q + 1, self.r),
-            Point::new(self.q + 1, self.r - 1),
-            Point::new(self.q, self.r - 1),
-            Point::new(self.q - 1, self.r),
-            Point::new(self.q - 1, self.r + 1),
-            Point::new(self.q, self.r + 1),
+            Axial::new(self.q + 1, self.r),
+            Axial::new(self.q + 1, self.r - 1),
+            Axial::new(self.q, self.r - 1),
+            Axial::new(self.q - 1, self.r),
+            Axial::new(self.q - 1, self.r + 1),
+            Axial::new(self.q, self.r + 1),
         ]
     }
 }
 
-impl AddAssign for Point {
-    fn add_assign(&mut self, rhs: Point) {
+impl AddAssign for Axial {
+    fn add_assign(&mut self, rhs: Axial) {
         self.q += rhs.q;
         self.r += rhs.r;
     }
 }
 
-impl Add for Point {
+impl Add for Axial {
     type Output = Self;
 
-    fn add(mut self, rhs: Point) -> Point {
+    fn add(mut self, rhs: Axial) -> Axial {
         self += rhs;
         self
     }
 }
 
-impl SubAssign for Point {
-    fn sub_assign(&mut self, rhs: Point) {
+impl SubAssign for Axial {
+    fn sub_assign(&mut self, rhs: Axial) {
         self.q -= rhs.q;
         self.r -= rhs.r;
     }
 }
 
-impl Sub for Point {
+impl Sub for Axial {
     type Output = Self;
 
-    fn sub(mut self, rhs: Point) -> Point {
+    fn sub(mut self, rhs: Axial) -> Axial {
         self -= rhs;
         self
     }
 }
 
-impl MulAssign<i32> for Point {
+impl MulAssign<i32> for Axial {
     fn mul_assign(&mut self, rhs: i32) {
         self.q *= rhs;
         self.r *= rhs;
     }
 }
 
-impl Mul<i32> for Point {
-    type Output = Point;
+impl Mul<i32> for Axial {
+    type Output = Axial;
 
     fn mul(mut self, rhs: i32) -> Self {
         self *= rhs;
@@ -102,15 +102,15 @@ impl Mul<i32> for Point {
     }
 }
 
-impl DivAssign<i32> for Point {
+impl DivAssign<i32> for Axial {
     fn div_assign(&mut self, rhs: i32) {
         self.q /= rhs;
         self.r /= rhs;
     }
 }
 
-impl Div<i32> for Point {
-    type Output = Point;
+impl Div<i32> for Axial {
+    type Output = Axial;
 
     fn div(mut self, rhs: i32) -> Self {
         self /= rhs;
@@ -121,17 +121,17 @@ impl Div<i32> for Point {
 #[derive(Debug, Clone, Default, Copy, Eq, PartialEq, Serialize, Deserialize, Ord, PartialOrd)]
 #[serde(rename_all = "camelCase")]
 pub struct Circle {
-    pub center: Point,
+    pub center: Axial,
     pub radius: u32,
 }
 
 impl Circle {
-    pub fn is_inside(&self, point: Point) -> bool {
+    pub fn is_inside(&self, point: Axial) -> bool {
         point.hex_distance(self.center) < self.radius
     }
 }
 
-impl AutoByteEncodeProperties for Point {}
+impl AutoByteEncodeProperties for Axial {}
 impl AutoByteEncodeProperties for Circle {}
 
 #[cfg(test)]
@@ -140,8 +140,8 @@ mod tests {
 
     #[test]
     fn basic_arithmetic() {
-        let p1 = Point::new(0, 0);
-        let p2 = Point::new(-1, 2);
+        let p1 = Axial::new(0, 0);
+        let p2 = Axial::new(-1, 2);
 
         let sum = p1 + p2;
         assert_eq!(sum, p2);
@@ -150,8 +150,8 @@ mod tests {
 
     #[test]
     fn distance_simple() {
-        let a = Point::new(0, 0);
-        let b = Point::new(1, 3);
+        let a = Axial::new(0, 0);
+        let b = Axial::new(1, 3);
 
         assert_eq!(a.hex_distance(b), 4);
 

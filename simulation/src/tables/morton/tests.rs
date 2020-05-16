@@ -5,10 +5,10 @@ use std::collections::{HashMap, HashSet};
 #[test]
 fn aabb_simple() {
     let points = [
-        Point::new(12, 50),
-        Point::new(8, 1),
-        Point::new(20, 32),
-        Point::new(23, 12),
+        Axial::new(12, 50),
+        Axial::new(8, 1),
+        Axial::new(20, 32),
+        Axial::new(23, 12),
     ];
 
     let table = MortonTable::from_iterator(points.iter().cloned().map(|p| (p, 1))).unwrap();
@@ -30,22 +30,22 @@ fn aabb_simple() {
 fn simple_from_iterator() {
     let mut rng = rand::thread_rng();
     let mut points = [
-        Point::new(1, 23),
-        Point::new(2, 42),
-        Point::new(1 << 15 - 1, 23),
-        Point::new(1, 1 << 14 - 2),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
-        Point::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(1, 23),
+        Axial::new(2, 42),
+        Axial::new(1 << 15 - 1, 23),
+        Axial::new(1, 1 << 14 - 2),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
+        Axial::new(rng.gen_range(0, 1 << 15), rng.gen_range(0, 1 << 15)),
     ];
     points.shuffle(&mut rng);
     MortonTable::from_iterator(points.iter().enumerate().map(|(i, p)| (*p, i))).unwrap();
@@ -55,7 +55,7 @@ fn simple_from_iterator() {
 fn insertions() {
     let mut table = MortonTable::new();
 
-    let r = table.insert(Point::new(16, 32), 123i32);
+    let r = table.insert(Axial::new(16, 32), 123i32);
     assert!(r);
 }
 
@@ -66,7 +66,7 @@ fn test_range_query_all() {
     let mut table = MortonTable::new();
 
     for i in 0..256 {
-        let p = Point {
+        let p = Axial {
             q: rng.gen_range(0, 128),
             r: rng.gen_range(0, 128),
         };
@@ -75,10 +75,10 @@ fn test_range_query_all() {
     }
 
     let mut res = Vec::new();
-    let center = Point::new(64, 64);
+    let center = Axial::new(64, 64);
     table.find_by_range(
         &center,
-        Point::new(0, 0).hex_distance(center) as u32 + 1,
+        Axial::new(0, 0).hex_distance(center) as u32 + 1,
         &mut res,
     );
 
@@ -87,69 +87,69 @@ fn test_range_query_all() {
 #[test]
 fn regression_get_by_id_bug1() {
     let points = [
-        Point { q: 3, r: 10 },
-        Point { q: 5, r: 11 },
-        Point { q: 63, r: 5 },
-        Point { q: 50, r: 8 },
-        Point { q: 63, r: 9 },
-        Point { q: 39, r: 25 },
-        Point { q: 53, r: 27 },
-        Point { q: 14, r: 37 },
-        Point { q: 0, r: 46 },
-        Point { q: 1, r: 61 },
-        Point { q: 30, r: 53 },
-        Point { q: 36, r: 39 },
-        Point { q: 46, r: 32 },
-        Point { q: 58, r: 38 },
-        Point { q: 38, r: 59 },
-        Point { q: 54, r: 49 },
-        Point { q: 82, r: 4 },
-        Point { q: 84, r: 14 },
-        Point { q: 74, r: 20 },
-        Point { q: 77, r: 30 },
-        Point { q: 83, r: 23 },
-        Point { q: 112, r: 11 },
-        Point { q: 99, r: 18 },
-        Point { q: 115, r: 29 },
-        Point { q: 70, r: 37 },
-        Point { q: 64, r: 40 },
-        Point { q: 82, r: 32 },
-        Point { q: 86, r: 36 },
-        Point { q: 70, r: 53 },
-        Point { q: 99, r: 35 },
-        Point { q: 97, r: 43 },
-        Point { q: 108, r: 42 },
-        Point { q: 107, r: 62 },
-        Point { q: 122, r: 63 },
-        Point { q: 17, r: 67 },
-        Point { q: 29, r: 66 },
-        Point { q: 10, r: 89 },
-        Point { q: 31, r: 94 },
-        Point { q: 42, r: 75 },
-        Point { q: 49, r: 64 },
-        Point { q: 62, r: 66 },
-        Point { q: 33, r: 90 },
-        Point { q: 59, r: 82 },
-        Point { q: 60, r: 85 },
-        Point { q: 53, r: 93 },
-        Point { q: 16, r: 105 },
-        Point { q: 55, r: 109 },
-        Point { q: 38, r: 121 },
-        Point { q: 41, r: 127 },
-        Point { q: 73, r: 70 },
-        Point { q: 75, r: 70 }, // this is the ficked fucked fuckery
-        Point { q: 65, r: 78 },
-        Point { q: 76, r: 73 },
-        Point { q: 95, r: 65 },
-        Point { q: 92, r: 69 },
-        Point { q: 87, r: 75 },
-        Point { q: 117, r: 69 },
-        Point { q: 98, r: 84 },
-        Point { q: 120, r: 83 },
-        Point { q: 88, r: 97 },
-        Point { q: 99, r: 118 },
-        Point { q: 110, r: 126 },
-        Point { q: 126, r: 122 },
+        Axial { q: 3, r: 10 },
+        Axial { q: 5, r: 11 },
+        Axial { q: 63, r: 5 },
+        Axial { q: 50, r: 8 },
+        Axial { q: 63, r: 9 },
+        Axial { q: 39, r: 25 },
+        Axial { q: 53, r: 27 },
+        Axial { q: 14, r: 37 },
+        Axial { q: 0, r: 46 },
+        Axial { q: 1, r: 61 },
+        Axial { q: 30, r: 53 },
+        Axial { q: 36, r: 39 },
+        Axial { q: 46, r: 32 },
+        Axial { q: 58, r: 38 },
+        Axial { q: 38, r: 59 },
+        Axial { q: 54, r: 49 },
+        Axial { q: 82, r: 4 },
+        Axial { q: 84, r: 14 },
+        Axial { q: 74, r: 20 },
+        Axial { q: 77, r: 30 },
+        Axial { q: 83, r: 23 },
+        Axial { q: 112, r: 11 },
+        Axial { q: 99, r: 18 },
+        Axial { q: 115, r: 29 },
+        Axial { q: 70, r: 37 },
+        Axial { q: 64, r: 40 },
+        Axial { q: 82, r: 32 },
+        Axial { q: 86, r: 36 },
+        Axial { q: 70, r: 53 },
+        Axial { q: 99, r: 35 },
+        Axial { q: 97, r: 43 },
+        Axial { q: 108, r: 42 },
+        Axial { q: 107, r: 62 },
+        Axial { q: 122, r: 63 },
+        Axial { q: 17, r: 67 },
+        Axial { q: 29, r: 66 },
+        Axial { q: 10, r: 89 },
+        Axial { q: 31, r: 94 },
+        Axial { q: 42, r: 75 },
+        Axial { q: 49, r: 64 },
+        Axial { q: 62, r: 66 },
+        Axial { q: 33, r: 90 },
+        Axial { q: 59, r: 82 },
+        Axial { q: 60, r: 85 },
+        Axial { q: 53, r: 93 },
+        Axial { q: 16, r: 105 },
+        Axial { q: 55, r: 109 },
+        Axial { q: 38, r: 121 },
+        Axial { q: 41, r: 127 },
+        Axial { q: 73, r: 70 },
+        Axial { q: 75, r: 70 }, // this is the ficked fucked fuckery
+        Axial { q: 65, r: 78 },
+        Axial { q: 76, r: 73 },
+        Axial { q: 95, r: 65 },
+        Axial { q: 92, r: 69 },
+        Axial { q: 87, r: 75 },
+        Axial { q: 117, r: 69 },
+        Axial { q: 98, r: 84 },
+        Axial { q: 120, r: 83 },
+        Axial { q: 88, r: 97 },
+        Axial { q: 99, r: 118 },
+        Axial { q: 110, r: 126 },
+        Axial { q: 126, r: 122 },
     ];
     let points: Vec<(_, _)> = points
         .iter()
@@ -158,7 +158,7 @@ fn regression_get_by_id_bug1() {
         .map(|(i, p)| (p, i))
         .collect();
 
-    let table = MortonTable::<Point, usize>::from_iterator(points.iter().cloned()).unwrap();
+    let table = MortonTable::<Axial, usize>::from_iterator(points.iter().cloned()).unwrap();
 
     for p in points {
         let found = table.get_by_id(&p.0);
@@ -171,12 +171,12 @@ fn regression_get_by_id_bug1() {
 fn get_by_id() {
     let mut rng = rand::thread_rng();
 
-    let mut table = MortonTable::<Point, usize>::new();
+    let mut table = MortonTable::<Axial, usize>::new();
 
     let mut points = HashSet::with_capacity(64);
 
     for _ in 0..64 {
-        let p = Point {
+        let p = Axial {
             q: rng.gen_range(0, 128),
             r: rng.gen_range(0, 128),
         };
@@ -221,7 +221,7 @@ fn from_iterator_inserts_correctly() {
     let len = 1 << 12;
     let mut points = HashMap::with_capacity(len);
     let table = MortonTable::from_iterator((0..len).filter_map(|_| {
-        let pos = Point {
+        let pos = Axial {
             q: rng.gen_range(0, 3900 * 2),
             r: rng.gen_range(0, 3900 * 2),
         };
@@ -245,7 +245,7 @@ fn dedupe_simple() {
     let mut rng = rand::thread_rng();
 
     let mut table = MortonTable::from_iterator((0..128).flat_map(|_| {
-        let pos = Point {
+        let pos = Axial {
             q: rng.gen_range(0, 3900),
             r: rng.gen_range(0, 3900),
         };

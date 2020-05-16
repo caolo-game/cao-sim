@@ -5,7 +5,7 @@
 pub mod bots;
 pub mod resources;
 pub mod structures;
-use crate::model::geometry::point::Point;
+use crate::model::geometry::point::Axial;
 use crate::model::{components, EntityId, OperationResult};
 use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;
@@ -27,7 +27,7 @@ pub fn make_point(
     vm: &mut VM<ScriptExecutionData>,
     (x, y): (i32, i32),
 ) -> Result<(), ExecutionError> {
-    let point = Point::new(x, y);
+    let point = Axial::new(x, y);
     vm.set_value(point)?;
     Ok(())
 }
@@ -121,7 +121,7 @@ pub fn make_import() -> Schema {
             FunctionRow {
                 desc: subprogram_description!(
                     mine_resource,
-                    "Move the bot to the given Point",
+                    "Move the bot to the given Axial",
                     [EntityId],
                     [OperationResult],
                     []
@@ -141,8 +141,8 @@ pub fn make_import() -> Schema {
             FunctionRow {
                 desc: subprogram_description!(
                     move_bot_to_position,
-                    "Move the bot to the given Point",
-                    [Point],
+                    "Move the bot to the given Axial",
+                    [Axial],
                     [OperationResult],
                     []
                 ),
@@ -153,7 +153,7 @@ pub fn make_import() -> Schema {
                     make_point,
                     "Create a point from x and y coordinates",
                     [i32, i32],
-                    [Point],
+                    [Axial],
                     []
                 ),
                 fo: Procedure::new(FunctionWrapper::new(make_point)),

@@ -1,6 +1,6 @@
 use cao_math::mat::mat3f32::JsMatrix;
 use cao_math::vec::vec2f32::Point;
-use caolo_sim::model::geometry::Point as P;
+use caolo_sim::model::geometry::Axial as P;
 use caolo_sim::model::terrain::TileTerrainType;
 use caolo_sim::storage::views::UnsafeView;
 use caolo_sim::tables::{MortonTable, SpatialKey2d};

@@ -1,6 +1,6 @@
 use crate::model::{
     components::{EntityComponent, TerrainComponent},
-    geometry::Point,
+    geometry::Axial,
     terrain,
 };
 use crate::profile;
@@ -9,14 +9,14 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 struct Node {
-    pub pos: Point,
-    pub parent: Point,
+    pub pos: Axial,
+    pub parent: Axial,
     pub h: i32,
     pub g: i32,
 }
 
 impl Node {
-    pub fn new(pos: Point, parent: Point, h: i32, g: i32) -> Self {
+    pub fn new(pos: Axial, parent: Axial, h: i32, g: i32) -> Self {
         Self { parent, h, g, pos }
     }
 
@@ -36,18 +36,18 @@ pub enum PathFindingError {
 /// This is a performance consideration, as most callers should not need to reverse the order of
 /// elements.
 pub fn find_path(
-    from: Point,
-    to: Point,
-    (positions, terrain): (View<Point, EntityComponent>, View<Point, TerrainComponent>),
+    from: Axial,
+    to: Axial,
+    (positions, terrain): (View<Axial, EntityComponent>, View<Axial, TerrainComponent>),
     mut max_iterations: u32,
-    path: &mut Vec<Point>,
+    path: &mut Vec<Axial>,
 ) -> Result<(), PathFindingError> {
     profile!("find_path");
 
     let current = from;
     let end = to;
 
-    let mut closed_set = HashMap::<Point, Node>::with_capacity(max_iterations as usize);
+    let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_iterations as usize);
     let mut open_set = HashSet::with_capacity(max_iterations as usize);
 
     let mut current = Node::new(current, current, current.hex_distance(end) as i32, 0);
@@ -113,7 +113,7 @@ pub fn find_path(
     Ok(())
 }
 
-fn is_walkable(p: &Point, terrain: View<Point, TerrainComponent>) -> bool {
+fn is_walkable(p: &Axial, terrain: View<Axial, TerrainComponent>) -> bool {
     terrain
         .get_by_id(p)
         .map(|tile| terrain::is_walkable(tile.0))
@@ -128,8 +128,8 @@ mod tests {
 
     #[test]
     fn test_simple_wall() {
-        let from = Point::new(0, 2);
-        let to = Point::new(5, 2);
+        let from = Axial::new(0, 2);
+        let to = Axial::new(5, 2);
 
         let positions = MortonTable::new();
         let terrain = MortonTable::from_iterator((0..25).flat_map(|x| {
@@ -140,7 +140,7 @@ mod tests {
                     TileTerrainType::Plain
                 };
 
-                (Point::new(x, y), TerrainComponent(ty))
+                (Axial::new(x, y), TerrainComponent(ty))
             })
         }))
         .unwrap();
@@ -169,15 +169,15 @@ mod tests {
 
     #[test]
     fn test_path_is_continous() {
-        let from = Point::new(17, 6);
-        let to = Point::new(7, 16);
+        let from = Axial::new(17, 6);
+        let to = Axial::new(7, 16);
 
         let positions = MortonTable::new();
         let mut terrain = MortonTable::new();
 
         for x in 0..25 {
             for y in 0..25 {
-                terrain.insert(Point::new(x, y), TerrainComponent(TileTerrainType::Plain));
+                terrain.insert(Axial::new(x, y), TerrainComponent(TileTerrainType::Plain));
             }
         }
 

@@ -2,7 +2,7 @@ mod resources;
 pub use resources::*;
 
 use super::terrain::TileTerrainType;
-use super::{geometry::Point, EntityId, ScriptId, UserId};
+use super::{geometry::Axial, EntityId, ScriptId, UserId};
 use crate::tables::{BTreeTable, Component, MortonTable, SpatialKey2d, TableId, VecTable};
 use arrayvec::ArrayVec;
 use serde_derive::{Deserialize, Serialize};
@@ -38,7 +38,7 @@ impl Component<EntityId> for OwnedEntity {
 }
 
 #[derive(Default, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PositionComponent(pub Point);
+pub struct PositionComponent(pub Axial);
 impl Component<EntityId> for PositionComponent {
     type Table = VecTable<EntityId, Self>;
 }
@@ -145,7 +145,7 @@ impl<Id: TableId> Component<Id> for UserComponent {
 
 pub const PATH_CACHE_LEN: usize = 64;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct PathCacheComponent(pub ArrayVec<[Point; PATH_CACHE_LEN]>);
+pub struct PathCacheComponent(pub ArrayVec<[Axial; PATH_CACHE_LEN]>);
 impl<Id: TableId> Component<Id> for PathCacheComponent {
     type Table = BTreeTable<Id, Self>;
 }

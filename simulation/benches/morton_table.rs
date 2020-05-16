@@ -1,5 +1,5 @@
 use caolo_sim::model::components::EntityComponent;
-use caolo_sim::model::geometry::{Circle, Point};
+use caolo_sim::model::geometry::{Axial, Circle};
 use caolo_sim::model::EntityId;
 use caolo_sim::tables::{MortonTable, PositionTable};
 use criterion::{criterion_group, BenchmarkId, Criterion};
@@ -18,18 +18,18 @@ fn contains_rand(c: &mut Criterion) {
             let mut rng = get_rand();
 
             let table = MortonTable::from_iterator((0..size).map(|i| {
-                let p = Point {
-                    x: rng.gen_range(0, 8000),
-                    y: rng.gen_range(0, 8000),
+                let p = Axial {
+                    q: rng.gen_range(0, 8000),
+                    r: rng.gen_range(0, 8000),
                 };
                 (p, i)
             }))
             .unwrap();
 
             b.iter(|| {
-                let p = Point {
-                    x: rng.gen_range(0, 8000),
-                    y: rng.gen_range(0, 8000),
+                let p = Axial {
+                    q: rng.gen_range(0, 8000),
+                    r: rng.gen_range(0, 8000),
                 };
                 table.contains_key(&p)
             })
@@ -46,9 +46,9 @@ fn get_entities_in_range_sparse(c: &mut Criterion) {
             let mut rng = get_rand();
 
             let table = MortonTable::from_iterator((0..size).map(|_| {
-                let p = Point {
-                    x: rng.gen_range(0, 3900 * 2),
-                    y: rng.gen_range(0, 3900 * 2),
+                let p = Axial {
+                    q: rng.gen_range(0, 3900 * 2),
+                    r: rng.gen_range(0, 3900 * 2),
                 };
                 (p, EntityComponent(EntityId(rng.gen())))
             }))
@@ -57,9 +57,9 @@ fn get_entities_in_range_sparse(c: &mut Criterion) {
             let radius = 512;
             b.iter(|| {
                 let table = &table;
-                let p = Point {
-                    x: rng.gen_range(0, 3900 * 2),
-                    y: rng.gen_range(0, 3900 * 2),
+                let p = Axial {
+                    q: rng.gen_range(0, 3900 * 2),
+                    r: rng.gen_range(0, 3900 * 2),
                 };
                 table.get_entities_in_range(&Circle { center: p, radius })
             });
@@ -76,9 +76,9 @@ fn get_entities_in_range_dense(c: &mut Criterion) {
             let mut rng = get_rand();
 
             let table = MortonTable::from_iterator((0..size).map(|_| {
-                let p = Point {
-                    x: rng.gen_range(0, 200 * 2),
-                    y: rng.gen_range(0, 200 * 2),
+                let p = Axial {
+                    q: rng.gen_range(0, 200 * 2),
+                    r: rng.gen_range(0, 200 * 2),
                 };
                 (p, EntityComponent(EntityId(rng.gen())))
             }))
@@ -87,9 +87,9 @@ fn get_entities_in_range_dense(c: &mut Criterion) {
             let radius = 50;
             b.iter(|| {
                 let table = &table;
-                let p = Point {
-                    x: rng.gen_range(0, 200 * 2),
-                    y: rng.gen_range(0, 200 * 2),
+                let p = Axial {
+                    q: rng.gen_range(0, 200 * 2),
+                    r: rng.gen_range(0, 200 * 2),
                 };
                 table.get_entities_in_range(&Circle { center: p, radius })
             });
@@ -108,9 +108,9 @@ fn make_morton_table(c: &mut Criterion) {
             b.iter(|| {
                 let table = MortonTable::from_iterator((0..size).map(|_| {
                     (
-                        Point {
-                            x: rng.gen_range(0, 3900 * 2),
-                            y: rng.gen_range(0, 3900 * 2),
+                        Axial {
+                            q: rng.gen_range(0, 3900 * 2),
+                            r: rng.gen_range(0, 3900 * 2),
                         },
                         rng.next_u32(),
                     )
@@ -139,9 +139,9 @@ fn rebuild_morton_table(c: &mut Criterion) {
                 table
                     .extend((0..size).map(|_| {
                         (
-                            Point {
-                                x: rng.gen_range(0, 3900 * 2),
-                                y: rng.gen_range(0, 3900 * 2),
+                            Axial {
+                                q: rng.gen_range(0, 3900 * 2),
+                                r: rng.gen_range(0, 3900 * 2),
                             },
                             rng.next_u32(),
                         )
@@ -161,18 +161,18 @@ fn get_by_id_rand(c: &mut Criterion) {
             let mut rng = get_rand();
 
             let table = MortonTable::from_iterator((0..len).map(|_| {
-                let pos = Point {
-                    x: rng.gen_range(0, 3900 * 2),
-                    y: rng.gen_range(0, 3900 * 2),
+                let pos = Axial {
+                    q: rng.gen_range(0, 3900 * 2),
+                    r: rng.gen_range(0, 3900 * 2),
                 };
                 (pos, rng.next_u32())
             }))
             .unwrap();
 
             b.iter(|| {
-                let pos = Point {
-                    x: rng.gen_range(0, 3900 * 2),
-                    y: rng.gen_range(0, 3900 * 2),
+                let pos = Axial {
+                    q: rng.gen_range(0, 3900 * 2),
+                    r: rng.gen_range(0, 3900 * 2),
                 };
                 table.get_by_id(&pos)
             });
@@ -191,9 +191,9 @@ fn get_by_id_in_table_rand(c: &mut Criterion) {
 
             let mut points = Vec::with_capacity(len);
             let table = MortonTable::from_iterator((0..len).map(|_| {
-                let pos = Point {
-                    x: rng.gen_range(0, 3900 * 2),
-                    y: rng.gen_range(0, 3900 * 2),
+                let pos = Axial {
+                    q: rng.gen_range(0, 3900 * 2),
+                    r: rng.gen_range(0, 3900 * 2),
                 };
                 points.push(pos.clone());
                 (pos, rng.next_u32())
@@ -216,20 +216,20 @@ fn random_insert(c: &mut Criterion) {
         let size = 1 << size;
         group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, &size| {
             let mut rng = get_rand();
-            let mut table = MortonTable::<Point, usize>::new();
+            let mut table = MortonTable::<Axial, usize>::new();
 
             for _ in 0..size {
-                let x = rng.gen_range(0, 29000);
-                let y = rng.gen_range(0, 29000);
-                let p = Point::new(x, y);
+                let q = rng.gen_range(0, 29000);
+                let r = rng.gen_range(0, 29000);
+                let p = Axial::new(q, r);
 
                 table.insert(p, 420);
             }
 
             b.iter(|| {
-                let x = rng.gen_range(0, 29000);
-                let y = rng.gen_range(0, 29000);
-                let p = Point::new(x, y);
+                let q = rng.gen_range(0, 29000);
+                let r = rng.gen_range(0, 29000);
+                let p = Axial::new(q, r);
 
                 table.insert(p, 420)
             });
@@ -244,13 +244,13 @@ fn random_update(c: &mut Criterion) {
         let size = 1 << size;
         group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, &size| {
             let mut rng = get_rand();
-            let mut table = MortonTable::<Point, u32>::new();
+            let mut table = MortonTable::<Axial, u32>::new();
             let mut memory = Vec::new();
 
             for _ in 0..size {
-                let x = rng.gen_range(0, 29000);
-                let y = rng.gen_range(0, 29000);
-                let p = Point::new(x, y);
+                let q = rng.gen_range(0, 29000);
+                let r = rng.gen_range(0, 29000);
+                let p = Axial::new(q, r);
                 memory.push(p);
 
                 table.insert(p, 420);
