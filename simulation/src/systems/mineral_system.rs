@@ -1,5 +1,5 @@
 use super::System;
-use crate::model::{components, geometry::Axial, EntityId};
+use crate::model::{components, geometry::Axial, EntityId, WorldPosition};
 use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View};
 use crate::tables::JoinIterator;
 use rand::Rng;
@@ -13,8 +13,8 @@ impl<'a> System<'a> for MineralSystem {
         DeferredDeleteEntityView,
     );
     type Const = (
-        View<'a, Axial, components::EntityComponent>,
-        View<'a, Axial, components::TerrainComponent>,
+        View<'a, WorldPosition, components::EntityComponent>,
+        View<'a, WorldPosition, components::TerrainComponent>,
         View<'a, EntityId, components::ResourceComponent>,
     );
 

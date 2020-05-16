@@ -130,7 +130,7 @@ where
         self.positions.clear();
     }
 
-    /// Extend the map by the items provided. Panics on invalid items.
+    /// Extend the map by the items provided.
     pub fn extend<It>(&mut self, it: It) -> Result<(), ExtendFailure<Pos>>
     where
         It: Iterator<Item = (Pos, Row)>,
@@ -152,6 +152,28 @@ where
         trace!("MortonTable extend sort done\nRebuilding skip_list");
         self.rebuild_skip_list();
         trace!("MortonTable extend done");
+        Ok(())
+    }
+
+    /// Extend the map by the items provided.
+    pub fn extend_from_slice(&mut self, items: &[(Pos, Row)]) -> Result<(), ExtendFailure<Pos>> {
+        trace!("MortonTable extend_from_slice");
+        for (id, value) in items {
+            if !self.intersects(&id) {
+                return Err(ExtendFailure::InvalidPosition(id));
+            }
+            let [x, y] = id.as_array();
+            let [x, y] = [x as u16, y as u16];
+            let key = MortonKey::new(x, y);
+            self.keys.push(key);
+            self.positions.push(id);
+            self.values.push(value);
+        }
+        trace!("MortonTable extend_from_slice sort");
+        sorting::sort(&mut self.keys, &mut self.positions, &mut self.values);
+        trace!("MortonTable extend_from_slice sort done\nRebuilding skip_list");
+        self.rebuild_skip_list();
+        trace!("MortonTable extend_from_slice done");
         Ok(())
     }
 

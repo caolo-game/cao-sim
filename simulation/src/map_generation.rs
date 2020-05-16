@@ -2,8 +2,9 @@ use crate::model::components::TerrainComponent;
 use crate::model::geometry::Axial;
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
+use crate::tables::morton::ExtendFailure;
 use crate::tables::msb_de_bruijn;
-use crate::tables::{ExtendFailure, MortonTable, SpatialKey2d, Table};
+use crate::tables::{MortonTable, SpatialKey2d, Table};
 use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
 use thiserror::Error;
 
@@ -147,7 +148,7 @@ pub fn generate_room(
     })?;
     debug!("Initializing GradientMap done");
 
-    let mut fheight = move |gradient: &GradientMap, p: Axial, radius: i32, mean_heights: f32| {
+    let fheight = &mut move |gradient: &GradientMap, p: Axial, radius: i32, mean_heights: f32| {
         let mut mean = 0.0;
         let mut std = 0.0;
         let mut cnt = 1.0;
@@ -158,10 +159,9 @@ pub fn generate_room(
             cnt += 1.0;
         });
         mean_heights
-            + rng.gen_range(1.0, 2.0) * (0.2 + mean+std)
+            + rng.gen_range(1.0, 2.0) * (0.2 + mean + std)
             + (rng.gen_range(0.0, 1.0) - 0.5) * radius as f32
     };
-    let fheight = &mut fheight;
 
     // init corners
     let corners = [from, Axial::new(to.q, from.r), Axial::new(from.q, to.r), to];

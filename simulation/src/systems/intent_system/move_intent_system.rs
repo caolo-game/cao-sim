@@ -2,8 +2,8 @@ use super::IntentExecutionSystem;
 use crate::intents::MoveIntent;
 use crate::model::{
     components::{Bot, EntityComponent, PositionComponent},
-    geometry::Axial,
     EntityId,
+    WorldPosition,
 };
 use crate::storage::views::{UnsafeView, View};
 
@@ -11,7 +11,7 @@ pub struct MoveSystem;
 
 impl<'a> IntentExecutionSystem<'a> for MoveSystem {
     type Mut = (UnsafeView<EntityId, PositionComponent>,);
-    type Const = (View<'a, EntityId, Bot>, View<'a, Axial, EntityComponent>);
+    type Const = (View<'a, EntityId, Bot>, View<'a, WorldPosition, EntityComponent>);
     type Intent = MoveIntent;
 
     fn execute(
@@ -25,14 +25,6 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
 
             if bots.get_by_id(&intent.bot).is_none() {
                 debug!("Bot by id {:?} does not exist", intent.bot);
-                continue;
-            }
-
-            if !pos_entities.intersects(&intent.position) {
-                debug!(
-                    "PositionTable insert failed {:?}, out of bounds",
-                    intent.position
-                );
                 continue;
             }
 

@@ -2,7 +2,7 @@ mod resources;
 pub use resources::*;
 
 use super::terrain::TileTerrainType;
-use super::{geometry::Axial, EntityId, RoomPos, ScriptId, UserId};
+use super::{EntityId, WorldPosition, ScriptId, UserId, RoomPosition};
 use crate::tables::{
     BTreeTable, Component, MortonTable, RoomMortonTable, SpatialKey2d, TableId, VecTable,
 };
@@ -15,8 +15,8 @@ pub struct EntityComponent(pub EntityId);
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for EntityComponent {
     type Table = MortonTable<Id, Self>;
 }
-impl Component<RoomPos> for EntityComponent {
-    type Table = RoomMortonTable<Axial, Axial, Self>;
+impl Component<WorldPosition> for EntityComponent {
+    type Table = RoomMortonTable<Self>;
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
@@ -43,7 +43,7 @@ impl Component<EntityId> for OwnedEntity {
 }
 
 #[derive(Default, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PositionComponent(pub Axial);
+pub struct PositionComponent(pub WorldPosition);
 impl Component<EntityId> for PositionComponent {
     type Table = VecTable<EntityId, Self>;
 }
@@ -134,8 +134,8 @@ pub struct TerrainComponent(pub TileTerrainType);
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
     type Table = MortonTable<Id, Self>;
 }
-impl Component<RoomPos> for TerrainComponent {
-    type Table = RoomMortonTable<Axial, Axial, Self>;
+impl Component<WorldPosition> for TerrainComponent {
+    type Table = RoomMortonTable<Self>;
 }
 
 /// Entities with Scripts
@@ -153,7 +153,7 @@ impl<Id: TableId> Component<Id> for UserComponent {
 
 pub const PATH_CACHE_LEN: usize = 64;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct PathCacheComponent(pub ArrayVec<[Axial; PATH_CACHE_LEN]>);
+pub struct PathCacheComponent(pub ArrayVec<[RoomPosition; PATH_CACHE_LEN]>);
 impl<Id: TableId> Component<Id> for PathCacheComponent {
     type Table = BTreeTable<Id, Self>;
 }

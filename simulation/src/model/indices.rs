@@ -53,4 +53,13 @@ impl TryFrom<Scalar> for EntityId {
 #[derive(
     Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
 )]
-pub struct RoomPos(Axial, Axial);
+pub struct WorldPosition {
+    pub room: Axial,
+    pub pos: Axial,
+}
+
+/// Newtype wrapper around Axial point for positions that are inside a room.
+#[derive(
+    Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
+)]
+pub struct RoomPosition(Axial);
