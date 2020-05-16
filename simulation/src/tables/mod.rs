@@ -2,6 +2,7 @@
 //! Tables are generic collections that store game data split by (shape) components.
 //!
 mod iterators;
+mod morton_hierarchy;
 mod traits;
 mod btree;
 mod morton;
@@ -12,6 +13,7 @@ pub use morton::*;
 pub use vector::*;
 pub use self::iterators::*;
 pub use self::traits::*;
+pub use self::morton_hierarchy::*;
 use crate::model::{components::PositionComponent, geometry::Circle, EntityId};
 
 #[cfg(test)]

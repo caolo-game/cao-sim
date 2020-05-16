@@ -18,13 +18,17 @@ impl<'a> System<'a> for PositionSystem {
 
         unsafe {
             position_entities.as_mut().clear();
-
-            positions
-                .iter()
-                .map(|(id, pos)| (pos.0, EntityComponent(id)))
-                .for_each(|(point, entity)| {
-                    position_entities.as_mut().insert(point, entity);
-                });
+            position_entities
+                .as_mut()
+                .extend(
+                    positions
+                        .iter()
+                        .map(|(id, pos)| (pos.0, EntityComponent(id))),
+                )
+                .map_err(|e| {
+                    error!("Failed to rebuild position_entities table {:?}", e);
+                })
+                .unwrap_or_default();
         }
 
         debug!("update positions system done");

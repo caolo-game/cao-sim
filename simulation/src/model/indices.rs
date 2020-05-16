@@ -1,5 +1,6 @@
 //! Structs intended to be used as table indices.
 //!
+use crate::model::Axial;
 use crate::tables::SerialId;
 use cao_lang::{prelude::Scalar, traits::AutoByteEncodeProperties};
 use serde_derive::{Deserialize, Serialize};
@@ -48,3 +49,8 @@ impl TryFrom<Scalar> for EntityId {
         }
     }
 }
+
+#[derive(
+    Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
+)]
+pub struct RoomPos(Axial, Axial);

@@ -226,6 +226,17 @@ where
         self.find_key(id).map(|ind| &self.values[ind]).ok()
     }
 
+    /// Returns the first item with given id, if any
+    pub fn get_by_id_mut<'a>(&'a mut self, id: &Pos) -> Option<&'a mut Row> {
+        profile!("get_by_id_mut");
+
+        if !self.intersects(&id) {
+            return None;
+        }
+
+        self.find_key(id).map(move |ind| &mut self.values[ind]).ok()
+    }
+
     pub fn contains_key(&self, id: &Pos) -> bool {
         profile!("contains_key");
 

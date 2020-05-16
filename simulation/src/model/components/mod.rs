@@ -2,8 +2,10 @@ mod resources;
 pub use resources::*;
 
 use super::terrain::TileTerrainType;
-use super::{geometry::Axial, EntityId, ScriptId, UserId};
-use crate::tables::{BTreeTable, Component, MortonTable, SpatialKey2d, TableId, VecTable};
+use super::{geometry::Axial, EntityId, RoomPos, ScriptId, UserId};
+use crate::tables::{
+    BTreeTable, Component, MortonTable, RoomMortonTable, SpatialKey2d, TableId, VecTable,
+};
 use arrayvec::ArrayVec;
 use serde_derive::{Deserialize, Serialize};
 
@@ -12,6 +14,9 @@ use serde_derive::{Deserialize, Serialize};
 pub struct EntityComponent(pub EntityId);
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for EntityComponent {
     type Table = MortonTable<Id, Self>;
+}
+impl Component<RoomPos> for EntityComponent {
+    type Table = RoomMortonTable<Axial, Axial, Self>;
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
@@ -128,6 +133,9 @@ impl<Id: TableId> Component<Id> for LogEntry {
 pub struct TerrainComponent(pub TileTerrainType);
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
     type Table = MortonTable<Id, Self>;
+}
+impl Component<RoomPos> for TerrainComponent {
+    type Table = RoomMortonTable<Axial, Axial, Self>;
 }
 
 /// Entities with Scripts
