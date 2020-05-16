@@ -2,7 +2,7 @@ use crate::model::{
     self,
     components::{self, EntityComponent, PositionComponent},
     geometry::Axial,
-    terrain, EntityId, OperationResult,
+    terrain, EntityId, OperationResult, WorldPosition,
 };
 use crate::storage::views::View;
 
@@ -16,8 +16,8 @@ type CheckInput<'a> = (
     View<'a, EntityId, components::OwnedEntity>,
     View<'a, EntityId, PositionComponent>,
     View<'a, EntityId, components::Bot>,
-    View<'a, Axial, components::TerrainComponent>,
-    View<'a, Axial, EntityComponent>,
+    View<'a, WorldPosition, components::TerrainComponent>,
+    View<'a, WorldPosition, EntityComponent>,
 );
 
 pub fn check_move_intent(
@@ -45,7 +45,7 @@ pub fn check_move_intent(
     };
 
     // TODO: bot speed component?
-    if 1 < pos.0.hex_distance(intent.position) {
+    if 1 < pos.0.pos.hex_distance(intent.position) {
         debug!(
             "Bot move target {:?} is out of range of bot position {:?} and velocity {:?}",
             intent.position, pos, 1
@@ -53,13 +53,18 @@ pub fn check_move_intent(
         return OperationResult::InvalidInput;
     }
 
+    let intended_pos = WorldPosition {
+        room: pos.0.room,
+        pos: intent.position,
+    };
+
     if let Some(components::TerrainComponent(terrain::TileTerrainType::Wall)) =
-        terrain.get_by_id(&intent.position)
+        terrain.get_by_id(&intended_pos)
     {
         debug!("Position is occupied by terrain");
         return OperationResult::InvalidInput;
     }
-    if let Some(entity) = entity_positions.get_by_id(&intent.position) {
+    if let Some(entity) = entity_positions.get_by_id(&intended_pos) {
         debug!("Position is occupied by another entity {:?}", entity);
         return OperationResult::InvalidInput;
     }

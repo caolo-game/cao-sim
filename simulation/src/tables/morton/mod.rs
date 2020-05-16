@@ -15,7 +15,6 @@ mod tests;
 pub use self::litmax_bigmin::msb_de_bruijn;
 use self::litmax_bigmin::round_down_to_one_less_than_pow_two;
 use super::*;
-use crate::model::{components::EntityComponent, geometry::Axial};
 use litmax_bigmin::litmax_bigmin;
 use morton_key::*;
 use serde_derive::{Deserialize, Serialize};
@@ -160,14 +159,14 @@ where
         trace!("MortonTable extend_from_slice");
         for (id, value) in items {
             if !self.intersects(&id) {
-                return Err(ExtendFailure::InvalidPosition(id));
+                return Err(ExtendFailure::InvalidPosition(*id));
             }
             let [x, y] = id.as_array();
             let [x, y] = [x as u16, y as u16];
             let key = MortonKey::new(x, y);
             self.keys.push(key);
-            self.positions.push(id);
-            self.values.push(value);
+            self.positions.push(*id);
+            self.values.push(*value);
         }
         trace!("MortonTable extend_from_slice sort");
         sorting::sort(&mut self.keys, &mut self.positions, &mut self.values);
@@ -548,24 +547,5 @@ where
         }
 
         Some(val)
-    }
-}
-
-impl PositionTable for MortonTable<Axial, EntityComponent> {
-    fn get_entities_in_range(&self, vision: &Circle) -> Vec<(EntityId, PositionComponent)> {
-        profile!("get_entities_in_range");
-
-        let mut res = Vec::new();
-        self.find_by_range(&vision.center, vision.radius * 3 / 2, &mut res);
-        res.into_iter()
-            .filter(|(pos, _)| pos.hex_distance(vision.center) <= vision.radius)
-            .map(|(pos, id)| (id.0, PositionComponent(pos)))
-            .collect()
-    }
-
-    fn count_entities_in_range(&self, vision: &Circle) -> usize {
-        profile!("count_entities_in_range");
-
-        self.count_in_range(&vision.center, vision.radius * 3 / 2) as usize
     }
 }

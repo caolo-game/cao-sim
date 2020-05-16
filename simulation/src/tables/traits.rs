@@ -72,12 +72,6 @@ pub trait Table {
     fn delete(&mut self, id: &Self::Id) -> Option<Self::Row>;
 }
 
-pub trait PositionTable {
-    /// Vision is AABB with topleft - bottomleft points
-    fn get_entities_in_range(&self, vision: &Circle) -> Vec<(EntityId, PositionComponent)>;
-    fn count_entities_in_range(&self, vision: &Circle) -> usize;
-}
-
 pub trait LogTable {
     fn get_logs_by_time(&self, time: u64) -> Vec<(indices::EntityTime, components::LogEntry)>;
 }
