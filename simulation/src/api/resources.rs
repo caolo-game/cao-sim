@@ -1,5 +1,6 @@
 use super::*;
 use crate::model::components::{EntityComponent, PositionComponent, ResourceComponent};
+use crate::model::WorldPosition;
 use crate::profile;
 
 pub const MAX_SEARCH_RADIUS: u32 = 256;
@@ -28,17 +29,27 @@ pub fn find_closest_resource_by_range(
     };
 
     let mut candidates = Vec::with_capacity(MAX_SEARCH_RADIUS as usize * 2);
+    let WorldPosition { room, pos } = position.0;
     storage
-        .view::<Axial, EntityComponent>()
+        .view::<WorldPosition, EntityComponent>()
         .reborrow()
-        .find_by_range(&position.0, MAX_SEARCH_RADIUS, &mut candidates);
+        .table
+        .get_by_id(&room)
+        .map(|room| room.find_by_range(&pos, MAX_SEARCH_RADIUS, &mut candidates))
+        .ok_or_else(|| {
+            warn!(
+                "find_closest_resource_by_range called on invalid room {:?}",
+                position
+            );
+            ExecutionError::InvalidArgument
+        });
 
     let resources = storage.view::<EntityId, ResourceComponent>();
 
     candidates.retain(|(_pos, entity_id)| resources.get_by_id(&entity_id.0).is_some());
     match candidates
         .iter()
-        .min_by_key(|(pos, _)| pos.hex_distance(position.0))
+        .min_by_key(|(pos, _)| pos.hex_distance(*pos))
     {
         None => {
             vm.set_value(OperationResult::OperationFailed)?;

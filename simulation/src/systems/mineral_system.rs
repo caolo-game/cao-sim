@@ -1,5 +1,5 @@
 use super::System;
-use crate::model::{components, geometry::Axial, EntityId};
+use crate::model::{components, geometry::Axial, EntityId, WorldPosition};
 use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View};
 use crate::tables::JoinIterator;
 use rand::Rng;
@@ -13,8 +13,8 @@ impl<'a> System<'a> for MineralSystem {
         DeferredDeleteEntityView,
     );
     type Const = (
-        View<'a, Axial, components::EntityComponent>,
-        View<'a, Axial, components::TerrainComponent>,
+        View<'a, WorldPosition, components::EntityComponent>,
+        View<'a, WorldPosition, components::TerrainComponent>,
         View<'a, EntityId, components::ResourceComponent>,
     );
 
@@ -43,12 +43,24 @@ impl<'a> System<'a> for MineralSystem {
             if energy.energy > 0 {
                 return;
             }
+            let position_entities = position_entities
+                .table
+                .get_by_id(&position.0.room)
+                .expect("get room entities table");
+            let terrain_table = terrain_table
+                .table
+                .get_by_id(&position.0.room)
+                .expect("get room terrain table");
+
+            let position_entities = View::from_table(position_entities);
+            let terrain_table = View::from_table(terrain_table);
+
             // respawning
             let pos = random_uncontested_pos_in_range(
-                position_entities.clone(),
-                terrain_table.clone(),
+                position_entities,
+                terrain_table,
                 &mut rng,
-                position.0,
+                position.0.pos,
                 15,
                 100,
             );
@@ -59,7 +71,7 @@ impl<'a> System<'a> for MineralSystem {
             match pos {
                 Some(pos) => {
                     energy.energy = energy.energy_max;
-                    position.0 = pos;
+                    position.0.pos = pos;
                 }
                 None => {
                     error!("Failed to find adequate position for resource {:?}", id);

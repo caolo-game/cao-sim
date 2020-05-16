@@ -54,9 +54,10 @@ pub fn check_dropoff_intent(
 
     let target = intent.structure;
     let nearby = positions.get_by_id(&id).and_then(|botpos| {
-        positions
-            .get_by_id(&target)
-            .map(|targetpos| targetpos.0.hex_distance(botpos.0) <= DROPOFF_RANGE)
+        positions.get_by_id(&target).map(|targetpos| {
+            targetpos.0.room == botpos.0.room
+                && targetpos.0.pos.hex_distance(botpos.0.pos) <= DROPOFF_RANGE
+        })
     });
     match nearby {
         None => {
