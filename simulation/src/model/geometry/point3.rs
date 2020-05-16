@@ -28,17 +28,17 @@ impl Point3 {
 
     /// Convert a point from a hexagonal axial vector to a hexagonal cube vector
     pub fn hex_axial_to_cube(p: Point) -> Self {
-        let x = p.x;
-        let z = p.y;
+        let x = p.q;
+        let z = p.r;
         let y = -x - z;
         Self { x, y, z }
     }
 
     /// Convert self to an axial vector
     pub fn into_axial(self) -> Point {
-        let x = self.x;
-        let y = self.z;
-        Point { x, y }
+        let q = self.x;
+        let r = self.z;
+        Point { q, r }
     }
 }
 

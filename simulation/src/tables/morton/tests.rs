@@ -17,13 +17,13 @@ fn aabb_simple() {
     let min = min.as_array();
     let max = max.as_array();
 
-    let [x, y] = min;
-    assert!(x <= 8);
-    assert!(y <= 1);
+    let [q, r] = min;
+    assert!(q <= 8);
+    assert!(r <= 1);
 
-    let [x, y] = max;
-    assert!(23 <= x);
-    assert!(50 <= y);
+    let [q, r] = max;
+    assert!(23 <= q);
+    assert!(50 <= r);
 }
 
 #[test]
@@ -67,8 +67,8 @@ fn test_range_query_all() {
 
     for i in 0..256 {
         let p = Point {
-            x: rng.gen_range(0, 128),
-            y: rng.gen_range(0, 128),
+            q: rng.gen_range(0, 128),
+            r: rng.gen_range(0, 128),
         };
         let inserted = table.insert(p, i);
         assert!(inserted);
@@ -87,69 +87,69 @@ fn test_range_query_all() {
 #[test]
 fn regression_get_by_id_bug1() {
     let points = [
-        Point { x: 3, y: 10 },
-        Point { x: 5, y: 11 },
-        Point { x: 63, y: 5 },
-        Point { x: 50, y: 8 },
-        Point { x: 63, y: 9 },
-        Point { x: 39, y: 25 },
-        Point { x: 53, y: 27 },
-        Point { x: 14, y: 37 },
-        Point { x: 0, y: 46 },
-        Point { x: 1, y: 61 },
-        Point { x: 30, y: 53 },
-        Point { x: 36, y: 39 },
-        Point { x: 46, y: 32 },
-        Point { x: 58, y: 38 },
-        Point { x: 38, y: 59 },
-        Point { x: 54, y: 49 },
-        Point { x: 82, y: 4 },
-        Point { x: 84, y: 14 },
-        Point { x: 74, y: 20 },
-        Point { x: 77, y: 30 },
-        Point { x: 83, y: 23 },
-        Point { x: 112, y: 11 },
-        Point { x: 99, y: 18 },
-        Point { x: 115, y: 29 },
-        Point { x: 70, y: 37 },
-        Point { x: 64, y: 40 },
-        Point { x: 82, y: 32 },
-        Point { x: 86, y: 36 },
-        Point { x: 70, y: 53 },
-        Point { x: 99, y: 35 },
-        Point { x: 97, y: 43 },
-        Point { x: 108, y: 42 },
-        Point { x: 107, y: 62 },
-        Point { x: 122, y: 63 },
-        Point { x: 17, y: 67 },
-        Point { x: 29, y: 66 },
-        Point { x: 10, y: 89 },
-        Point { x: 31, y: 94 },
-        Point { x: 42, y: 75 },
-        Point { x: 49, y: 64 },
-        Point { x: 62, y: 66 },
-        Point { x: 33, y: 90 },
-        Point { x: 59, y: 82 },
-        Point { x: 60, y: 85 },
-        Point { x: 53, y: 93 },
-        Point { x: 16, y: 105 },
-        Point { x: 55, y: 109 },
-        Point { x: 38, y: 121 },
-        Point { x: 41, y: 127 },
-        Point { x: 73, y: 70 },
-        Point { x: 75, y: 70 }, // this is the ficked fucked fuckery
-        Point { x: 65, y: 78 },
-        Point { x: 76, y: 73 },
-        Point { x: 95, y: 65 },
-        Point { x: 92, y: 69 },
-        Point { x: 87, y: 75 },
-        Point { x: 117, y: 69 },
-        Point { x: 98, y: 84 },
-        Point { x: 120, y: 83 },
-        Point { x: 88, y: 97 },
-        Point { x: 99, y: 118 },
-        Point { x: 110, y: 126 },
-        Point { x: 126, y: 122 },
+        Point { q: 3, r: 10 },
+        Point { q: 5, r: 11 },
+        Point { q: 63, r: 5 },
+        Point { q: 50, r: 8 },
+        Point { q: 63, r: 9 },
+        Point { q: 39, r: 25 },
+        Point { q: 53, r: 27 },
+        Point { q: 14, r: 37 },
+        Point { q: 0, r: 46 },
+        Point { q: 1, r: 61 },
+        Point { q: 30, r: 53 },
+        Point { q: 36, r: 39 },
+        Point { q: 46, r: 32 },
+        Point { q: 58, r: 38 },
+        Point { q: 38, r: 59 },
+        Point { q: 54, r: 49 },
+        Point { q: 82, r: 4 },
+        Point { q: 84, r: 14 },
+        Point { q: 74, r: 20 },
+        Point { q: 77, r: 30 },
+        Point { q: 83, r: 23 },
+        Point { q: 112, r: 11 },
+        Point { q: 99, r: 18 },
+        Point { q: 115, r: 29 },
+        Point { q: 70, r: 37 },
+        Point { q: 64, r: 40 },
+        Point { q: 82, r: 32 },
+        Point { q: 86, r: 36 },
+        Point { q: 70, r: 53 },
+        Point { q: 99, r: 35 },
+        Point { q: 97, r: 43 },
+        Point { q: 108, r: 42 },
+        Point { q: 107, r: 62 },
+        Point { q: 122, r: 63 },
+        Point { q: 17, r: 67 },
+        Point { q: 29, r: 66 },
+        Point { q: 10, r: 89 },
+        Point { q: 31, r: 94 },
+        Point { q: 42, r: 75 },
+        Point { q: 49, r: 64 },
+        Point { q: 62, r: 66 },
+        Point { q: 33, r: 90 },
+        Point { q: 59, r: 82 },
+        Point { q: 60, r: 85 },
+        Point { q: 53, r: 93 },
+        Point { q: 16, r: 105 },
+        Point { q: 55, r: 109 },
+        Point { q: 38, r: 121 },
+        Point { q: 41, r: 127 },
+        Point { q: 73, r: 70 },
+        Point { q: 75, r: 70 }, // this is the ficked fucked fuckery
+        Point { q: 65, r: 78 },
+        Point { q: 76, r: 73 },
+        Point { q: 95, r: 65 },
+        Point { q: 92, r: 69 },
+        Point { q: 87, r: 75 },
+        Point { q: 117, r: 69 },
+        Point { q: 98, r: 84 },
+        Point { q: 120, r: 83 },
+        Point { q: 88, r: 97 },
+        Point { q: 99, r: 118 },
+        Point { q: 110, r: 126 },
+        Point { q: 126, r: 122 },
     ];
     let points: Vec<(_, _)> = points
         .iter()
@@ -162,7 +162,7 @@ fn regression_get_by_id_bug1() {
 
     for p in points {
         let found = table.get_by_id(&p.0);
-        let key = MortonKey::new(p.0.x as u16, p.0.y as u16);
+        let key = MortonKey::new(p.0.q as u16, p.0.r as u16);
         assert_eq!(found, Some(&p.1), "{:?} {:?}", p.0, key);
     }
 }
@@ -177,10 +177,10 @@ fn get_by_id() {
 
     for _ in 0..64 {
         let p = Point {
-            x: rng.gen_range(0, 128),
-            y: rng.gen_range(0, 128),
+            q: rng.gen_range(0, 128),
+            r: rng.gen_range(0, 128),
         };
-        let i = 1000 * p.x + p.y;
+        let i = 1000 * p.q + p.r;
         points.insert((p, i as usize));
     }
 
@@ -193,7 +193,7 @@ fn get_by_id() {
 
     for p in points {
         let found = table.get_by_id(&p.0);
-        let key = MortonKey::new(p.0.x as u16, p.0.y as u16);
+        let key = MortonKey::new(p.0.q as u16, p.0.r as u16);
         assert_eq!(found, Some(&p.1), "{:?} {:?}", p.0, key);
     }
 }
@@ -203,14 +203,14 @@ fn morton_key_reconstruction_rand() {
     let mut rng = rand::thread_rng();
 
     for _ in 0..(1 << 12) {
-        let x = rng.gen_range(0, 2000);
-        let y = rng.gen_range(0, 2000);
+        let q = rng.gen_range(0, 2000);
+        let r = rng.gen_range(0, 2000);
 
-        let morton = MortonKey::new(x, y);
+        let morton = MortonKey::new(q, r);
 
         let res = morton.as_point();
 
-        assert_eq!([x, y], res);
+        assert_eq!([q, r], res);
     }
 }
 
@@ -222,8 +222,8 @@ fn from_iterator_inserts_correctly() {
     let mut points = HashMap::with_capacity(len);
     let table = MortonTable::from_iterator((0..len).filter_map(|_| {
         let pos = Point {
-            x: rng.gen_range(0, 3900 * 2),
-            y: rng.gen_range(0, 3900 * 2),
+            q: rng.gen_range(0, 3900 * 2),
+            r: rng.gen_range(0, 3900 * 2),
         };
         if !points.contains_key(&pos) {
             return None;
@@ -246,8 +246,8 @@ fn dedupe_simple() {
 
     let mut table = MortonTable::from_iterator((0..128).flat_map(|_| {
         let pos = Point {
-            x: rng.gen_range(0, 3900),
-            y: rng.gen_range(0, 3900),
+            q: rng.gen_range(0, 3900),
+            r: rng.gen_range(0, 3900),
         };
         vec![(pos, 0), (pos, 1), (pos, 3)]
     }))

@@ -83,8 +83,8 @@ fn random_uncontested_pos_in_range<'a>(
     max_tries: u16,
 ) -> Option<Point> {
     let range = range as i32;
-    let x = around.x as i32;
-    let y = around.y as i32;
+    let x = around.q as i32;
+    let y = around.r as i32;
 
     let (bfrom, bto) = position_entities_table.bounds();
 
@@ -93,8 +93,8 @@ fn random_uncontested_pos_in_range<'a>(
         let dx = rng.gen_range(-range, range);
         let dy = rng.gen_range(-range, range);
 
-        let x = (x + dx).max(bfrom.x).min(bto.x);
-        let y = (y + dy).max(bfrom.y).min(bto.y);
+        let x = (x + dx).max(bfrom.q).min(bto.q);
+        let y = (y + dy).max(bfrom.r).min(bto.r);
 
         let pos = Point::new(x, y);
 

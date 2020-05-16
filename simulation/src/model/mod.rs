@@ -14,17 +14,17 @@ use std::convert::TryFrom;
 
 impl SpatialKey2d for Point {
     fn as_array(&self) -> [i32; 2] {
-        [self.x, self.y]
+        [self.q, self.r]
     }
 
-    fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
+    fn new(q: i32, r: i32) -> Self {
+        Self { q, r }
     }
 
     fn get_axis(&self, axis: u8) -> i32 {
         match axis & 1 {
-            0 => self.x,
-            _ => self.y,
+            0 => self.q,
+            _ => self.r,
         }
     }
 

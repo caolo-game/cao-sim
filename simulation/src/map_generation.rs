@@ -129,7 +129,7 @@ pub fn generate_room(
 
     let from = Point::new(0, 0);
     let dsides = pot(radius as u32 * 2) as i32;
-    let to = Point::new(from.x + dsides, from.y + dsides);
+    let to = Point::new(from.q + dsides, from.r + dsides);
 
     let seed = seed.unwrap_or_else(|| {
         let mut bytes = [0; 16];
@@ -139,7 +139,7 @@ pub fn generate_room(
     let mut rng = SmallRng::from_seed(seed);
     debug!("Initializing GradientMap");
     let mut gradient = GradientMap::from_iterator(
-        (from.x..=to.x).flat_map(|x| (from.y..=to.y).map(move |y| (Point::new(x, y), 0.0))),
+        (from.q..=to.q).flat_map(|x| (from.r..=to.r).map(move |y| (Point::new(x, y), 0.0))),
     )
     .map_err(|e| {
         error!("Initializing GradientMap failed {:?}", e);
@@ -164,7 +164,7 @@ pub fn generate_room(
     let fheight = &mut fheight;
 
     // init corners
-    let corners = [from, Point::new(to.x, from.y), Point::new(from.x, to.y), to];
+    let corners = [from, Point::new(to.q, from.r), Point::new(from.q, to.r), to];
     for edge in corners.iter() {
         gradient.delete(&edge);
         gradient.insert(*edge, fheight(&gradient, from, 8, 0.0));
@@ -185,13 +185,13 @@ pub fn generate_room(
             }
         }
         for x in (d..dsides).step_by(2 * d as usize) {
-            for y in (from.y..=dsides).step_by(2 * d as usize) {
+            for y in (from.r..=dsides).step_by(2 * d as usize) {
                 let g = diamond(&mut gradient, Point::new(x, y), d, fheight);
                 max_grad = max_grad.max(g);
                 min_grad = min_grad.min(g);
             }
         }
-        for x in (from.x..=dsides).step_by(2 * d as usize) {
+        for x in (from.q..=dsides).step_by(2 * d as usize) {
             for y in (d..dsides).step_by(2 * d as usize) {
                 let g = diamond(&mut gradient, Point::new(x, y), d, fheight);
                 max_grad = max_grad.max(g);
@@ -301,11 +301,11 @@ pub fn generate_room(
 /// Print a 2D TerrainComponent map to the console, intended for debugging small maps.
 #[allow(unused)]
 fn print_terrain(from: &Point, to: &Point, terrain: View<Point, TerrainComponent>) {
-    assert!(from.x < to.x);
-    assert!(from.y < to.y);
+    assert!(from.q < to.q);
+    assert!(from.r < to.r);
 
-    for y in (from.y..=to.y) {
-        for x in (from.x..=to.x) {
+    for y in (from.r..=to.r) {
+        for x in (from.q..=to.q) {
             match terrain.get_by_id(&Point::new(x, y)) {
                 Some(TerrainComponent(TileTerrainType::Wall)) => print!("#"),
                 Some(TerrainComponent(TileTerrainType::Plain)) => print!("."),

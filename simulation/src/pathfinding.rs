@@ -159,8 +159,8 @@ mod tests {
         let mut current = from;
         for point in path.iter() {
             assert_eq!(point.hex_distance(current), 1);
-            if point.x == 3 {
-                assert!(point.y > 5, "{:?}", point);
+            if point.q == 3 {
+                assert!(point.r > 5, "{:?}", point);
             }
             current = *point;
         }
@@ -195,8 +195,8 @@ mod tests {
         let mut current = from;
         for point in path.iter() {
             assert_eq!(point.hex_distance(current), 1);
-            if point.x == 2 {
-                assert!(point.y.abs() > 5, "{:?}", point);
+            if point.q == 2 {
+                assert!(point.r.abs() > 5, "{:?}", point);
             }
             current = *point;
         }

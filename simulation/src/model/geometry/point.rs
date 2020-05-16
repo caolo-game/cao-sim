@@ -2,20 +2,19 @@ use cao_lang::traits::AutoByteEncodeProperties;
 use serde_derive::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-/// Represents a 2D point
-/// x and y coordinates are interpreted as column and row when Point is used as a hex tile.
+/// Represents a hex point in axial coordinate space
 #[derive(
     Debug, Clone, Default, Copy, Eq, PartialEq, Serialize, Deserialize, Ord, PartialOrd, Hash,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Point {
-    pub x: i32,
-    pub y: i32,
+    pub q: i32,
+    pub r: i32,
 }
 
 impl Point {
-    pub fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
+    pub fn new(q: i32, r: i32) -> Self {
+        Self { q, r }
     }
 
     /// Return the "Manhattan" distance between two points in a hexagonal coordinate space
@@ -32,33 +31,33 @@ impl Point {
 
     /// Convert self from a hexagonal axial vector to a hexagonal cube vector
     pub fn hex_axial_to_cube(self) -> [i32; 3] {
-        let x = self.x;
-        let z = self.y;
+        let x = self.q;
+        let z = self.r;
         let y = -x - z;
         [x, y, z]
     }
 
     pub fn hex_cube_to_axial([q, _, r]: [i32; 3]) -> Self {
-        Self { x: q, y: r }
+        Self { q, r }
     }
 
     /// Get the neighbours of this point starting at top left and going counter-clockwise
     pub fn hex_neighbours(self) -> [Point; 6] {
         [
-            Point::new(self.x + 1, self.y),
-            Point::new(self.x + 1, self.y - 1),
-            Point::new(self.x, self.y - 1),
-            Point::new(self.x - 1, self.y),
-            Point::new(self.x - 1, self.y + 1),
-            Point::new(self.x, self.y + 1),
+            Point::new(self.q + 1, self.r),
+            Point::new(self.q + 1, self.r - 1),
+            Point::new(self.q, self.r - 1),
+            Point::new(self.q - 1, self.r),
+            Point::new(self.q - 1, self.r + 1),
+            Point::new(self.q, self.r + 1),
         ]
     }
 }
 
 impl AddAssign for Point {
     fn add_assign(&mut self, rhs: Point) {
-        self.x += rhs.x;
-        self.y += rhs.y;
+        self.q += rhs.q;
+        self.r += rhs.r;
     }
 }
 
@@ -73,8 +72,8 @@ impl Add for Point {
 
 impl SubAssign for Point {
     fn sub_assign(&mut self, rhs: Point) {
-        self.x -= rhs.x;
-        self.y -= rhs.y;
+        self.q -= rhs.q;
+        self.r -= rhs.r;
     }
 }
 
@@ -89,8 +88,8 @@ impl Sub for Point {
 
 impl MulAssign<i32> for Point {
     fn mul_assign(&mut self, rhs: i32) {
-        self.x *= rhs;
-        self.y *= rhs;
+        self.q *= rhs;
+        self.r *= rhs;
     }
 }
 
@@ -105,8 +104,8 @@ impl Mul<i32> for Point {
 
 impl DivAssign<i32> for Point {
     fn div_assign(&mut self, rhs: i32) {
-        self.x /= rhs;
-        self.y /= rhs;
+        self.q /= rhs;
+        self.r /= rhs;
     }
 }
 
