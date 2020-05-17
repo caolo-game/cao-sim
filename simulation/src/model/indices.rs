@@ -65,3 +65,10 @@ impl AutoByteEncodeProperties for WorldPosition {}
 )]
 pub struct RoomPosition(pub Axial);
 impl AutoByteEncodeProperties for RoomPosition {}
+
+/// Newtype wrapper around Axial point for room ids.
+#[derive(
+    Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
+)]
+pub struct Room(pub Axial);
+impl AutoByteEncodeProperties for Room{}

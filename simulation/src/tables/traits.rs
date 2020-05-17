@@ -1,8 +1,4 @@
-use crate::model::{
-    components::{self, PositionComponent},
-    geometry::Circle,
-    indices, EntityId,
-};
+use crate::model::{components, indices};
 use serde::Serialize;
 use std::ops::Add;
 

@@ -6,8 +6,6 @@ use crate::{
     },
     model::{
         components::{self, PathCacheComponent, Resource, PATH_CACHE_LEN},
-        geometry::point::Axial,
-        RoomPosition,
         EntityId, OperationResult, UserId, WorldPosition,
     },
     pathfinding, profile,
@@ -222,7 +220,10 @@ fn move_to_pos(
     }
 
     let intent = match path.pop() {
-        Some(position) => MoveIntent { bot, position },
+        Some(position) => MoveIntent {
+            bot,
+            position: position.0,
+        },
         None => {
             debug!("Entity {:?} is trying to move to its own position", bot);
             return Err(OperationResult::InvalidTarget);
@@ -237,11 +238,7 @@ fn move_to_pos(
             let cache_intent = CachePathIntent {
                 bot,
                 cache: PathCacheComponent(
-                    path.into_iter()
-                        .skip(skip)
-                        .take(PATH_CACHE_LEN)
-                        .map(|p: Axial| RoomPosition(p))
-                        .collect(),
+                    path.into_iter().skip(skip).take(PATH_CACHE_LEN).collect(),
                 ),
             };
 
