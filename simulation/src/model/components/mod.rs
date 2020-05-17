@@ -131,11 +131,11 @@ impl<Id: TableId> Component<Id> for LogEntry {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
 pub struct TerrainComponent(pub TileTerrainType);
-impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
-    type Table = MortonTable<Id, Self>;
-}
 impl Component<WorldPosition> for TerrainComponent {
     type Table = RoomMortonTable<Self>;
+}
+impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
+    type Table = MortonTable<Id, Self>;
 }
 
 /// Entities with Scripts

@@ -1,7 +1,7 @@
 use crate::model::{
     components::{EntityComponent, TerrainComponent},
     geometry::Axial,
-    terrain,
+    terrain, WorldPosition,
 };
 use crate::profile;
 use crate::storage::views::View;
@@ -36,13 +36,40 @@ pub enum PathFindingError {
 /// This is a performance consideration, as most callers should not need to reverse the order of
 /// elements.
 pub fn find_path(
+    from: WorldPosition,
+    to: WorldPosition,
+    (positions, terrain): (
+        View<WorldPosition, EntityComponent>,
+        View<WorldPosition, TerrainComponent>,
+    ),
+    mut max_iterations: u32,
+    path: &mut Vec<Axial>,
+) -> Result<(), PathFindingError> {
+    profile!("find_path");
+    // TODO:
+    // if in different rooms:
+    //      determine rooms to visit
+    //      find path to the exit to the next room
+    // else:
+    //      find path to the objective (like before)
+    unimplemented!()
+}
+
+fn is_walkable(p: &Axial, terrain: View<Axial, TerrainComponent>) -> bool {
+    terrain
+        .get_by_id(p)
+        .map(|tile| terrain::is_walkable(tile.0))
+        .unwrap_or(false)
+}
+
+pub fn find_path_in_room(
     from: Axial,
     to: Axial,
     (positions, terrain): (View<Axial, EntityComponent>, View<Axial, TerrainComponent>),
     mut max_iterations: u32,
     path: &mut Vec<Axial>,
 ) -> Result<(), PathFindingError> {
-    profile!("find_path");
+    profile!("find_path_in_room");
 
     let current = from;
     let end = to;
@@ -113,13 +140,6 @@ pub fn find_path(
     Ok(())
 }
 
-fn is_walkable(p: &Axial, terrain: View<Axial, TerrainComponent>) -> bool {
-    terrain
-        .get_by_id(p)
-        .map(|tile| terrain::is_walkable(tile.0))
-        .unwrap_or(false)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,7 +166,7 @@ mod tests {
         .unwrap();
 
         let mut path = vec![];
-        find_path(
+        find_path_in_room(
             from,
             to,
             (View::from_table(&positions), View::from_table(&terrain)),
@@ -182,7 +202,7 @@ mod tests {
         }
 
         let mut path = vec![];
-        find_path(
+        find_path_in_room(
             from,
             to,
             (View::from_table(&positions), View::from_table(&terrain)),

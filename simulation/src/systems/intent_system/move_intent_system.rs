@@ -12,6 +12,7 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
     type Mut = (UnsafeView<EntityId, PositionComponent>,);
     type Const = (
         View<'a, EntityId, Bot>,
+        View<'a, EntityId, PositionComponent>,
         View<'a, WorldPosition, EntityComponent>,
     );
     type Intent = MoveIntent;
@@ -19,7 +20,7 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
     fn execute(
         &mut self,
         (mut positions,): Self::Mut,
-        (bots, pos_entities): Self::Const,
+        (bots, const_positions, pos_entities): Self::Const,
         intents: &[Self::Intent],
     ) {
         for intent in intents {
@@ -30,7 +31,7 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
                 continue;
             }
 
-            let current_pos = match positions.get_by_id(&intent.bot) {
+            let current_pos = match const_positions.get_by_id(&intent.bot) {
                 Some(current_pos) => current_pos,
                 None => {
                     warn!(

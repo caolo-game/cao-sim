@@ -88,7 +88,7 @@ where
                 room.extend(
                     items
                         .iter()
-                        .map(|(WorldPosition { pos, .. }, row)| (*pos, *row)),
+                        .map(|(WorldPosition { pos, .. }, row)| (*pos, row.clone())),
                 )
                 .map_err(|error| ExtendFailure::InnerExtendFailure {
                     room: room_id,

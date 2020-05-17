@@ -320,7 +320,7 @@ fn print_terrain(from: &Axial, to: &Axial, terrain: View<Axial, TerrainComponent
 mod tests {
     use super::*;
     use crate::model::components::EntityComponent;
-    use crate::pathfinding::find_path;
+    use crate::pathfinding::find_path_in_room;
     use crate::storage::views::View;
 
     #[test]
@@ -398,7 +398,7 @@ mod tests {
         let first = plains.iter().next().expect("at least 1 plain");
         for b in plains.iter().skip(1) {
             path.clear();
-            if let Err(e) = find_path(
+            if let Err(e) = find_path_in_room(
                 *first,
                 *b,
                 (View::from_table(&positions), View::from_table(&terrain)),

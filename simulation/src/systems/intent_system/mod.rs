@@ -128,17 +128,11 @@ mod tests {
         let mut intents = vec![
             MoveIntent {
                 bot: Default::default(),
-                position: WorldPosition {
-                    pos: Axial::new(42, 69),
-                    room: Axial::new(0, 0),
-                },
+                position: Axial::new(42, 69),
             },
             MoveIntent {
                 bot: Default::default(),
-                position: WorldPosition {
-                    pos: Axial::new(42, 69),
-                    room: Axial::new(0, 0),
-                },
+                position: Axial::new(42, 69),
             },
         ];
 
@@ -151,24 +145,15 @@ mod tests {
         let mut intents = vec![
             MoveIntent {
                 bot: Default::default(),
-                position: WorldPosition {
-                    pos: Axial::new(42, 42),
-                    room: Axial::new(0, 0),
-                },
+                position: Axial::new(42, 42),
             },
             MoveIntent {
                 bot: Default::default(),
-                position: WorldPosition {
-                    pos: Axial::new(42, 69),
-                    room: Axial::new(0, 0),
-                },
+                position: Axial::new(42, 69),
             },
             MoveIntent {
                 bot: Default::default(),
-                position: WorldPosition {
-                    pos: Axial::new(69, 69),
-                    room: Axial::new(0, 0),
-                },
+                position: Axial::new(69, 69),
             },
         ];
 

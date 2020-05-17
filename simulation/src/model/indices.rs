@@ -57,9 +57,11 @@ pub struct WorldPosition {
     pub room: Axial,
     pub pos: Axial,
 }
+impl AutoByteEncodeProperties for WorldPosition {}
 
 /// Newtype wrapper around Axial point for positions that are inside a room.
 #[derive(
     Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
 )]
-pub struct RoomPosition(Axial);
+pub struct RoomPosition(pub Axial);
+impl AutoByteEncodeProperties for RoomPosition {}
