@@ -36,7 +36,9 @@ storage!(
     key WorldPosition, table TerrainComponent = pointterrain,
     key WorldPosition, table EntityComponent = pointentity,
 
-    key ScriptId, table ScriptComponent = scriptscript
+    key ScriptId, table ScriptComponent = scriptscript,
+
+    key Room, table RoomConnections = roomconnections
 );
 
 #[derive(Debug, Serialize)]

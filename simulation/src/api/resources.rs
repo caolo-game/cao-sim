@@ -42,7 +42,7 @@ pub fn find_closest_resource_by_range(
                 position
             );
             ExecutionError::InvalidArgument
-        });
+        })?;
 
     let resources = storage.view::<EntityId, ResourceComponent>();
 

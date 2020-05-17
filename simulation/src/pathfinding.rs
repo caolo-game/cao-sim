@@ -1,7 +1,7 @@
 use crate::model::{
     components::{EntityComponent, TerrainComponent},
     geometry::Axial,
-    terrain, WorldPosition,
+    terrain, RoomPosition, WorldPosition,
 };
 use crate::profile;
 use crate::storage::views::View;
@@ -29,6 +29,7 @@ impl Node {
 pub enum PathFindingError {
     NotFound,
     Unreachable,
+    RoomDoesNotExists(Axial),
 }
 
 /// Find path from `from` to `to`. Will append the resulting path to the `path` output vector.
@@ -42,8 +43,8 @@ pub fn find_path(
         View<WorldPosition, EntityComponent>,
         View<WorldPosition, TerrainComponent>,
     ),
-    mut max_iterations: u32,
-    path: &mut Vec<Axial>,
+    max_iterations: u32,
+    path: &mut Vec<RoomPosition>,
 ) -> Result<(), PathFindingError> {
     profile!("find_path");
     // TODO:
@@ -52,6 +53,28 @@ pub fn find_path(
     //      find path to the exit to the next room
     // else:
     //      find path to the objective (like before)
+    if from.room == to.room {
+        find_path_in_room(
+            from.pos,
+            to.pos,
+            (
+                View::from_table(
+                    positions
+                        .table
+                        .get_by_id(&from.room)
+                        .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
+                ),
+                View::from_table(
+                    terrain
+                        .table
+                        .get_by_id(&from.room)
+                        .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
+                ),
+            ),
+            max_iterations,
+            path,
+        )?;
+    }
     unimplemented!()
 }
 
@@ -67,7 +90,7 @@ pub fn find_path_in_room(
     to: Axial,
     (positions, terrain): (View<Axial, EntityComponent>, View<Axial, TerrainComponent>),
     mut max_iterations: u32,
-    path: &mut Vec<Axial>,
+    path: &mut Vec<RoomPosition>,
 ) -> Result<(), PathFindingError> {
     profile!("find_path_in_room");
 
@@ -134,7 +157,7 @@ pub fn find_path_in_room(
     let mut current = end;
     let end = from;
     while current != end {
-        path.push(current);
+        path.push(RoomPosition(current));
         current = closed_set[&current].parent;
     }
     Ok(())
@@ -178,11 +201,12 @@ mod tests {
 
         let mut current = from;
         for point in path.iter() {
+            let point = point.0;
             assert_eq!(point.hex_distance(current), 1);
             if point.q == 3 {
                 assert!(point.r > 5, "{:?}", point);
             }
-            current = *point;
+            current = point;
         }
         assert_eq!(current, to);
     }
@@ -214,11 +238,12 @@ mod tests {
 
         let mut current = from;
         for point in path.iter() {
+            let point = point.0;
             assert_eq!(point.hex_distance(current), 1);
             if point.q == 2 {
                 assert!(point.r.abs() > 5, "{:?}", point);
             }
-            current = *point;
+            current = point;
         }
         assert_eq!(current, to);
     }
