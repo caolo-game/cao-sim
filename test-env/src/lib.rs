@@ -60,9 +60,7 @@ impl MapRender {
             .iter()
             .map(|(p, t)| {
                 let [x, y] = p.as_array();
-                let [x, y] = [x as f32, y as f32];
-                let p = Point::new(x, y);
-                let p = p.to_3d_vector();
+                let p = Point::new(x as f32, y as f32).to_3d_vector();
                 let p = self.transform.right_prod(&p);
                 let [x, y] = [p.x, p.y];
                 min.x = min.x.min(x);
