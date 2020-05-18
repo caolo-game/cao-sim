@@ -16,8 +16,6 @@ pub use self::iterators::*;
 pub use self::traits::*;
 pub use self::morton_hierarchy::*;
 
-use crate::model::{components::PositionComponent, geometry::Circle, EntityId};
-
 #[cfg(test)]
 mod tests {
     use super::*;
