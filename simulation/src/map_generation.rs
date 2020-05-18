@@ -255,7 +255,7 @@ pub fn generate_room(
 
             trace!("Normalized grad: {}", grad);
 
-            if grad <= 0.2 || !grad.is_finite() {
+            if grad <= 0.4 || !grad.is_finite() {
                 return None;
             }
             let terrain = if grad < 0.7 {
