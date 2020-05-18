@@ -136,8 +136,9 @@ pub fn find_path_in_room(
                     open_set.insert(node);
                 }
                 if let Some(node) = closed_set.get_mut(&point) {
-                    if current.g + 1 < node.g {
-                        node.g = current.g + 1;
+                    let g = current.g + 1;
+                    if g < node.g {
+                        node.g = g;
                         node.parent = current.pos;
                     }
                 }
