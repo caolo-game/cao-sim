@@ -66,11 +66,14 @@ pub fn find_path(
         find_path_in_room(from.pos, to.pos, (positions, terrain), max_iterations, path)
     } else {
         let mut rooms = Vec::with_capacity(4);
+        let from_room = from.room;
         max_iterations =
-            find_path_room_scale(from.room, to.room, connections, max_iterations, &mut rooms)?;
+            find_path_room_scale(from_room, to.room, connections, max_iterations, &mut rooms)?;
         let next_room = rooms
             .pop()
             .expect("find_path_room_scale returned OK, but the room list is empty");
+
+        let edge = next_room.0 - from_room;
 
         // TODO: find the edge that connects this room to next_room
         // find the shortest path to that edge
@@ -101,30 +104,29 @@ pub fn find_path_room_scale(
         current = open_set.iter().min_by_key(|node| node.f()).unwrap().clone();
         open_set.remove(&current);
         closed_set.insert(current.pos, current.clone());
-        connections
+        for point in connections
             .get_by_id(&Room(current.pos))
             .ok_or_else(|| PathFindingError::RoomDoesNotExists(current.pos))?
             .0
             .iter()
-            .cloned()
-            .for_each(|point| {
-                if !closed_set.contains_key(&point) {
-                    let node = Node::new(
-                        point,
-                        current.pos,
-                        point.hex_distance(end) as i32,
-                        current.g + 1,
-                    );
-                    open_set.insert(node);
+        {
+            if !closed_set.contains_key(&point) {
+                let node = Node::new(
+                    *point,
+                    current.pos,
+                    point.hex_distance(end) as i32,
+                    current.g + 1,
+                );
+                open_set.insert(node);
+            }
+            if let Some(node) = closed_set.get_mut(&point) {
+                let g = current.g + 1;
+                if g < node.g {
+                    node.g = g;
+                    node.parent = current.pos;
                 }
-                if let Some(node) = closed_set.get_mut(&point) {
-                    let g = current.g + 1;
-                    if g < node.g {
-                        node.g = g;
-                        node.parent = current.pos;
-                    }
-                }
-            });
+            }
+        }
         max_iterations -= 1;
     }
     if current.pos != end {
@@ -177,41 +179,35 @@ pub fn find_path_in_room(
         current = open_set.iter().min_by_key(|node| node.f()).unwrap().clone();
         open_set.remove(&current);
         closed_set.insert(current.pos, current.clone());
-        current
-            .pos
-            .hex_neighbours()
-            .iter()
-            // .cloned()
-            .filter(|p| {
-                let res = positions.intersects(&p);
-                debug_assert!(
-                    terrain.clone().intersects(&p) == res,
-                    "if p intersects positions it must also intersect terrain!"
+        for point in current.pos.hex_neighbours().iter().filter(|p| {
+            let res = positions.intersects(&p);
+            debug_assert!(
+                terrain.clone().intersects(&p) == res,
+                "if p intersects positions it must also intersect terrain!"
+            );
+            res && (
+                // Filter only the free neighbours
+                // End may be in the either tables!
+                *p == &end || (!positions.contains_key(p) && is_walkable(p, terrain.clone()))
+            )
+        }) {
+            if !closed_set.contains_key(&point) {
+                let node = Node::new(
+                    *point,
+                    current.pos,
+                    point.hex_distance(end) as i32,
+                    current.g + 1,
                 );
-                res && (
-                    // Filter only the free neighbours
-                    // End may be in the either tables!
-                    p == &&end || (!positions.contains_key(p) && is_walkable(p, terrain.clone()))
-                )
-            })
-            .for_each(|point| {
-                if !closed_set.contains_key(&point) {
-                    let node = Node::new(
-                        *point,
-                        current.pos,
-                        point.hex_distance(end) as i32,
-                        current.g + 1,
-                    );
-                    open_set.insert(node);
+                open_set.insert(node);
+            }
+            if let Some(node) = closed_set.get_mut(&point) {
+                let g = current.g + 1;
+                if g < node.g {
+                    node.g = g;
+                    node.parent = current.pos;
                 }
-                if let Some(node) = closed_set.get_mut(&point) {
-                    let g = current.g + 1;
-                    if g < node.g {
-                        node.g = g;
-                        node.parent = current.pos;
-                    }
-                }
-            });
+            }
+        }
         max_iterations -= 1;
     }
 
