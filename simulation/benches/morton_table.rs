@@ -1,7 +1,7 @@
 use caolo_sim::model::components::EntityComponent;
-use caolo_sim::model::geometry::{Axial, Circle};
+use caolo_sim::model::geometry::Axial;
 use caolo_sim::model::EntityId;
-use caolo_sim::tables::{MortonTable, PositionTable};
+use caolo_sim::tables::MortonTable;
 use criterion::{criterion_group, BenchmarkId, Criterion};
 use rand::RngCore;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
@@ -61,7 +61,9 @@ fn get_entities_in_range_sparse(c: &mut Criterion) {
                     q: rng.gen_range(0, 3900 * 2),
                     r: rng.gen_range(0, 3900 * 2),
                 };
-                table.get_entities_in_range(&Circle { center: p, radius })
+                let mut entities = Vec::with_capacity(512 * 512);
+                table.find_by_range(&p, radius, &mut entities);
+                entities
             });
         });
     }
@@ -91,7 +93,9 @@ fn get_entities_in_range_dense(c: &mut Criterion) {
                     q: rng.gen_range(0, 200 * 2),
                     r: rng.gen_range(0, 200 * 2),
                 };
-                table.get_entities_in_range(&Circle { center: p, radius })
+                let mut entities = Vec::with_capacity(50 * 50);
+                table.find_by_range(&p, radius, &mut entities);
+                entities
             });
         });
     }
