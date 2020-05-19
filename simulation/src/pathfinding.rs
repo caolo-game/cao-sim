@@ -1,6 +1,7 @@
 use crate::model::{
-    components::{EntityComponent, TerrainComponent},
+    components::{EntityComponent, RoomConnections, TerrainComponent},
     geometry::Axial,
+    indices::Room,
     terrain, RoomPosition, WorldPosition,
 };
 use crate::profile;
@@ -36,46 +37,112 @@ pub enum PathFindingError {
 /// The output' path is in reverse order. Pop the elements to walk the path.
 /// This is a performance consideration, as most callers should not need to reverse the order of
 /// elements.
+/// Returns the remaining steps
 pub fn find_path(
     from: WorldPosition,
     to: WorldPosition,
-    (positions, terrain): (
+    (positions, terrain, connections): (
         View<WorldPosition, EntityComponent>,
         View<WorldPosition, TerrainComponent>,
+        View<Room, RoomConnections>,
     ),
-    max_iterations: u32,
+    mut max_iterations: u32,
     path: &mut Vec<RoomPosition>,
-) -> Result<(), PathFindingError> {
+) -> Result<u32, PathFindingError> {
     profile!("find_path");
-    // TODO:
-    // if in different rooms:
-    //      determine rooms to visit
-    //      find path to the exit to the next room
-    // else:
-    //      find path to the objective (like before)
     if from.room == to.room {
-        find_path_in_room(
-            from.pos,
-            to.pos,
-            (
-                View::from_table(
-                    positions
-                        .table
-                        .get_by_id(&from.room)
-                        .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
-                ),
-                View::from_table(
-                    terrain
-                        .table
-                        .get_by_id(&from.room)
-                        .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
-                ),
-            ),
-            max_iterations,
-            path,
-        )?;
+        let positions = View::from_table(
+            positions
+                .table
+                .get_by_id(&from.room)
+                .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
+        );
+        let terrain = View::from_table(
+            terrain
+                .table
+                .get_by_id(&from.room)
+                .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
+        );
+        find_path_in_room(from.pos, to.pos, (positions, terrain), max_iterations, path)
+    } else {
+        let mut rooms = Vec::with_capacity(4);
+        max_iterations =
+            find_path_room_scale(from.room, to.room, connections, max_iterations, &mut rooms)?;
+        let next_room = rooms
+            .pop()
+            .expect("find_path_room_scale returned OK, but the room list is empty");
+
+        // TODO: find the edge that connects this room to next_room
+        // find the shortest path to that edge
+        unimplemented!()
     }
-    unimplemented!()
+}
+
+/// find the rooms one has to visit to go from room `from` to room `to`
+/// uses the A* algorithm
+/// return the remaning iterations
+pub fn find_path_room_scale(
+    from: Axial,
+    to: Axial,
+    connections: View<Room, RoomConnections>,
+    mut max_iterations: u32,
+    path: &mut Vec<Room>,
+) -> Result<u32, PathFindingError> {
+    profile!("find_path_room_scale");
+    let current = from;
+    let end = to;
+
+    let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_iterations as usize);
+    let mut open_set = HashSet::with_capacity(max_iterations as usize);
+    let mut current = Node::new(current, current, current.hex_distance(end) as i32, 0);
+    closed_set.insert(current.pos, current.clone());
+    open_set.insert(current.clone());
+    while current.pos != end && !open_set.is_empty() && max_iterations > 0 {
+        current = open_set.iter().min_by_key(|node| node.f()).unwrap().clone();
+        open_set.remove(&current);
+        closed_set.insert(current.pos, current.clone());
+        connections
+            .get_by_id(&Room(current.pos))
+            .ok_or_else(|| PathFindingError::RoomDoesNotExists(current.pos))?
+            .0
+            .iter()
+            .cloned()
+            .for_each(|point| {
+                if !closed_set.contains_key(&point) {
+                    let node = Node::new(
+                        point,
+                        current.pos,
+                        point.hex_distance(end) as i32,
+                        current.g + 1,
+                    );
+                    open_set.insert(node);
+                }
+                if let Some(node) = closed_set.get_mut(&point) {
+                    let g = current.g + 1;
+                    if g < node.g {
+                        node.g = g;
+                        node.parent = current.pos;
+                    }
+                }
+            });
+        max_iterations -= 1;
+    }
+    if current.pos != end {
+        if max_iterations > 0 {
+            // we ran out of possible paths
+            return Err(PathFindingError::Unreachable);
+        }
+        return Err(PathFindingError::NotFound);
+    }
+
+    // reconstruct path
+    let mut current = end;
+    let end = from;
+    while current != end {
+        path.push(Room(current));
+        current = closed_set[&current].parent;
+    }
+    Ok(max_iterations)
 }
 
 fn is_walkable(p: &Axial, terrain: View<Axial, TerrainComponent>) -> bool {
@@ -85,13 +152,15 @@ fn is_walkable(p: &Axial, terrain: View<Axial, TerrainComponent>) -> bool {
         .unwrap_or(false)
 }
 
+/// return the remaining steps
+/// uses the A* algorithm
 pub fn find_path_in_room(
     from: Axial,
     to: Axial,
     (positions, terrain): (View<Axial, EntityComponent>, View<Axial, TerrainComponent>),
     mut max_iterations: u32,
     path: &mut Vec<RoomPosition>,
-) -> Result<(), PathFindingError> {
+) -> Result<u32, PathFindingError> {
     profile!("find_path_in_room");
 
     let current = from;
@@ -112,23 +181,23 @@ pub fn find_path_in_room(
             .pos
             .hex_neighbours()
             .iter()
-            .cloned()
+            // .cloned()
             .filter(|p| {
                 let res = positions.intersects(&p);
                 debug_assert!(
-                    terrain.intersects(&p) == res,
+                    terrain.clone().intersects(&p) == res,
                     "if p intersects positions it must also intersect terrain!"
                 );
                 res && (
                     // Filter only the free neighbours
                     // End may be in the either tables!
-                    *p == end || (!positions.contains_key(p) && is_walkable(p, terrain.clone()))
+                    p == &&end || (!positions.contains_key(p) && is_walkable(p, terrain.clone()))
                 )
             })
             .for_each(|point| {
                 if !closed_set.contains_key(&point) {
                     let node = Node::new(
-                        point,
+                        *point,
                         current.pos,
                         point.hex_distance(end) as i32,
                         current.g + 1,
@@ -161,7 +230,7 @@ pub fn find_path_in_room(
         path.push(RoomPosition(current));
         current = closed_set[&current].parent;
     }
-    Ok(())
+    Ok(max_iterations)
 }
 
 #[cfg(test)]
