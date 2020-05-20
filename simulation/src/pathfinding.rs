@@ -66,11 +66,14 @@ pub fn find_path(
         find_path_in_room(from.pos, to.pos, (positions, terrain), max_iterations, path)
     } else {
         let mut rooms = Vec::with_capacity(4);
+        let from_room = from.room;
         max_iterations =
-            find_path_room_scale(from.room, to.room, connections, max_iterations, &mut rooms)?;
+            find_path_room_scale(from_room, to.room, connections, max_iterations, &mut rooms)?;
         let next_room = rooms
             .pop()
             .expect("find_path_room_scale returned OK, but the room list is empty");
+
+        let edge = next_room.0 - from_room;
 
         // TODO: find the edge that connects this room to next_room
         // find the shortest path to that edge
