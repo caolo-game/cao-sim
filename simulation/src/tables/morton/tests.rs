@@ -6,11 +6,7 @@ use std::collections::{HashMap, HashSet};
 #[test]
 fn merge_simple() {
     let mut lhs = MortonTable::from_iterator((0..8).map(|i| (Axial::new(42, i), 1))).unwrap();
-    let rhs = MortonTable::from_iterator((0..16).map(|i| {
-        (Axial::new(42, i), 2)
-        //
-    }))
-    .unwrap();
+    let rhs = MortonTable::from_iterator((0..16).map(|i| (Axial::new(42, i), 2))).unwrap();
 
     lhs.merge(&rhs, |_, l, r| l + r).unwrap();
 
