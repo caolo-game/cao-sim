@@ -1,7 +1,28 @@
 use super::*;
+use crate::model::geometry::Axial;
 use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
-use crate::model::geometry::Axial;
+
+#[test]
+fn merge_simple() {
+    let mut lhs = MortonTable::from_iterator((0..8).map(|i| (Axial::new(42, i), 1))).unwrap();
+    let rhs = MortonTable::from_iterator((0..16).map(|i| {
+        (Axial::new(42, i), 2)
+        //
+    }))
+    .unwrap();
+
+    lhs.merge(&rhs, |_, l, r| l + r).unwrap();
+
+    for i in 0..8 {
+        let j = lhs.get_by_id(&Axial::new(42, i)).unwrap();
+        assert_eq!(*j, 3);
+    }
+    for i in 8..16 {
+        let j = lhs.get_by_id(&Axial::new(42, i)).unwrap();
+        assert_eq!(*j, 2);
+    }
+}
 
 #[test]
 fn aabb_simple() {

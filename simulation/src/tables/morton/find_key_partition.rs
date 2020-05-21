@@ -33,7 +33,7 @@ unsafe fn find_key_partition_sse2(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -
     let skiplist_a: __m128i = _mm_set_epi32(s0, s1, s2, s3);
     let skiplist_b: __m128i = _mm_set_epi32(s4, s5, s6, s7);
 
-    // set every 32 bits to 0xFFFF if key < skip else sets it to 0x0000
+    // set every 32 bits to 0xFFFF if key > skip else sets it to 0x0000
     let results_a = _mm_cmpgt_epi32(keys4, skiplist_a);
     let results_b = _mm_cmpgt_epi32(keys4, skiplist_b);
 
