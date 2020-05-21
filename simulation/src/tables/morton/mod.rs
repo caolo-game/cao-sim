@@ -510,6 +510,8 @@ where
         self
     }
 
+    /// Merge two `MortonTable`s by inserting all points that are in `other` but not in `self` and
+    /// calling `update` with all points that are present in both tables.
     pub fn merge<F>(&mut self, other: &Self, update: F) -> Result<(), ExtendFailure<Pos>>
     where
         F: Fn(&Pos, &Row, &Row) -> Row,
