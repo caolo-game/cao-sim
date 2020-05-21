@@ -105,6 +105,14 @@ where
         self.keys.len()
     }
 
+    pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = (Pos, &'a mut Row)> + 'a {
+        let values = self.values.as_mut_ptr();
+        self.positions.iter().enumerate().map(move |(i, id)| {
+            let val = unsafe { &mut *values.add(i) };
+            (*id, val)
+        })
+    }
+
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = (Pos, &'a Row)> + 'a {
         let values = self.values.as_ptr();
         self.positions.iter().enumerate().map(move |(i, id)| {
@@ -179,6 +187,8 @@ where
         let len = self.keys.len();
         let step = len / SKIP_LEN;
         self.skipstep = step as u32;
+        // leaving items 0 will cause errors in find_key_morton
+        self.skiplist = [std::u32::MAX >> 1; SKIP_LEN];
         if step < 1 {
             if let Some(key) = self.keys.last() {
                 self.skiplist[0] = key.0;
@@ -498,6 +508,49 @@ where
         }
         self.rebuild_skip_list();
         self
+    }
+
+    /// Merge two `MortonTable`s by inserting all points that are in `other` but not in `self` and
+    /// calling `update` with all points that are present in both tables.
+    pub fn merge<F>(&mut self, other: &Self, update: F) -> Result<(), ExtendFailure<Pos>>
+    where
+        F: Fn(&Pos, &Row, &Row) -> Row,
+    {
+        let inserts = {
+            let mut lhs = self.iter_mut();
+            let mut rhs = other.iter();
+
+            let mut current_left = lhs.next();
+            let mut current_right = rhs.next();
+
+            let mut inserts = Vec::with_capacity(other.keys.len());
+
+            while let Some(((p1, v1), (p2, v2))) = current_left
+                .as_mut()
+                .and_then(|lhs| current_right.map(|rhs| (lhs, rhs)))
+            {
+                if p1 != &p2 {
+                    if &p2 < p1 {
+                        // `self` can not have any more common items between these two
+                        inserts.push((p2, v2));
+                        current_right = rhs.next();
+                    } else {
+                        current_left = lhs.next();
+                    }
+                } else {
+                    **v1 = update(&p1, v1, v2);
+                    current_left = lhs.next();
+                    current_right = rhs.next();
+                }
+            }
+            while let Some(r) = current_right {
+                inserts.push(r);
+                current_right = rhs.next();
+            }
+            inserts
+        };
+
+        self.extend(inserts.into_iter().map(|(pos, v)| (pos, v.clone())))
     }
 }
 
