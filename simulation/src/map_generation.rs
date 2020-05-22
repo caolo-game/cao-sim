@@ -124,7 +124,7 @@ fn create_noise(
             cnt += 1.0;
         });
         mean_heights
-            + rng.gen_range(0.0, 2.0) * (mean + std)
+            + rng.gen_range(0.0, 2.0) * std
             + (rng.gen_range(0.0, 1.0) - 0.5) * radius as f32
     };
 

@@ -2,6 +2,8 @@ import * as wasm from "test-env";
 import { memory } from "test-env/test_env_bg";
 
 const CELL_SIZE = 5;
+const CELL_WIDTH = Math.sqrt(3) * CELL_SIZE;
+const CELL_HEIGHT = 2 * CELL_SIZE;
 
 const mapRender = new wasm.MapRender();
 
@@ -16,10 +18,10 @@ const run = () => {
 
     const cells = mapRender.getCells();
 
-    console.log(cells);
+    console.log("cells", cells);
     console.log("bounds", bounds);
 
-    ctx.beginPath();
+    console.log("drawing");
 
     for (let cell of cells) {
       switch (cell[1]) {
@@ -36,10 +38,26 @@ const run = () => {
       let { x, y } = cell[0];
       x -= offsetx;
       y -= offsety;
-      ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      x *= CELL_SIZE;
+      y *= CELL_SIZE;
+
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let [q, r] of [
+        // [0, 0],
+        [CELL_WIDTH / 2, CELL_HEIGHT / 4],
+        [CELL_WIDTH, 0],
+        [CELL_WIDTH, -CELL_HEIGHT / 2],
+        [CELL_WIDTH / 2, (-CELL_HEIGHT * 3) / 4],
+        [0, -CELL_HEIGHT / 2],
+      ]) {
+        ctx.lineTo(x + q, y + r);
+      }
+      ctx.closePath();
+      ctx.fill();
     }
 
-    ctx.stroke();
+    console.log("drawing done");
   };
 
   const canvas = document.getElementById("mapGenCanvas");
