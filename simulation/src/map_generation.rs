@@ -106,6 +106,69 @@ pub struct HeightMapProperties {
     pub wall_mass: u32,
 }
 
+fn create_noise(
+    from: Axial,
+    to: Axial,
+    dsides: i32,
+    rng: &mut impl Rng,
+    gradient: &mut GradientMap,
+) {
+    let fheight = &mut move |gradient: &GradientMap, p: Axial, radius: i32, mean_heights: f32| {
+        let mut mean = 0.0;
+        let mut std = 0.0;
+        let mut cnt = 1.0;
+        gradient.query_range(&p, radius as u32, &mut |_, g| {
+            let tmp = g - mean;
+            mean += tmp / cnt;
+            std += tmp * (g - mean);
+            cnt += 1.0;
+        });
+        mean_heights
+            + rng.gen_range(0.0, 2.0) * (mean + std)
+            + (rng.gen_range(0.0, 1.0) - 0.5) * radius as f32
+    };
+
+    // init corners
+    let corners = [from, Axial::new(to.q, from.r), Axial::new(from.q, to.r), to];
+    for edge in corners.iter() {
+        gradient.delete(&edge);
+        gradient.insert(*edge, fheight(&gradient, from, 8, 0.0));
+    }
+
+    let mut d = dsides / 2;
+    let mut max_grad = 0.0f32;
+    let mut min_grad = 1e15f32;
+
+    debug!("Running diamond-square");
+
+    while 1 <= d {
+        for x in (d..dsides).step_by(2 * d as usize) {
+            for y in (d..dsides).step_by(2 * d as usize) {
+                let g = square(gradient, Axial::new(x, y), d, fheight);
+                max_grad = max_grad.max(g);
+                min_grad = min_grad.min(g);
+            }
+        }
+        for x in (d..dsides).step_by(2 * d as usize) {
+            for y in (from.r..=dsides).step_by(2 * d as usize) {
+                let g = diamond(gradient, Axial::new(x, y), d, fheight);
+                max_grad = max_grad.max(g);
+                min_grad = min_grad.min(g);
+            }
+        }
+        for x in (from.q..=dsides).step_by(2 * d as usize) {
+            for y in (d..dsides).step_by(2 * d as usize) {
+                let g = diamond(gradient, Axial::new(x, y), d, fheight);
+                max_grad = max_grad.max(g);
+                min_grad = min_grad.min(g);
+            }
+        }
+        d /= 2;
+    }
+
+    debug!("Running diamond-square done");
+}
+
 /// Generate a random terrain in circle
 /// Uses the [Diamond-square algorithm](https://en.wikipedia.org/wiki/Diamond-square_algorithm)
 ///
@@ -138,6 +201,7 @@ pub fn generate_room(
         bytes
     });
     let mut rng = SmallRng::from_seed(seed);
+
     debug!("Initializing GradientMap");
     let mut gradient = GradientMap::from_iterator(
         (from.q..=to.q).flat_map(|x| (from.r..=to.r).map(move |y| (Axial::new(x, y), 0.0))),
@@ -146,62 +210,43 @@ pub fn generate_room(
         error!("Initializing GradientMap failed {:?}", e);
         MapGenerationError::TerrainExtendFailure(e)
     })?;
+
+    let mut gradient2 = GradientMap::with_capacity(((to.q - from.q) * (to.r - from.r)) as usize);
     debug!("Initializing GradientMap done");
 
-    let fheight = &mut move |gradient: &GradientMap, p: Axial, radius: i32, mean_heights: f32| {
-        let mut mean = 0.0;
-        let mut std = 0.0;
-        let mut cnt = 1.0;
-        gradient.query_range(&p, radius as u32, &mut |_, g| {
-            let tmp = g - mean;
-            mean += tmp / cnt;
-            std += tmp * (g - mean);
-            cnt += 1.0;
-        });
-        mean_heights
-            + rng.gen_range(1.0, 2.0) * (0.2 + mean + std)
-            + (rng.gen_range(0.0, 1.0) - 0.5) * radius as f32
-    };
-
-    // init corners
-    let corners = [from, Axial::new(to.q, from.r), Axial::new(from.q, to.r), to];
-    for edge in corners.iter() {
-        gradient.delete(&edge);
-        gradient.insert(*edge, fheight(&gradient, from, 8, 0.0));
-    }
-
-    let mut d = dsides / 2;
-    let mut max_grad = 0.0f32;
     let mut min_grad = 1e15f32;
+    let mut max_grad = -1e15f32;
 
-    debug!("Running diamond-square");
+    debug!("Layering maps");
+    // generate gradient by repeatedly generating noise and layering them on top of each other
+    for _ in 0..8 {
+        gradient2.clear();
+        gradient2
+            .extend(
+                (from.q..=to.q).flat_map(|x| (from.r..=to.r).map(move |y| (Axial::new(x, y), 0.0))),
+            )
+            .map_err(|e| {
+                error!("Initializing GradientMap failed {:?}", e);
+                MapGenerationError::TerrainExtendFailure(e)
+            })?;
+        create_noise(from, to, dsides, &mut rng, &mut gradient2);
 
-    while 1 <= d {
-        for x in (d..dsides).step_by(2 * d as usize) {
-            for y in (d..dsides).step_by(2 * d as usize) {
-                let g = square(&mut gradient, Axial::new(x, y), d, fheight);
-                max_grad = max_grad.max(g);
-                min_grad = min_grad.min(g);
-            }
-        }
-        for x in (d..dsides).step_by(2 * d as usize) {
-            for y in (from.r..=dsides).step_by(2 * d as usize) {
-                let g = diamond(&mut gradient, Axial::new(x, y), d, fheight);
-                max_grad = max_grad.max(g);
-                min_grad = min_grad.min(g);
-            }
-        }
-        for x in (from.q..=dsides).step_by(2 * d as usize) {
-            for y in (d..dsides).step_by(2 * d as usize) {
-                let g = diamond(&mut gradient, Axial::new(x, y), d, fheight);
-                max_grad = max_grad.max(g);
-                min_grad = min_grad.min(g);
-            }
-        }
-        d /= 2;
+        let min_grad = &mut min_grad;
+        let max_grad = &mut max_grad;
+
+        gradient
+            .merge(&gradient2, |_, lhs, rhs| {
+                let merged = lhs + rhs;
+                *min_grad = min_grad.min(merged);
+                *max_grad = max_grad.max(merged);
+                merged
+            })
+            .map_err(|e| {
+                error!("Failed to merge GradientMaps {:?}", e);
+                MapGenerationError::TerrainExtendFailure(e)
+            })?;
     }
-
-    debug!("Running diamond-square done");
+    debug!("Layering maps done");
 
     let mut mean = 0.0;
     let mut std = 0.0;
