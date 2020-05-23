@@ -43,7 +43,7 @@ const run = () => {
 
       ctx.beginPath();
       ctx.moveTo(x, y);
-      for (let [q, r] of [
+      for (const [q, r] of [
         // [0, 0],
         [CELL_WIDTH / 2, CELL_HEIGHT / 4],
         [CELL_WIDTH, 0],
