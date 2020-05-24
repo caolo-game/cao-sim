@@ -1,3 +1,7 @@
+mod diamond_square;
+
+use diamond_square::{diamond, square};
+
 use crate::model::components::TerrainComponent;
 use crate::model::geometry::Axial;
 use crate::model::terrain::TileTerrainType;
@@ -28,65 +32,6 @@ fn pot(size: u32) -> u32 {
         let msb = msb_de_bruijn(size);
         1 << (msb + 1)
     }
-}
-
-/// returns the new gradient
-fn square(
-    gradient: &mut GradientMap,
-    p: Axial,
-    radius: i32,
-    fheight: &mut impl FnMut(&GradientMap, Axial, i32, f32) -> f32,
-) -> f32 {
-    let mut sum = 0.0;
-    let mut num = 0;
-
-    let [x, y] = p.as_array();
-    for grad in [
-        Axial::new(x - radius, y - radius),
-        Axial::new(x - radius, y + radius),
-        Axial::new(x + radius, y - radius),
-        Axial::new(x + radius, y + radius),
-    ]
-    .iter()
-    .filter_map(|point| gradient.get_by_id(point))
-    {
-        sum += grad;
-        num += 1;
-    }
-
-    let grad = fheight(&gradient, p, radius, sum / num as f32);
-    gradient.update(p, grad);
-    grad
-}
-
-/// returns the new gradient at point p
-fn diamond(
-    gradient: &mut GradientMap,
-    p: Axial,
-    radius: i32,
-    fheight: &mut impl FnMut(&GradientMap, Axial, i32, f32) -> f32,
-) -> f32 {
-    let mut sum = 0.0;
-    let mut num = 0;
-
-    let [x, y] = p.as_array();
-
-    for grad in [
-        Axial::new(x - radius, y),
-        Axial::new(x + radius, y),
-        Axial::new(x, y - radius),
-        Axial::new(x, y + radius),
-    ]
-    .iter()
-    .filter_map(|point| gradient.get_by_id(point))
-    {
-        sum += grad;
-        num += 1;
-    }
-
-    let grad = fheight(&gradient, p, radius, sum / num as f32);
-    gradient.update(p, grad);
-    grad
 }
 
 #[derive(Debug, Clone)]
