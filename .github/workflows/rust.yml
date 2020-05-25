@@ -13,9 +13,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Install cargo-all-features
+      run: cargo install cargo-all-features
     - name: Check
       run: cargo check
     - name: Clippy
       run: cargo clippy
     - name: Run tests
-      run: cargo test --benches
+      run: cargo test-all-features 
+    - name: Run tests
+      run: cargo test --benches 

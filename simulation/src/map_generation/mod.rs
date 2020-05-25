@@ -101,7 +101,7 @@ pub fn generate_room(
 
     debug!("Layering maps");
     // generate gradient by repeatedly generating noise and layering them on top of each other
-    for _ in 0..3 {
+    for _ in 0..4 {
         gradient2.clear();
         gradient2
             .extend((from.q..=to.q).flat_map(|x| {
@@ -274,8 +274,8 @@ mod tests {
         let mut seen_plain = false;
 
         // assert that the terrain is not homogeneous
-        for x in 0..=10 {
-            for y in 0..=10 {
+        for x in 0..=16 {
+            for y in 0..=16 {
                 match terrain.get_by_id(&Axial::new(x, y)) {
                     None => seen_empty = true,
                     Some(TerrainComponent(TileTerrainType::Plain)) => seen_plain = true,
