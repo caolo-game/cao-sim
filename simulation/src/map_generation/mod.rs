@@ -10,6 +10,7 @@ use crate::tables::morton::ExtendFailure;
 use crate::tables::msb_de_bruijn;
 use crate::tables::{MortonTable, SpatialKey2d};
 use rand::{rngs::SmallRng, thread_rng, RngCore, SeedableRng};
+use std::collections::HashSet;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
@@ -233,6 +234,7 @@ pub fn generate_room(
         })?;
 
     debug!("Building terrain from height-map done");
+    let chunks = calculate_plain_meshes(View::from_table(&*terrain));
     debug!("Filling edges");
     for edge in connecting_neighbours.iter().cloned() {
         fill_edge(terrain, offset, radius, edge)?;
@@ -297,6 +299,52 @@ fn fill_edge(
         })?;
 
     Ok(())
+}
+
+/// Find the connecting `Plain` chunks
+fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> Vec<HashSet<Axial>> {
+    debug!("calculate_plain_meshes");
+    let mut res = Vec::new();
+    let mut chunk = HashSet::with_capacity(terrain.len());
+    let mut visited = HashSet::with_capacity(terrain.len());
+    let mut todo = HashSet::with_capacity(terrain.len());
+    let mut startind = 0;
+    'a: loop {
+        let current = terrain
+            .iter()
+            .enumerate()
+            .skip(startind)
+            .find_map(|(i, (p, t))| {
+                let TerrainComponent(t) = t;
+                if t.is_walkable() && !visited.contains(&p) {
+                    Some((i, p))
+                } else {
+                    None
+                }
+            });
+        if current.is_none() {
+            break 'a;
+        }
+        let (i, current) = current.unwrap();
+        startind = i;
+        todo.insert(current);
+        while !todo.is_empty() {
+            let current = todo.iter().next().cloned().unwrap();
+            todo.remove(&current);
+            visited.insert(current);
+            chunk.insert(current);
+            terrain.query_range(&current, 2, &mut |p, t| {
+                let TerrainComponent(t) = t;
+                if t.is_walkable() && !visited.contains(&p) {
+                    todo.insert(p);
+                }
+            });
+        }
+        res.push(HashSet::with_capacity(chunk.len()));
+        std::mem::swap(res.last_mut().unwrap(), &mut chunk);
+    }
+    debug!("calculate_plain_meshes done, found {} meshes", res.len());
+    res
 }
 
 /// Print a 2D TerrainComponent map to the console, intended for debugging small maps.
@@ -411,5 +459,15 @@ mod tests {
                 panic!("Failed to find path from {:?} to {:?}: {:?}", first, b, e);
             }
         }
+    }
+
+    #[test]
+    fn produces_the_expected_number_of_chunks() {
+        let terrain: MortonTable<Axial, TerrainComponent> =
+            serde_json::from_str(std::include_str!("./chunk_test_map.json")).unwrap();
+
+        let chunks = calculate_plain_meshes(View::from_table(&terrain));
+
+        assert_eq!(chunks.len(), 5);
     }
 }
