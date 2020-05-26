@@ -46,6 +46,7 @@ impl MapRender {
         let res = caolo_sim::map_generation::generate_room(
             center,
             radius,
+            &P::new(0, 0).hex_neighbours(),
             (UnsafeView::from_table(&mut self.map),),
             None,
         )
