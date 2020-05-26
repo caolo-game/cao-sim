@@ -9,7 +9,7 @@ use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
 use crate::tables::msb_de_bruijn;
 use crate::tables::{MortonTable, SpatialKey2d};
-use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
+use rand::{rngs::SmallRng, thread_rng, RngCore, SeedableRng};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
@@ -18,6 +18,10 @@ pub enum MapGenerationError {
     BadArguments { center: Axial, radius: u32 },
     #[error("Failed to generate the initial layout: {0}")]
     TerrainExtendFailure(ExtendFailure<Axial>),
+    #[error("A room may only have up to 6 neihgbours, got: {0}")]
+    TooManyNeighbours(usize),
+    #[error("Got an invlid neighbour {0:?}")]
+    InvalidNeighbour(Axial),
 }
 
 type MapTables = (UnsafeView<Axial, TerrainComponent>,);
@@ -40,6 +44,10 @@ pub struct HeightMapProperties {
     pub std: f32,
     /// mean height of the map
     pub mean: f32,
+    /// standard deviation of the normalized height map
+    pub normal_std: f32,
+    /// mean of normalized heights
+    pub normal_mean: f32,
     pub min: f32,
     pub max: f32,
     /// max - min
@@ -51,22 +59,29 @@ pub struct HeightMapProperties {
     pub wall_mass: u32,
 }
 
-/// Generate a random terrain in circle
-/// Uses the [Diamond-square algorithm](https://en.wikipedia.org/wiki/Diamond-square_algorithm)
+/// Generate a random terrain in hexagon
+/// `connecting_neighbours` is a list of neighbours to connect to, meaning these edges are
+/// reachable via land.
 ///
-/// Returns property description of the generated height map
+/// Returns property description of the generated height map.
 pub fn generate_room(
     center: Axial,
     radius: u32,
+    connecting_neighbours: &[Axial],
     (mut terrain,): MapTables,
     seed: Option<[u8; 16]>,
 ) -> Result<HeightMapProperties, MapGenerationError> {
     debug!(
-        "Generating Room center: {:?} radius: {} seed: {:?}",
-        center, radius, seed
+        "Generating Room center: {:?} radius: {} seed: {:?} connecting_neighbours: {:?}",
+        center, radius, seed, connecting_neighbours
     );
     if radius == 0 {
         return Err(MapGenerationError::BadArguments { center, radius });
+    }
+    if connecting_neighbours.len() > 6 {
+        return Err(MapGenerationError::TooManyNeighbours(
+            connecting_neighbours.len(),
+        ));
     }
 
     let [x, y] = center.as_array();
@@ -104,9 +119,9 @@ pub fn generate_room(
     for _ in 0..4 {
         gradient2.clear();
         gradient2
-            .extend((from.q..=to.q).flat_map(|x| {
-                (from.r..=to.r).map(move |y| (Axial::new(x, y), 0.0))
-            }))
+            .extend(
+                (from.q..=to.q).flat_map(|x| (from.r..=to.r).map(move |y| (Axial::new(x, y), 0.0))),
+            )
             .map_err(|e| {
                 error!("Initializing GradientMap failed {:?}", e);
                 MapGenerationError::TerrainExtendFailure(e)
@@ -132,6 +147,8 @@ pub fn generate_room(
 
     let mut mean = 0.0;
     let mut std = 0.0;
+    let mut normal_mean = 0.0;
+    let mut normal_std = 0.0;
     let mut i = 1.0;
     let mut plain_mass = 0;
     let mut wall_mass = 0;
@@ -145,6 +162,7 @@ pub fn generate_room(
             "Calculating points of a hexagon in the height map around center: {:?}",
             center
         );
+        let radius = radius - 1; // skip the edge of the map
         (-radius..=radius).flat_map(move |x| {
             let fromy = (-radius).max(-x - radius);
             let toy = radius.min(-x + radius);
@@ -174,15 +192,23 @@ pub fn generate_room(
                 let tmp = grad - mean;
                 mean += tmp / i;
                 std += tmp * (grad - mean);
-                i += 1.0;
             }
+
             // normalize grad
             grad -= min_grad;
             grad /= depth;
 
+            {
+                // let's do some stats on the normal
+                let tmp = grad - normal_mean;
+                normal_mean += tmp / i;
+                normal_std += tmp * (grad - normal_mean);
+                i += 1.0;
+            }
+
             trace!("Normalized grad: {}", grad);
 
-            if grad <= 0.4 || !grad.is_finite() {
+            if grad <= 0.3 || !grad.is_finite() {
                 return None;
             }
             let terrain = if grad < 0.7 {
@@ -207,10 +233,24 @@ pub fn generate_room(
         })?;
 
     debug!("Building terrain from height-map done");
+    debug!("Filling edges");
+    for edge in connecting_neighbours.iter().cloned() {
+        fill_edge(terrain, offset, radius, edge)?;
+    }
+    debug!("Filling edges done");
+
+    debug!("Deduping");
+    unsafe {
+        terrain.as_mut().dedupe();
+    }
+    debug!("Deduping done");
 
     std = (std / i).sqrt();
+    normal_std = (normal_std / i).sqrt();
 
     let props = HeightMapProperties {
+        normal_mean,
+        normal_std,
         std,
         mean,
         min: min_grad,
@@ -222,7 +262,41 @@ pub fn generate_room(
         plain_mass,
     };
 
+    debug!("Map generation done {:#?}", props);
     Ok(props)
+}
+
+fn fill_edge(
+    mut terrain: UnsafeView<Axial, TerrainComponent>,
+    offset: Axial,
+    radius: i32,
+    edge: Axial,
+) -> Result<(), MapGenerationError> {
+    if edge.q.abs() > 1 || edge.r.abs() > 1 || edge.r == edge.q {
+        return Err(MapGenerationError::InvalidNeighbour(edge));
+    }
+    let [x, y, z] = edge.hex_axial_to_cube();
+    let end = [-z, -x, -y];
+    let end = Axial::hex_cube_to_axial(end);
+    let vel = end - edge;
+
+    let mut vertex = (edge * radius) + offset + Axial::new(radius, radius);
+
+    debug!(
+        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} offset {:?}",
+        edge, vertex, end, vel, radius, offset
+    );
+    unsafe { terrain.as_mut() }
+        .extend((1..radius).map(move |_| {
+            vertex += vel;
+            (vertex, TerrainComponent(TileTerrainType::Plain))
+        }))
+        .map_err(|e| {
+            error!("Failed to expand terrain with edge {:?} {:?}", edge, e);
+            MapGenerationError::TerrainExtendFailure(e)
+        })?;
+
+    Ok(())
 }
 
 /// Print a 2D TerrainComponent map to the console, intended for debugging small maps.
@@ -258,6 +332,7 @@ mod tests {
         let props = generate_room(
             center,
             5,
+            &[],
             (UnsafeView::from_table(&mut terrain),),
             Some(*b"deadbeefstewbisc"),
         )
@@ -300,6 +375,7 @@ mod tests {
         let props = generate_room(
             center,
             8,
+            &[],
             (UnsafeView::from_table(&mut terrain),),
             None, // Some(*b"deadbeefstewbisc"),
         )
