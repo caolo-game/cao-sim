@@ -3,7 +3,7 @@ use serde_derive::{Deserialize, Serialize};
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum TileTerrainType {
-    Plain = 0,
+    Plain,
     Wall,
 }
 
