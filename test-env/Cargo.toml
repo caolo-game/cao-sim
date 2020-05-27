@@ -12,7 +12,7 @@ default = []
 
 [dependencies]
 caolo-sim = { path = "../simulation", features=["disable-parallelism"], default-features=false }
-cao-math = { git = "https://github.com/caolo-game/cao-math.git" }
+cao-math = { git = "https://github.com/caolo-game/cao-math.git", default-features=false }
 rand = { version= "0.7", features=["small_rng", "wasm-bindgen"] }
 console_log = { version = "0.2" }
 log = "*"
