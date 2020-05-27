@@ -7,15 +7,8 @@ const NUM_BUCKETS: usize = RADIX_MASK as usize + 1;
 
 pub fn sort<Pos: Send + Clone, Row: Send + Clone>(
     keys: &mut [MortonKey],
-    positions: &mut [Pos],
-    values: &mut [Row],
+    values: &mut [(Pos, Row)],
 ) {
-    debug_assert!(
-        keys.len() == positions.len(),
-        "{} {}",
-        keys.len(),
-        positions.len()
-    );
     debug_assert!(
         keys.len() == values.len(),
         "{} {}",
@@ -23,39 +16,30 @@ pub fn sort<Pos: Send + Clone, Row: Send + Clone>(
         values.len()
     );
     if keys.len() < 2050 {
-        sort_radix(keys, positions, values);
+        sort_radix(keys, values);
         return;
     }
-    let pivot = sort_partition(keys, positions, values);
+    let pivot = sort_partition(keys, values);
     let (klo, khi) = keys.split_at_mut(pivot);
-    let (plo, phi) = positions.split_at_mut(pivot);
     let (vlo, vhi) = values.split_at_mut(pivot);
 
     #[cfg(not(feature = "disable-parallelism"))]
-    rayon::join(
-        || sort(klo, plo, vlo),
-        || sort(&mut khi[1..], &mut phi[1..], &mut vhi[1..]),
-    );
+    rayon::join(|| sort(klo, vlo), || sort(&mut khi[1..], &mut vhi[1..]));
     #[cfg(feature = "disable-parallelism")]
     {
-        sort(klo, plo, vlo);
-        sort(&mut khi[1..], &mut phi[1..], &mut vhi[1..]);
+        sort(klo, vlo);
+        sort(&mut khi[1..], &mut vhi[1..]);
     }
 }
 
 /// Assumes that all 3 slices are equal in size.
 /// Assumes that the slices are not empty
-fn sort_partition<Pos, Row>(
-    keys: &mut [MortonKey],
-    positions: &mut [Pos],
-    values: &mut [Row],
-) -> usize {
+fn sort_partition<Pos, Row>(keys: &mut [MortonKey], values: &mut [(Pos, Row)]) -> usize {
     debug_assert!(!keys.is_empty());
 
     macro_rules! swap {
         ($i: expr, $j: expr) => {
             keys.swap($i, $j);
-            positions.swap($i, $j);
             values.swap($i, $j);
         };
     };
@@ -96,17 +80,7 @@ fn sort_partition<Pos, Row>(
     i
 }
 
-fn sort_radix<Pos: Clone, Row: Clone>(
-    keys: &mut [MortonKey],
-    positions: &mut [Pos],
-    values: &mut [Row],
-) {
-    debug_assert!(
-        keys.len() == positions.len(),
-        "{} {}",
-        keys.len(),
-        positions.len()
-    );
+fn sort_radix<Pos: Clone, Row: Clone>(keys: &mut [MortonKey], values: &mut [(Pos, Row)]) {
     debug_assert!(
         keys.len() == values.len(),
         "{} {}",
@@ -144,19 +118,16 @@ fn sort_radix<Pos: Clone, Row: Clone>(
     // TODO: execute swaps
 
     let mut ks = Vec::with_capacity(keys.len());
-    let mut ps = Vec::with_capacity(keys.len());
     let mut vs = Vec::with_capacity(keys.len());
 
     let output = if buffind == 0 { buffa } else { buffb };
     for (_, i) in output.iter() {
         let i = *i;
         ks.push(keys[i]);
-        ps.push(positions[i].clone());
         vs.push(values[i].clone());
     }
 
     ks.swap_with_slice(keys);
-    ps.swap_with_slice(positions);
     vs.swap_with_slice(values);
 }
 
