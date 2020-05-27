@@ -10,6 +10,7 @@ use crate::tables::morton::ExtendFailure;
 use crate::tables::msb_de_bruijn;
 use crate::tables::{MortonTable, SpatialKey2d};
 use rand::{rngs::SmallRng, thread_rng, RngCore, SeedableRng};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
 
@@ -234,7 +235,7 @@ pub fn generate_room(
         })?;
 
     debug!("Building terrain from height-map done");
-    let chunks = calculate_plain_meshes(View::from_table(&*terrain));
+    let (chunk_metadata, chunks) = calculate_plain_meshes(View::from_table(&*terrain));
     debug!("Filling edges");
     for edge in connecting_neighbours.iter().cloned() {
         fill_edge(terrain, offset, radius, edge)?;
@@ -301,14 +302,33 @@ fn fill_edge(
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+struct ChunkId(usize);
+
+#[derive(Debug)]
+struct MeshMeta {
+    pub chungus_id: ChunkId,
+    pub chungus_pos: Axial,
+    pub chungus_mass: usize,
+    pub num_chunks: usize,
+}
+
 /// Find the connecting `Plain` chunks
-fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> Vec<HashSet<Axial>> {
+/// return a map that holds the chunk id of each point
+fn calculate_plain_meshes(
+    terrain: View<Axial, TerrainComponent>,
+) -> (MeshMeta, MortonTable<Axial, ChunkId>) {
     debug!("calculate_plain_meshes");
-    let mut res = Vec::new();
-    let mut chunk = HashSet::with_capacity(terrain.len());
-    let mut visited = HashSet::with_capacity(terrain.len());
-    let mut todo = HashSet::with_capacity(terrain.len());
+    let mut res = MortonTable::with_capacity(terrain.len());
+    let mut chunk = HashSet::new();
+    let mut visited = HashSet::new();
+    let mut todo = HashSet::new();
     let mut startind = 0;
+    let mut chunk_id = 0;
+
+    let mut chungus_id = 0;
+    let mut chungus_pos = Axial::new(0, 0);
+    let mut chungus_mass = 0;
     'a: loop {
         let current = terrain
             .iter()
@@ -327,7 +347,10 @@ fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> Vec<HashSet
         }
         let (i, current) = current.unwrap();
         startind = i;
+        todo.clear();
         todo.insert(current);
+        chunk.clear();
+
         while !todo.is_empty() {
             let current = todo.iter().next().cloned().unwrap();
             todo.remove(&current);
@@ -340,11 +363,24 @@ fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> Vec<HashSet
                 }
             });
         }
-        res.push(HashSet::with_capacity(chunk.len()));
-        std::mem::swap(res.last_mut().unwrap(), &mut chunk);
+        let mass = chunk.len();
+        if mass > chungus_mass {
+            chungus_mass = mass;
+            chungus_id = chunk_id;
+            chungus_pos = *chunk.iter().next().unwrap();
+        }
+        let it = chunk.iter().map(|p| (*p, ChunkId(chunk_id)));
+        res.extend(it).unwrap();
+        chunk_id += 1;
     }
-    debug!("calculate_plain_meshes done, found {} meshes", res.len());
-    res
+    let meta = MeshMeta {
+        chungus_id: ChunkId(chungus_id),
+        chungus_pos,
+        num_chunks: chunk_id,
+        chungus_mass,
+    };
+    debug!("calculate_plain_meshes done, found meshes {:#?}", meta);
+    (meta, res)
 }
 
 /// Print a 2D TerrainComponent map to the console, intended for debugging small maps.
