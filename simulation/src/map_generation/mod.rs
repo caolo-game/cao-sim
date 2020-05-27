@@ -502,8 +502,8 @@ mod tests {
         let terrain: MortonTable<Axial, TerrainComponent> =
             serde_json::from_str(std::include_str!("./chunk_test_map.json")).unwrap();
 
-        let chunks = calculate_plain_meshes(View::from_table(&terrain));
+        let (meta, _chunks) = calculate_plain_meshes(View::from_table(&terrain));
 
-        assert_eq!(chunks.len(), 5);
+        assert_eq!(meta.num_chunks, 2);
     }
 }
