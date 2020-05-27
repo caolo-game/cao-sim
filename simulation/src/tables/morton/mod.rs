@@ -49,8 +49,7 @@ where
     //
     // keys is 24 bytes in memory
     keys: Vec<MortonKey>,
-    positions: Vec<Pos>,
-    values: Vec<Row>,
+    values: Vec<(Pos, Row)>,
 }
 
 impl<Pos, Row> Default for MortonTable<Pos, Row>
@@ -64,7 +63,6 @@ where
             skipstep: 0,
             keys: Default::default(),
             values: Default::default(),
-            positions: Default::default(),
         }
     }
 }
@@ -87,7 +85,6 @@ where
             skipstep: 0,
             keys: vec![],
             values: vec![],
-            positions: vec![],
         }
     }
 
@@ -97,7 +94,6 @@ where
             skipstep: 0,
             values: Vec::with_capacity(cap),
             keys: Vec::with_capacity(cap),
-            positions: Vec::with_capacity(cap),
         }
     }
 
@@ -106,19 +102,11 @@ where
     }
 
     pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = (Pos, &'a mut Row)> + 'a {
-        let values = self.values.as_mut_ptr();
-        self.positions.iter().enumerate().map(move |(i, id)| {
-            let val = unsafe { &mut *values.add(i) };
-            (*id, val)
-        })
+        self.values.iter_mut().map(|(p, v)| (*p, v))
     }
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = (Pos, &'a Row)> + 'a {
-        let values = self.values.as_ptr();
-        self.positions.iter().enumerate().map(move |(i, id)| {
-            let val = unsafe { &*values.add(i) };
-            (*id, val)
-        })
+        self.values.iter().map(|(p, v)| (*p, v))
     }
 
     pub fn from_iterator<It>(it: It) -> Result<Self, ExtendFailure<Pos>>
@@ -134,7 +122,6 @@ where
         self.keys.clear();
         self.skiplist = [Default::default(); SKIP_LEN];
         self.values.clear();
-        self.positions.clear();
     }
 
     /// Extend the map by the items provided.
@@ -151,11 +138,10 @@ where
             let [x, y] = [x as u16, y as u16];
             let key = MortonKey::new(x, y);
             self.keys.push(key);
-            self.positions.push(id);
-            self.values.push(value);
+            self.values.push((id, value));
         }
         trace!("MortonTable extend sort");
-        sorting::sort(&mut self.keys, &mut self.positions, &mut self.values);
+        sorting::sort(&mut self.keys, &mut self.values);
         trace!("MortonTable extend sort done\nRebuilding skip_list");
         self.rebuild_skip_list();
         trace!("MortonTable extend done");
@@ -213,8 +199,7 @@ where
             .binary_search(&MortonKey::new(x, y))
             .unwrap_or_else(|i| i);
         self.keys.insert(ind, MortonKey::new(x, y));
-        self.positions.insert(ind, id);
-        self.values.insert(ind, row);
+        self.values.insert(ind, (id, row));
         self.rebuild_skip_list();
         true
     }
@@ -226,7 +211,7 @@ where
         }
         self.find_key(&id)
             .map(|ind| {
-                self.values[ind] = row;
+                self.values[ind].1 = row;
             })
             .is_ok()
     }
@@ -239,7 +224,7 @@ where
             return None;
         }
 
-        self.find_key(id).map(|ind| &self.values[ind]).ok()
+        self.find_key(id).map(|ind| &self.values[ind].1).ok()
     }
 
     /// Returns the first item with given id, if any
@@ -250,7 +235,9 @@ where
             return None;
         }
 
-        self.find_key(id).map(move |ind| &mut self.values[ind]).ok()
+        self.find_key(id)
+            .map(move |ind| &mut self.values[ind].1)
+            .ok()
     }
 
     pub fn contains_key(&self, id: &Pos) -> bool {
@@ -349,7 +336,7 @@ where
     ) {
         let (imin, pmin) = self
             .find_key_morton(&min)
-            .map(|i| (i, self.positions[i].as_array()))
+            .map(|i| (i, self.values[i].0.as_array()))
             .unwrap_or_else(|i| {
                 let [x, y] = min.as_point();
                 (i, [x as i32, y as i32])
@@ -359,7 +346,7 @@ where
             .find_key_morton(&max)
             // add 1 to include this node in the range query as otherwise an element might be
             // missed
-            .map(|i| (i + 1, self.positions[i].as_array()))
+            .map(|i| (i + 1, self.values[i].0.as_array()))
             .unwrap_or_else(|i| {
                 let [x, y] = max.as_point();
                 (i, [x as i32, y as i32])
@@ -386,11 +373,8 @@ where
             return;
         }
 
-        let values = self.values.as_ptr();
-
-        for (i, id) in self.positions[imin..imax].iter().enumerate() {
+        for (id, val) in self.values[imin..imax].iter() {
             if center.dist(id) < radius {
-                let val = unsafe { &*values.add(i + imin) };
                 op(*id, val);
             }
         }
@@ -406,9 +390,9 @@ where
 
         let [min, max] = self.morton_min_max(&min, &max);
 
-        self.positions[min..max]
+        self.values[min..max]
             .iter()
-            .filter(move |id| center.dist(&id) < radius)
+            .filter(move |(id, _)| center.dist(&id) < radius)
             .count()
             .try_into()
             .expect("count to fit into 32 bits")
@@ -427,14 +411,9 @@ where
 
         let [min, max] = self.morton_min_max(&min, &max);
 
-        let values = self.values.as_ptr();
-        self.positions[min..max]
+        self.values[min..max]
             .iter()
-            .enumerate()
-            .filter(move |(i, id)| {
-                let val = unsafe { &*values.add(min + i) };
-                query(id, val)
-            })
+            .filter(move |(id, val)| query(id, val))
             .count()
             .try_into()
             .expect("count to fit into 32 bits")
@@ -479,7 +458,7 @@ where
     /// Note that this might be (a lot) larger than the minimum bounding box that might hold this table!
     pub fn aabb(&self) -> Option<[Pos; 2]> {
         let min = self.keys.get(0)?;
-        let [minx, miny] = self.positions[0].as_array();
+        let [minx, miny] = self.values[0].0.as_array();
         let min_loc = round_down_to_one_less_than_pow_two(min.0) + 1;
         let [ax, ay] = MortonKey(min_loc).as_point();
         let [minx, miny] = [minx.min(ax as i32), miny.min(ay as i32)];
@@ -487,7 +466,7 @@ where
         let max = *self.keys.last().unwrap_or(min);
         let max = round_down_to_one_less_than_pow_two(max.0) + 1;
         let max = MortonKey(max);
-        let [maxx, maxy] = self.positions[self.positions.len() - 1].as_array();
+        let [maxx, maxy] = self.values[self.values.len() - 1].0.as_array();
         let [bx, by] = max.as_point();
         let [maxx, maxy] = [maxx.max(bx as i32), maxy.max(by as i32)];
 
@@ -503,7 +482,6 @@ where
             if self.keys[i] == self.keys[i - 1] {
                 self.keys.remove(i);
                 self.values.remove(i);
-                self.positions.remove(i);
             }
         }
         self.rebuild_skip_list();
@@ -573,14 +551,13 @@ where
             .find_key(&id)
             .map(|ind| {
                 self.keys.remove(ind);
-                self.positions.remove(ind);
                 self.values.remove(ind)
             })
-            .ok()?;
+            .ok()?
+            .1;
 
         while let Ok(ind) = self.find_key(&id) {
             self.keys.remove(ind);
-            self.positions.remove(ind);
             self.values.remove(ind);
         }
 
