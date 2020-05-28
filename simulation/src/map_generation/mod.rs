@@ -8,10 +8,10 @@ use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
 use crate::tables::msb_de_bruijn;
-use crate::tables::traits::Table;
 use crate::tables::{MortonTable, SpatialKey2d};
 use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
 use serde_derive::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use thiserror::Error;
 
@@ -119,7 +119,7 @@ pub fn generate_room(
 
     debug!("Layering maps");
     // generate gradient by repeatedly generating noise and layering them on top of each other
-    for _ in 0..16 {
+    for i in 0..16 {
         gradient2.clear();
         gradient2
             .extend(
@@ -136,7 +136,7 @@ pub fn generate_room(
 
         gradient
             .merge(&gradient2, |_, lhs, rhs| {
-                let merged = lhs + rhs;
+                let merged = lhs + rhs * i as f32;
                 *min_grad = min_grad.min(merged);
                 *max_grad = max_grad.max(merged);
                 merged
@@ -237,31 +237,63 @@ pub fn generate_room(
 
     debug!("Building terrain from height-map done");
 
-    let (chunk_metadata, chunks) = calculate_plain_meshes(View::from_table(&*terrain));
-    if chunk_metadata.num_chunks > 1 {
-        debug!("Connecting {} chunks", chunk_metadata.num_chunks);
-        for (i, chunk) in chunk_metadata.chunks.iter().enumerate().filter(|(i, c)| {
-            *i != chunk_metadata.chungus_id.0 && c.len() < chunk_metadata.chungus_mass / 3
-        }) {
-            debug!("Turning chunk {} into wall", i);
-            for p in chunk.iter() {
-                unsafe {
-                    terrain
-                        .as_mut()
-                        .update(*p, TerrainComponent(TileTerrainType::Wall));
-                }
-            }
-            debug!("Turning chunk {} into wall done", i);
-        }
-        // breadth first until reaches the chungus?
-        debug!("Connecting chunks done");
-    }
-
     debug!("Filling edges");
     for edge in connecting_neighbours.iter().cloned() {
         fill_edge(terrain, offset, radius, edge)?;
     }
     debug!("Filling edges done");
+
+    let (chunk_metadata, _chunks) = calculate_plain_meshes(View::from_table(&*terrain));
+    if chunk_metadata.num_chunks > 1 {
+        debug!("Connecting {} chunks", chunk_metadata.num_chunks);
+        for (_, chunk) in chunk_metadata
+            .chunks
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i != chunk_metadata.chungus_id.0)
+        {
+            let avg: Axial =
+                chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;
+            let closest = *chunk_metadata.chunks[chunk_metadata.chungus_id.0]
+                .iter()
+                .min_by_key(|p| p.hex_distance(avg))
+                .unwrap();
+            let mut current = *chunk
+                .iter()
+                .min_by_key(|p| p.hex_distance(closest))
+                .unwrap();
+
+            let mut vel = |current| {
+                let vel = closest - current;
+                match vel.q.abs().cmp(&vel.r.abs()) {
+                    Ordering::Equal => {
+                        if rng.gen_bool(0.5) {
+                            Axial::new(vel.q / vel.q.abs(), 0)
+                        } else {
+                            Axial::new(0, vel.r / vel.r.abs())
+                        }
+                    }
+                    Ordering::Less => Axial::new(0, vel.r / vel.r.abs()),
+                    Ordering::Greater => Axial::new(vel.q / vel.q.abs(), 0),
+                }
+            };
+
+            let terrain = unsafe { terrain.as_mut() };
+            while current.hex_distance(closest) != 0 {
+                let vel = vel(current);
+                current += vel;
+                match terrain.get_by_id_mut(&current) {
+                    Some(v) => {
+                        *v = TerrainComponent(TileTerrainType::Plain);
+                    }
+                    None => {
+                        terrain.insert(current, TerrainComponent(TileTerrainType::Plain));
+                    }
+                }
+            }
+        }
+        debug!("Connecting chunks done");
+    }
 
     debug!("Deduping");
     unsafe {
@@ -313,7 +345,7 @@ fn fill_edge(
     unsafe { terrain.as_mut() }
         .extend((1..radius).map(move |_| {
             vertex += vel;
-            (vertex, TerrainComponent(TileTerrainType::Plain))
+            (vertex, TerrainComponent(TileTerrainType::Edge))
         }))
         .map_err(|e| {
             error!("Failed to expand terrain with edge {:?} {:?}", edge, e);
@@ -401,7 +433,7 @@ fn calculate_plain_meshes(
         chungus_mass,
         chunks,
     };
-    debug!("calculate_plain_meshes done, found meshes {:#?}", meta);
+    debug!("calculate_plain_meshes done, found meshes {:?}", meta);
     (meta, res)
 }
 
@@ -416,6 +448,7 @@ fn print_terrain(from: &Axial, to: &Axial, terrain: View<Axial, TerrainComponent
             match terrain.get_by_id(&Axial::new(x, y)) {
                 Some(TerrainComponent(TileTerrainType::Wall)) => print!("#"),
                 Some(TerrainComponent(TileTerrainType::Plain)) => print!("."),
+                Some(TerrainComponent(TileTerrainType::Edge)) => print!("x"),
                 None => print!(" "),
             }
         }

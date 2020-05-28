@@ -26,6 +26,7 @@ const run = () => {
     for (let cell of cells) {
       switch (cell[1]) {
         case "Plain":
+        case "Edge":
           ctx.fillStyle = "#89813a";
           break;
         case "Wall":
