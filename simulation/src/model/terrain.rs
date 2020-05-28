@@ -4,6 +4,8 @@ use serde_derive::{Deserialize, Serialize};
 #[repr(u8)]
 pub enum TileTerrainType {
     Plain,
+    /// allows teleporting to new rooms
+    Edge,
     Wall,
 }
 
@@ -21,7 +23,7 @@ impl TileTerrainType {
 
 pub fn is_walkable(tile: TileTerrainType) -> bool {
     match tile {
-        TileTerrainType::Plain => true,
+        TileTerrainType::Plain | TileTerrainType::Edge => true,
         _ => false,
     }
 }
