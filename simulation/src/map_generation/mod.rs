@@ -119,7 +119,7 @@ pub fn generate_room(
 
     debug!("Layering maps");
     // generate gradient by repeatedly generating noise and layering them on top of each other
-    for i in 0..16 {
+    for i in 0..4 {
         gradient2.clear();
         gradient2
             .extend(
@@ -211,15 +211,15 @@ pub fn generate_room(
 
             trace!("Normalized grad: {}", grad);
 
-            if grad <= 0.3 || !grad.is_finite() {
+            if grad <= 1.0 / 3.0 || !grad.is_finite() {
                 return None;
             }
-            let terrain = if grad < 0.7 {
+            let terrain = if grad < 2.0 / 3.0 {
                 plain_mass += 1;
                 TileTerrainType::Plain
             } else if grad <= 1.1 {
-                wall_mass += 1;
                 // accounting for numerical errors
+                wall_mass += 1;
                 TileTerrainType::Wall
             } else {
                 warn!(
@@ -281,15 +281,21 @@ pub fn generate_room(
             let terrain = unsafe { terrain.as_mut() };
             while current.hex_distance(closest) != 0 {
                 let vel = vel(current);
-                current += vel;
-                match terrain.get_by_id_mut(&current) {
-                    Some(v) => {
-                        *v = TerrainComponent(TileTerrainType::Plain);
-                    }
-                    None => {
-                        terrain.insert(current, TerrainComponent(TileTerrainType::Plain));
+                let mut c = current;
+                let mut v = vel;
+                for _ in 0..2 {
+                    c += v;
+                    v = v.rotate_right();
+                    match terrain.get_by_id_mut(&c) {
+                        Some(v) => {
+                            *v = TerrainComponent(TileTerrainType::Plain);
+                        }
+                        None => {
+                            terrain.insert(c, TerrainComponent(TileTerrainType::Plain));
+                        }
                     }
                 }
+                current += vel;
             }
         }
         debug!("Connecting chunks done");
@@ -492,7 +498,8 @@ mod tests {
             for y in 0..=16 {
                 match terrain.get_by_id(&Axial::new(x, y)) {
                     None => seen_empty = true,
-                    Some(TerrainComponent(TileTerrainType::Plain)) => seen_plain = true,
+                    Some(TerrainComponent(TileTerrainType::Plain))
+                    | Some(TerrainComponent(TileTerrainType::Edge)) => seen_plain = true,
                     Some(TerrainComponent(TileTerrainType::Wall)) => seen_wall = true,
                 }
             }
