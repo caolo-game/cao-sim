@@ -55,7 +55,7 @@ impl Axial {
 }
 
 impl AddAssign for Axial {
-    fn add_assign(&mut self, rhs: Axial) {
+    fn add_assign(&mut self, rhs: Self) {
         self.q += rhs.q;
         self.r += rhs.r;
     }
@@ -64,14 +64,14 @@ impl AddAssign for Axial {
 impl Add for Axial {
     type Output = Self;
 
-    fn add(mut self, rhs: Axial) -> Axial {
+    fn add(mut self, rhs: Self) -> Self {
         self += rhs;
         self
     }
 }
 
 impl SubAssign for Axial {
-    fn sub_assign(&mut self, rhs: Axial) {
+    fn sub_assign(&mut self, rhs: Self) {
         self.q -= rhs.q;
         self.r -= rhs.r;
     }
@@ -80,7 +80,7 @@ impl SubAssign for Axial {
 impl Sub for Axial {
     type Output = Self;
 
-    fn sub(mut self, rhs: Axial) -> Axial {
+    fn sub(mut self, rhs: Self) -> Self {
         self -= rhs;
         self
     }
@@ -94,7 +94,7 @@ impl MulAssign<i32> for Axial {
 }
 
 impl Mul<i32> for Axial {
-    type Output = Axial;
+    type Output = Self;
 
     fn mul(mut self, rhs: i32) -> Self {
         self *= rhs;
@@ -110,7 +110,7 @@ impl DivAssign<i32> for Axial {
 }
 
 impl Div<i32> for Axial {
-    type Output = Axial;
+    type Output = Self;
 
     fn div(mut self, rhs: i32) -> Self {
         self /= rhs;
