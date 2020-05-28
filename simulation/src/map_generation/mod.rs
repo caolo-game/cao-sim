@@ -8,8 +8,9 @@ use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
 use crate::tables::msb_de_bruijn;
+use crate::tables::traits::Table;
 use crate::tables::{MortonTable, SpatialKey2d};
-use rand::{rngs::SmallRng, thread_rng, RngCore, SeedableRng};
+use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashSet;
 use thiserror::Error;
@@ -118,7 +119,7 @@ pub fn generate_room(
 
     debug!("Layering maps");
     // generate gradient by repeatedly generating noise and layering them on top of each other
-    for _ in 0..4 {
+    for _ in 0..16 {
         gradient2.clear();
         gradient2
             .extend(
@@ -235,7 +236,27 @@ pub fn generate_room(
         })?;
 
     debug!("Building terrain from height-map done");
+
     let (chunk_metadata, chunks) = calculate_plain_meshes(View::from_table(&*terrain));
+    if chunk_metadata.num_chunks > 1 {
+        debug!("Connecting {} chunks", chunk_metadata.num_chunks);
+        for (i, chunk) in chunk_metadata.chunks.iter().enumerate().filter(|(i, c)| {
+            *i != chunk_metadata.chungus_id.0 && c.len() < chunk_metadata.chungus_mass / 3
+        }) {
+            debug!("Turning chunk {} into wall", i);
+            for p in chunk.iter() {
+                unsafe {
+                    terrain
+                        .as_mut()
+                        .update(*p, TerrainComponent(TileTerrainType::Wall));
+                }
+            }
+            debug!("Turning chunk {} into wall done", i);
+        }
+        // breadth first until reaches the chungus?
+        debug!("Connecting chunks done");
+    }
+
     debug!("Filling edges");
     for edge in connecting_neighbours.iter().cloned() {
         fill_edge(terrain, offset, radius, edge)?;
@@ -307,10 +328,10 @@ struct ChunkId(usize);
 
 #[derive(Debug)]
 struct MeshMeta {
-    pub chungus_id: ChunkId,
-    pub chungus_pos: Axial,
-    pub chungus_mass: usize,
     pub num_chunks: usize,
+    pub chungus_id: ChunkId,
+    pub chungus_mass: usize,
+    pub chunks: Vec<HashSet<Axial>>,
 }
 
 /// Find the connecting `Plain` chunks
@@ -327,16 +348,15 @@ fn calculate_plain_meshes(
     let mut chunk_id = 0;
 
     let mut chungus_id = 0;
-    let mut chungus_pos = Axial::new(0, 0);
     let mut chungus_mass = 0;
+    let mut chunks = Vec::new();
     'a: loop {
         let current = terrain
             .iter()
             .enumerate()
             .skip(startind)
             .find_map(|(i, (p, t))| {
-                let TerrainComponent(t) = t;
-                if t.is_walkable() && !visited.contains(&p) {
+                if t.0.is_walkable() && !visited.contains(&p) {
                     Some((i, p))
                 } else {
                     None
@@ -367,17 +387,19 @@ fn calculate_plain_meshes(
         if mass > chungus_mass {
             chungus_mass = mass;
             chungus_id = chunk_id;
-            chungus_pos = *chunk.iter().next().unwrap();
         }
         let it = chunk.iter().map(|p| (*p, ChunkId(chunk_id)));
         res.extend(it).unwrap();
+        let mut c = HashSet::new();
+        std::mem::swap(&mut c, &mut chunk);
+        chunks.push(c);
         chunk_id += 1;
     }
     let meta = MeshMeta {
         chungus_id: ChunkId(chungus_id),
-        chungus_pos,
         num_chunks: chunk_id,
         chungus_mass,
+        chunks,
     };
     debug!("calculate_plain_meshes done, found meshes {:#?}", meta);
     (meta, res)
