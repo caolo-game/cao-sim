@@ -211,15 +211,15 @@ pub fn generate_room(
 
             trace!("Normalized grad: {}", grad);
 
-            if grad <= 0.3 || !grad.is_finite() {
+            if grad <= 0.33333 || !grad.is_finite() {
                 return None;
             }
-            let terrain = if grad < 0.7 {
+            let terrain = if grad < 0.6666 {
                 plain_mass += 1;
                 TileTerrainType::Plain
             } else if grad <= 1.1 {
-                wall_mass += 1;
                 // accounting for numerical errors
+                wall_mass += 1;
                 TileTerrainType::Wall
             } else {
                 warn!(
@@ -281,15 +281,21 @@ pub fn generate_room(
             let terrain = unsafe { terrain.as_mut() };
             while current.hex_distance(closest) != 0 {
                 let vel = vel(current);
-                current += vel;
-                match terrain.get_by_id_mut(&current) {
-                    Some(v) => {
-                        *v = TerrainComponent(TileTerrainType::Plain);
-                    }
-                    None => {
-                        terrain.insert(current, TerrainComponent(TileTerrainType::Plain));
+                let mut c = current;
+                let mut v = vel;
+                for _ in 0..3 {
+                    c += v;
+                    v = v.rotate_right();
+                    match terrain.get_by_id_mut(&current) {
+                        Some(v) => {
+                            *v = TerrainComponent(TileTerrainType::Plain);
+                        }
+                        None => {
+                            terrain.insert(current, TerrainComponent(TileTerrainType::Plain));
+                        }
                     }
                 }
+                current += vel;
             }
         }
         debug!("Connecting chunks done");

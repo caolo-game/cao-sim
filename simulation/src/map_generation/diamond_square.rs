@@ -11,7 +11,7 @@ pub fn create_noise(
     gradient: &mut GradientMap,
 ) {
     let fheight = &mut move |_gradient: &GradientMap, _p: Axial, radius: i32, mean_heights: f32| {
-        mean_heights + rng.gen_range(-1.0, 1.0) * radius as f32
+        mean_heights + rng.gen_range(-0.5, 0.5) * radius as f32
     };
 
     // init corners
