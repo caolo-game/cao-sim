@@ -119,7 +119,7 @@ pub fn generate_room(
 
     debug!("Layering maps");
     // generate gradient by repeatedly generating noise and layering them on top of each other
-    for i in 0..16 {
+    for i in 0..4 {
         gradient2.clear();
         gradient2
             .extend(
@@ -211,10 +211,10 @@ pub fn generate_room(
 
             trace!("Normalized grad: {}", grad);
 
-            if grad <= 0.33333 || !grad.is_finite() {
+            if grad <= 1.0 / 3.0 || !grad.is_finite() {
                 return None;
             }
-            let terrain = if grad < 0.6666 {
+            let terrain = if grad < 2.0 / 3.0 {
                 plain_mass += 1;
                 TileTerrainType::Plain
             } else if grad <= 1.1 {
@@ -283,15 +283,15 @@ pub fn generate_room(
                 let vel = vel(current);
                 let mut c = current;
                 let mut v = vel;
-                for _ in 0..3 {
+                for _ in 0..2 {
                     c += v;
                     v = v.rotate_right();
-                    match terrain.get_by_id_mut(&current) {
+                    match terrain.get_by_id_mut(&c) {
                         Some(v) => {
                             *v = TerrainComponent(TileTerrainType::Plain);
                         }
                         None => {
-                            terrain.insert(current, TerrainComponent(TileTerrainType::Plain));
+                            terrain.insert(c, TerrainComponent(TileTerrainType::Plain));
                         }
                     }
                 }
@@ -498,7 +498,8 @@ mod tests {
             for y in 0..=16 {
                 match terrain.get_by_id(&Axial::new(x, y)) {
                     None => seen_empty = true,
-                    Some(TerrainComponent(TileTerrainType::Plain)) => seen_plain = true,
+                    Some(TerrainComponent(TileTerrainType::Plain))
+                    | Some(TerrainComponent(TileTerrainType::Edge)) => seen_plain = true,
                     Some(TerrainComponent(TileTerrainType::Wall)) => seen_wall = true,
                 }
             }
