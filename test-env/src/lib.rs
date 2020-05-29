@@ -40,11 +40,9 @@ impl MapRender {
     }
 
     #[wasm_bindgen(js_name=generateMap)]
-    pub fn generate_map(&mut self, x: i32, y: i32, radius: u32) -> Result<JsValue, JsValue> {
-        let center = P::new(x, y);
+    pub fn generate_map(&mut self, radius: u32) -> Result<JsValue, JsValue> {
         self.map.clear();
         let res = caolo_sim::map_generation::generate_room(
-            center,
             radius,
             &P::new(0, 0).hex_neighbours(),
             (UnsafeView::from_table(&mut self.map),),

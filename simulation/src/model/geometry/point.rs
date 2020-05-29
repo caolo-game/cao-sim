@@ -124,20 +124,21 @@ impl Div<i32> for Axial {
 }
 
 #[derive(Debug, Clone, Default, Copy, Eq, PartialEq, Serialize, Deserialize, Ord, PartialOrd)]
-#[serde(rename_all = "camelCase")]
-pub struct Circle {
+pub struct Hexagon {
     pub center: Axial,
-    pub radius: u32,
+    pub radius: i32,
 }
 
-impl Circle {
-    pub fn is_inside(&self, point: Axial) -> bool {
-        point.hex_distance(self.center) < self.radius
+impl Hexagon {
+    pub fn contains(&self, point: &Axial) -> bool {
+        let [x, y, z] = point.hex_axial_to_cube();
+        let r = self.radius;
+        -r <= x && x <= r && -r <= y && y <= r && -r <= z && z <= r
     }
 }
 
 impl AutoByteEncodeProperties for Axial {}
-impl AutoByteEncodeProperties for Circle {}
+impl AutoByteEncodeProperties for Hexagon {}
 
 #[cfg(test)]
 mod tests {
