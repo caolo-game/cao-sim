@@ -8,7 +8,7 @@ use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
 use crate::tables::msb_de_bruijn;
-use crate::tables::{MortonTable, SpatialKey2d};
+use crate::tables::MortonTable;
 use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
 use serde_derive::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -17,8 +17,8 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
 pub enum MapGenerationError {
-    #[error("Can not generate room with the given parameters: {center:?} {radius}")]
-    BadArguments { center: Axial, radius: u32 },
+    #[error("Can not generate room with the given parameters: {radius}")]
+    BadArguments { radius: u32 },
     #[error("Failed to generate the initial layout: {0}")]
     TerrainExtendFailure(ExtendFailure<Axial>),
     #[error("A room may only have up to 6 neihgbours, got: {0}")]
@@ -57,40 +57,31 @@ pub struct HeightMapProperties {
     pub depth: f32,
     pub width: i32,
     pub height: i32,
-
-    pub plain_mass: u32,
-    pub wall_mass: u32,
 }
 
 /// Generate a random terrain in hexagon
-/// `connecting_neighbours` is a list of neighbours to connect to, meaning these edges are
+/// `edges` is a list of neighbours to connect to, meaning these edges are
 /// reachable via land.
 ///
 /// Returns property description of the generated height map.
 pub fn generate_room(
-    center: Axial,
     radius: u32,
-    connecting_neighbours: &[Axial],
+    edges: &[Axial],
     (mut terrain,): MapTables,
     seed: Option<[u8; 16]>,
 ) -> Result<HeightMapProperties, MapGenerationError> {
     debug!(
-        "Generating Room center: {:?} radius: {} seed: {:?} connecting_neighbours: {:?}",
-        center, radius, seed, connecting_neighbours
+        "Generating Room radius: {} seed: {:?} edges: {:?}",
+        radius, seed, edges
     );
     if radius == 0 {
-        return Err(MapGenerationError::BadArguments { center, radius });
+        return Err(MapGenerationError::BadArguments { radius });
     }
-    if connecting_neighbours.len() > 6 {
-        return Err(MapGenerationError::TooManyNeighbours(
-            connecting_neighbours.len(),
-        ));
+    if edges.len() > 6 {
+        return Err(MapGenerationError::TooManyNeighbours(edges.len()));
     }
 
-    let [x, y] = center.as_array();
     let radius = radius as i32;
-    let offset = Axial::new(x - radius, y - radius);
-
     let from = Axial::new(0, 0);
     let dsides = pot(radius as u32 * 2) as i32;
     let to = Axial::new(from.q + dsides, from.r + dsides);
@@ -148,13 +139,109 @@ pub fn generate_room(
     }
     debug!("Layering maps done");
 
+    let heightmap_props =
+        transform_heightmap_into_terrain(max_grad, min_grad, dsides, radius, &gradient, terrain)?;
+
+    debug!("Filling edges");
+    for edge in edges.iter().cloned() {
+        fill_edge(terrain, radius, edge)?;
+    }
+    debug!("Filling edges done");
+
+    let chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
+    if chunk_metadata.num_chunks > 1 {
+        connect_chunks(radius, &mut rng, &chunk_metadata, terrain);
+    }
+
+    debug!("Deduping");
+    unsafe {
+        terrain.as_mut().dedupe();
+    }
+    debug!("Deduping done");
+
+    debug!("Map generation done {:#?}", heightmap_props);
+    Ok(heightmap_props)
+}
+
+fn connect_chunks(
+    radius: i32,
+    rng: &mut impl Rng,
+    chunk_metadata: &MeshMeta,
+    mut terrain: UnsafeView<Axial, TerrainComponent>,
+) {
+    debug!("Connecting {} chunks", chunk_metadata.num_chunks);
+    debug_assert!(radius > 0);
+    for (_, chunk) in chunk_metadata
+        .chunks
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != chunk_metadata.chungus_id.0)
+    {
+        let avg: Axial =
+            chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;
+        let closest = *chunk_metadata.chunks[chunk_metadata.chungus_id.0]
+            .iter()
+            .min_by_key(|p| p.hex_distance(avg))
+            .unwrap();
+        let mut current = *chunk
+            .iter()
+            .min_by_key(|p| p.hex_distance(closest))
+            .unwrap();
+
+        let mut get_next_step = |current| {
+            let vel = closest - current;
+            debug_assert!(vel.q != 0 || vel.r != 0);
+            match vel.q.abs().cmp(&vel.r.abs()) {
+                Ordering::Equal => {
+                    if rng.gen_bool(0.5) {
+                        Axial::new(vel.q / vel.q.abs(), 0)
+                    } else {
+                        Axial::new(0, vel.r / vel.r.abs())
+                    }
+                }
+                Ordering::Less => Axial::new(0, vel.r / vel.r.abs()),
+                Ordering::Greater => Axial::new(vel.q / vel.q.abs(), 0),
+            }
+        };
+
+        let terrain = unsafe { terrain.as_mut() };
+        while current.hex_distance(closest) != 0 {
+            let vel = get_next_step(current);
+            {
+                let mut vel = vel;
+                for _ in 0..2 {
+                    let current = current + vel;
+                    vel = vel.rotate_right();
+                    match terrain.get_by_id_mut(&current) {
+                        Some(v) => {
+                            *v = TerrainComponent(TileTerrainType::Plain);
+                        }
+                        None => {
+                            terrain.insert(current, TerrainComponent(TileTerrainType::Plain));
+                        }
+                    }
+                }
+            }
+            current += vel;
+        }
+    }
+    debug!("Connecting chunks done");
+}
+
+fn transform_heightmap_into_terrain(
+    max_grad: f32,
+    min_grad: f32,
+    dsides: i32,
+    radius: i32,
+    gradient: &MortonTable<Axial, f32>,
+    mut terrain: UnsafeView<Axial, TerrainComponent>,
+) -> Result<HeightMapProperties, MapGenerationError> {
+    debug!("Building terrain from height-map");
     let mut mean = 0.0;
     let mut std = 0.0;
     let mut normal_mean = 0.0;
     let mut normal_std = 0.0;
     let mut i = 1.0;
-    let mut plain_mass = 0;
-    let mut wall_mass = 0;
     let depth = max_grad - min_grad;
 
     let points = {
@@ -176,8 +263,6 @@ pub fn generate_room(
         })
     };
 
-    debug!("Building terrain from height-map, offset: {:?}", offset);
-
     unsafe { terrain.as_mut() }
         .extend(points.filter_map(|p| {
             trace!("Computing terrain of gradient point: {:?}", p);
@@ -187,8 +272,6 @@ pub fn generate_room(
                 None
             })?;
             trace!("p: {:?} grad: {}", p, grad);
-
-            let p = p + offset;
 
             {
                 // let's do some stats
@@ -215,11 +298,9 @@ pub fn generate_room(
                 return None;
             }
             let terrain = if grad < 2.0 / 3.0 {
-                plain_mass += 1;
                 TileTerrainType::Plain
             } else if grad <= 1.1 {
                 // accounting for numerical errors
-                wall_mass += 1;
                 TileTerrainType::Wall
             } else {
                 warn!(
@@ -236,77 +317,6 @@ pub fn generate_room(
         })?;
 
     debug!("Building terrain from height-map done");
-
-    debug!("Filling edges");
-    for edge in connecting_neighbours.iter().cloned() {
-        fill_edge(terrain, offset, radius, edge)?;
-    }
-    debug!("Filling edges done");
-
-    let (chunk_metadata, _chunks) = calculate_plain_meshes(View::from_table(&*terrain));
-    if chunk_metadata.num_chunks > 1 {
-        debug!("Connecting {} chunks", chunk_metadata.num_chunks);
-        for (_, chunk) in chunk_metadata
-            .chunks
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| *i != chunk_metadata.chungus_id.0)
-        {
-            let avg: Axial =
-                chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;
-            let closest = *chunk_metadata.chunks[chunk_metadata.chungus_id.0]
-                .iter()
-                .min_by_key(|p| p.hex_distance(avg))
-                .unwrap();
-            let mut current = *chunk
-                .iter()
-                .min_by_key(|p| p.hex_distance(closest))
-                .unwrap();
-
-            let mut vel = |current| {
-                let vel = closest - current;
-                match vel.q.abs().cmp(&vel.r.abs()) {
-                    Ordering::Equal => {
-                        if rng.gen_bool(0.5) {
-                            Axial::new(vel.q / vel.q.abs(), 0)
-                        } else {
-                            Axial::new(0, vel.r / vel.r.abs())
-                        }
-                    }
-                    Ordering::Less => Axial::new(0, vel.r / vel.r.abs()),
-                    Ordering::Greater => Axial::new(vel.q / vel.q.abs(), 0),
-                }
-            };
-
-            let terrain = unsafe { terrain.as_mut() };
-            while current.hex_distance(closest) != 0 {
-                let vel = vel(current);
-                let mut c = current;
-                let mut v = vel;
-                for _ in 0..2 {
-                    c += v;
-                    v = v.rotate_right();
-                    match terrain.get_by_id_mut(&c) {
-                        Some(v) => {
-                            *v = TerrainComponent(TileTerrainType::Plain);
-                        }
-                        None => {
-                            terrain.insert(c, TerrainComponent(TileTerrainType::Plain));
-                        }
-                    }
-                }
-                current += vel;
-            }
-        }
-        debug!("Connecting chunks done");
-    }
-
-    debug!("Deduping");
-    unsafe {
-        terrain.as_mut().dedupe();
-    }
-    debug!("Deduping done");
-
     std = (std / i).sqrt();
     normal_std = (normal_std / i).sqrt();
 
@@ -320,17 +330,13 @@ pub fn generate_room(
         depth,
         width: dsides,
         height: dsides,
-        wall_mass,
-        plain_mass,
     };
 
-    debug!("Map generation done {:#?}", props);
     Ok(props)
 }
 
 fn fill_edge(
     mut terrain: UnsafeView<Axial, TerrainComponent>,
-    offset: Axial,
     radius: i32,
     edge: Axial,
 ) -> Result<(), MapGenerationError> {
@@ -342,11 +348,11 @@ fn fill_edge(
     let end = Axial::hex_cube_to_axial(end);
     let vel = end - edge;
 
-    let mut vertex = (edge * radius) + offset + Axial::new(radius, radius);
+    let mut vertex = (edge * radius) + Axial::new(radius, radius);
 
     debug!(
-        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} offset {:?}",
-        edge, vertex, end, vel, radius, offset
+        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} ",
+        edge, vertex, end, vel, radius,
     );
     unsafe { terrain.as_mut() }
         .extend((1..radius).map(move |_| {
@@ -374,11 +380,8 @@ struct MeshMeta {
 
 /// Find the connecting `Plain` chunks
 /// return a map that holds the chunk id of each point
-fn calculate_plain_meshes(
-    terrain: View<Axial, TerrainComponent>,
-) -> (MeshMeta, MortonTable<Axial, ChunkId>) {
+fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> MeshMeta {
     debug!("calculate_plain_meshes");
-    let mut res = MortonTable::with_capacity(terrain.len());
     let mut chunk = HashSet::new();
     let mut visited = HashSet::new();
     let mut todo = HashSet::new();
@@ -426,8 +429,6 @@ fn calculate_plain_meshes(
             chungus_mass = mass;
             chungus_id = chunk_id;
         }
-        let it = chunk.iter().map(|p| (*p, ChunkId(chunk_id)));
-        res.extend(it).unwrap();
         let mut c = HashSet::new();
         std::mem::swap(&mut c, &mut chunk);
         chunks.push(c);
@@ -440,7 +441,7 @@ fn calculate_plain_meshes(
         chunks,
     };
     debug!("calculate_plain_meshes done, found meshes {:?}", meta);
-    (meta, res)
+    meta
 }
 
 /// Print a 2D TerrainComponent map to the console, intended for debugging small maps.
@@ -473,9 +474,7 @@ mod tests {
     fn basic_generation() {
         let mut terrain = MortonTable::with_capacity(512);
 
-        let center = Axial::new(5, 5);
         let props = generate_room(
-            center,
             5,
             &[],
             (UnsafeView::from_table(&mut terrain),),
@@ -516,10 +515,7 @@ mod tests {
         let mut plains = Vec::with_capacity(512);
         let mut terrain = MortonTable::with_capacity(512);
 
-        let center = Axial::new(8, 8);
-
         let props = generate_room(
-            center,
             8,
             &[],
             (UnsafeView::from_table(&mut terrain),),
@@ -564,7 +560,7 @@ mod tests {
         let terrain: MortonTable<Axial, TerrainComponent> =
             serde_json::from_str(std::include_str!("./chunk_test_map.json")).unwrap();
 
-        let (meta, _chunks) = calculate_plain_meshes(View::from_table(&terrain));
+        let meta = calculate_plain_meshes(View::from_table(&terrain));
 
         assert_eq!(meta.num_chunks, 2);
     }

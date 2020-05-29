@@ -8,7 +8,7 @@ const CELL_HEIGHT = 2 * CELL_SIZE;
 const mapRender = new wasm.MapRender();
 
 const run = () => {
-  const mapGenRes = mapRender.generateMap(70, 70, 32);
+  const mapGenRes = mapRender.generateMap(32);
 
   document.getElementById("mapGenRes").innerHTML = `<pre>${mapGenRes}</pre>`;
 
