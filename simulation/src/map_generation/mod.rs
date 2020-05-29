@@ -3,7 +3,7 @@ mod diamond_square;
 use diamond_square::create_noise;
 
 use crate::model::components::TerrainComponent;
-use crate::model::geometry::Axial;
+use crate::model::geometry::{Axial, Hexagon};
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
@@ -246,6 +246,11 @@ pub fn generate_room(
     let (chunk_metadata, _chunks) = calculate_plain_meshes(View::from_table(&*terrain));
     if chunk_metadata.num_chunks > 1 {
         debug!("Connecting {} chunks", chunk_metadata.num_chunks);
+        debug_assert!(radius > 0);
+        let hex = Hexagon {
+            center,
+            radius: radius - 1,
+        };
         for (_, chunk) in chunk_metadata
             .chunks
             .iter()
@@ -286,6 +291,9 @@ pub fn generate_room(
                 for _ in 0..2 {
                     c += v;
                     v = v.rotate_right();
+                    if !hex.contains(&c) {
+                        continue;
+                    }
                     match terrain.get_by_id_mut(&c) {
                         Some(v) => {
                             *v = TerrainComponent(TileTerrainType::Plain);
