@@ -471,7 +471,7 @@ mod tests {
     use crate::storage::views::View;
 
     #[test]
-    fn basic_generation() {
+    fn maps_are_not_homogeneous() {
         let mut terrain = MortonTable::with_capacity(512);
 
         let props = generate_room(
@@ -505,8 +505,7 @@ mod tests {
         }
 
         assert!(seen_plain);
-        assert!(seen_wall);
-        assert!(seen_empty);
+        assert!(seen_wall || seen_empty);
     }
 
     #[test]
