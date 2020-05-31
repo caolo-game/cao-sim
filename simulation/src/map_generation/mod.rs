@@ -10,7 +10,6 @@ use crate::tables::morton::ExtendFailure;
 use crate::tables::msb_de_bruijn;
 use crate::tables::MortonTable;
 use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
-use serde_derive::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use thiserror::Error;
@@ -142,15 +141,22 @@ pub fn generate_room(
     let heightmap_props =
         transform_heightmap_into_terrain(max_grad, min_grad, dsides, radius, &gradient, terrain)?;
 
-    debug!("Filling edges");
-    for edge in edges.iter().cloned() {
-        fill_edge(terrain, radius, edge)?;
+    let mut chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
+    if chunk_metadata.chunks.len() > 1 {
+        connect_chunks(radius, &mut rng, &chunk_metadata.chunks, terrain);
     }
-    debug!("Filling edges done");
 
-    let chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
-    if chunk_metadata.num_chunks > 1 {
-        connect_chunks(radius, &mut rng, &chunk_metadata, terrain);
+    {
+        debug!("Filling edges");
+        let chunks = &mut chunk_metadata.chunks;
+        chunks.resize_with(1, || unreachable!());
+        for edge in edges.iter().cloned() {
+            chunks.push(HashSet::with_capacity(radius as usize));
+            fill_edge(radius, edge, terrain, chunks.last_mut().unwrap())?;
+        }
+        debug!("Connecting edges to the mainland");
+        connect_chunks(radius, &mut rng, &chunk_metadata.chunks, terrain);
+        debug!("Filling edges done");
     }
 
     debug!("Deduping");
@@ -166,20 +172,15 @@ pub fn generate_room(
 fn connect_chunks(
     radius: i32,
     rng: &mut impl Rng,
-    chunk_metadata: &MeshMeta,
+    chunks: &[HashSet<Axial>],
     mut terrain: UnsafeView<Axial, TerrainComponent>,
 ) {
-    debug!("Connecting {} chunks", chunk_metadata.num_chunks);
+    debug!("Connecting {} chunks", chunks.len());
     debug_assert!(radius > 0);
-    for (_, chunk) in chunk_metadata
-        .chunks
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| *i != chunk_metadata.chungus_id.0)
-    {
+    for chunk in chunks.iter().skip(1) {
         let avg: Axial =
             chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;
-        let closest = *chunk_metadata.chunks[chunk_metadata.chungus_id.0]
+        let closest = *chunks[0]
             .iter()
             .min_by_key(|p| p.hex_distance(avg))
             .unwrap();
@@ -211,15 +212,8 @@ fn connect_chunks(
                 let mut vel = vel;
                 for _ in 0..2 {
                     let current = current + vel;
-                    vel = vel.rotate_right();
-                    match terrain.get_by_id_mut(&current) {
-                        Some(v) => {
-                            *v = TerrainComponent(TileTerrainType::Plain);
-                        }
-                        None => {
-                            terrain.insert(current, TerrainComponent(TileTerrainType::Plain));
-                        }
-                    }
+                    vel = vel.rotate_left();
+                    terrain.insert_or_update(current, TerrainComponent(TileTerrainType::Plain));
                 }
             }
             current += vel;
@@ -336,9 +330,10 @@ fn transform_heightmap_into_terrain(
 }
 
 fn fill_edge(
-    mut terrain: UnsafeView<Axial, TerrainComponent>,
     radius: i32,
     edge: Axial,
+    mut terrain: UnsafeView<Axial, TerrainComponent>,
+    chunk: &mut HashSet<Axial>,
 ) -> Result<(), MapGenerationError> {
     if edge.q.abs() > 1 || edge.r.abs() > 1 || edge.r == edge.q {
         return Err(MapGenerationError::InvalidNeighbour(edge));
@@ -355,8 +350,10 @@ fn fill_edge(
         edge, vertex, end, vel, radius,
     );
     unsafe { terrain.as_mut() }
+        // the first and last node is left empty on purpose!
         .extend((1..radius).map(move |_| {
             vertex += vel;
+            chunk.insert(vertex);
             (vertex, TerrainComponent(TileTerrainType::Edge))
         }))
         .map_err(|e| {
@@ -367,20 +364,14 @@ fn fill_edge(
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-struct ChunkId(usize);
-
-#[derive(Debug)]
-struct MeshMeta {
-    pub num_chunks: usize,
-    pub chungus_id: ChunkId,
+struct ChunkMeta {
     pub chungus_mass: usize,
     pub chunks: Vec<HashSet<Axial>>,
 }
 
-/// Find the connecting `Plain` chunks
-/// return a map that holds the chunk id of each point
-fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> MeshMeta {
+/// Find the connecting `Plain` chunks.
+/// The first one will be the largest chunk
+fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
     debug!("calculate_plain_meshes");
     let mut chunk = HashSet::new();
     let mut visited = HashSet::new();
@@ -390,7 +381,7 @@ fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> MeshMeta {
 
     let mut chungus_id = 0;
     let mut chungus_mass = 0;
-    let mut chunks = Vec::new();
+    let mut chunks = Vec::with_capacity(4);
     'a: loop {
         let current = terrain
             .iter()
@@ -429,18 +420,17 @@ fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> MeshMeta {
             chungus_mass = mass;
             chungus_id = chunk_id;
         }
-        let mut c = HashSet::new();
+        let mut c = HashSet::with_capacity(chunk.len());
         std::mem::swap(&mut c, &mut chunk);
         chunks.push(c);
         chunk_id += 1;
     }
-    let meta = MeshMeta {
-        chungus_id: ChunkId(chungus_id),
-        num_chunks: chunk_id,
+    chunks.swap(0, chungus_id);
+    debug!("calculate_plain_meshes done, found {} meshes", chunks.len());
+    let meta = ChunkMeta {
         chungus_mass,
         chunks,
     };
-    debug!("calculate_plain_meshes done, found meshes {:?}", meta);
     meta
 }
 
@@ -561,6 +551,6 @@ mod tests {
 
         let meta = calculate_plain_meshes(View::from_table(&terrain));
 
-        assert_eq!(meta.num_chunks, 2);
+        assert_eq!(meta.chunks.len(), 2);
     }
 }

@@ -57,6 +57,11 @@ impl Axial {
         let [x, y, z] = self.hex_axial_to_cube();
         Self::hex_cube_to_axial([-z, -x, -y])
     }
+
+    pub fn rotate_left(self) -> Axial {
+        let [x, y, z] = self.hex_axial_to_cube();
+        Self::hex_cube_to_axial([-y, -z, -x])
+    }
 }
 
 impl AddAssign for Axial {
