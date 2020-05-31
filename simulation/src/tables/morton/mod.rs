@@ -186,7 +186,7 @@ where
         }
     }
 
-    /// May trigger reordering of items, if applicable prefer `extend` and insert many keys at once.
+    /// If applicable prefer `extend` and insert many keys at once.
     pub fn insert(&mut self, id: Pos, row: Row) -> bool {
         if !self.intersects(&id) {
             return false;
@@ -214,6 +214,25 @@ where
                 self.values[ind].1 = row;
             })
             .is_ok()
+    }
+
+    pub fn insert_or_update(&mut self, id: Pos, row: Row) -> bool {
+        if !self.intersects(&id) {
+            return false;
+        }
+        match self.find_key(&id) {
+            Ok(ind) => {
+                self.values[ind].1 = row;
+            }
+            Err(ind) => {
+                let [x, y] = id.as_array();
+                let [x, y] = [x as u16, y as u16];
+                self.keys.insert(ind, MortonKey::new(x, y));
+                self.values.insert(ind, (id, row));
+                self.rebuild_skip_list();
+            }
+        }
+        true
     }
 
     /// Returns the first item with given id, if any
