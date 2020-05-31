@@ -189,12 +189,12 @@ fn connect_chunks(
             .min_by_key(|p| p.hex_distance(closest))
             .unwrap();
 
-        let mut get_next_step = |current| {
+        let get_next_step = |current| {
             let vel = closest - current;
             debug_assert!(vel.q != 0 || vel.r != 0);
             match vel.q.abs().cmp(&vel.r.abs()) {
                 Ordering::Equal => {
-                    if rng.gen_bool(0.5) {
+                    if (vel.q + vel.r) % 2 == 0 {
                         Axial::new(vel.q / vel.q.abs(), 0)
                     } else {
                         Axial::new(0, vel.r / vel.r.abs())
@@ -206,13 +206,17 @@ fn connect_chunks(
         };
 
         let terrain = unsafe { terrain.as_mut() };
-        while current.hex_distance(closest) != 0 {
+        while current.hex_distance(closest) > 1 {
             let vel = get_next_step(current);
             {
                 let mut vel = vel;
                 for _ in 0..2 {
                     let current = current + vel;
-                    vel = vel.rotate_left();
+                    if rng.gen_bool(0.5) {
+                        vel = vel.rotate_left();
+                    } else {
+                        vel = vel.rotate_right();
+                    }
                     terrain.insert_or_update(current, TerrainComponent(TileTerrainType::Plain));
                 }
             }
