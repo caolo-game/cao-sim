@@ -141,15 +141,16 @@ pub fn generate_room(
     let heightmap_props =
         transform_heightmap_into_terrain(max_grad, min_grad, dsides, radius, &gradient, terrain)?;
 
-    let mut chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
+    let chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
         connect_chunks(radius, &mut rng, &chunk_metadata.chunks, terrain);
     }
 
     {
         debug!("Filling edges");
+        let mut chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
+        assert_eq!(chunk_metadata.chunks.len(), 1, "Expected 1 large chunk");
         let chunks = &mut chunk_metadata.chunks;
-        chunks.resize_with(1, || unreachable!());
         for edge in edges.iter().cloned() {
             chunks.push(HashSet::with_capacity(radius as usize));
             fill_edge(radius, edge, terrain, chunks.last_mut().unwrap())?;
