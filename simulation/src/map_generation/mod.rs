@@ -211,6 +211,10 @@ fn connect_chunks(
 ) {
     debug!("Connecting {} chunks", chunks.len());
     debug_assert!(radius > 0);
+    let bounds = Hexagon {
+        center: Axial::new(radius, radius),
+        radius,
+    };
     'chunks: for chunk in chunks[1..].iter() {
         let avg: Axial =
             chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;
@@ -259,7 +263,7 @@ fn connect_chunks(
                     vel.rotate_right()
                 };
                 let c = current + vel;
-                if !terrain.intersects(&c) {
+                if !bounds.contains(&c) {
                     continue;
                 }
                 current = c;
