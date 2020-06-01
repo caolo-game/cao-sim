@@ -207,21 +207,23 @@ fn connect_chunks(
         };
 
         let terrain = unsafe { terrain.as_mut() };
-        while current.hex_distance(closest) > 1 {
+        let mut dist = current.hex_distance(closest);
+        while dist > 1 {
             let vel = get_next_step(current);
             {
-                let mut vel = vel;
-                for _ in 0..2 {
-                    let current = current + vel;
-                    if rng.gen_bool(0.5) {
-                        vel = vel.rotate_left();
+                current += vel;
+                terrain.insert_or_update(current, TerrainComponent(TileTerrainType::Plain));
+                for _ in 0..3 {
+                    let vel = if rng.gen_bool(0.5) {
+                        vel.rotate_left()
                     } else {
-                        vel = vel.rotate_right();
-                    }
+                        vel.rotate_right()
+                    };
+                    current = current + vel;
                     terrain.insert_or_update(current, TerrainComponent(TileTerrainType::Plain));
                 }
             }
-            current += vel;
+            dist = current.hex_distance(closest);
         }
     }
     debug!("Connecting chunks done");
