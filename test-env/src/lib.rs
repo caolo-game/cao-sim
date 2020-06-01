@@ -23,8 +23,8 @@ pub struct MapRender {
 pub fn init() {
     console_error_panic_hook::set_once();
     // console_log::init_with_level(log::Level::Trace).unwrap();
-    console_log::init_with_level(log::Level::Debug).unwrap();
-    // console_log::init_with_level(log::Level::Info).unwrap();
+    // console_log::init_with_level(log::Level::Debug).unwrap();
+    console_log::init_with_level(log::Level::Info).unwrap();
 }
 
 #[wasm_bindgen]

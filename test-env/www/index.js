@@ -8,11 +8,12 @@ const CELL_HEIGHT = 2 * CELL_SIZE;
 const mapRender = new wasm.MapRender();
 
 var COUNT = 0;
+var running = true;
 
 const _run = () => {
   const canvas = document.getElementById("mapGenCanvas");
   const ctx = canvas.getContext("2d");
-  ctx.clearRect(0,0,canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   let error = null;
   let mapGenRes = null;
@@ -88,6 +89,7 @@ const _run = () => {
 };
 
 const run = () => {
+  if (!running) return;
   COUNT += 1;
   console.time("running");
   try {
@@ -102,6 +104,9 @@ const run = () => {
   }
 };
 
-document.getElementById("genMapBtn").onclick = () => run();
+document.getElementById("genMapBtn").onclick = () => {
+  running = !running;
+  run();
+};
 
 run();
