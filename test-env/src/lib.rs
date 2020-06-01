@@ -23,7 +23,8 @@ pub struct MapRender {
 pub fn init() {
     console_error_panic_hook::set_once();
     // console_log::init_with_level(log::Level::Trace).unwrap();
-    console_log::init_with_level(log::Level::Debug).unwrap();
+    // console_log::init_with_level(log::Level::Debug).unwrap();
+    console_log::init_with_level(log::Level::Info).unwrap();
 }
 
 #[wasm_bindgen]
@@ -50,7 +51,7 @@ impl MapRender {
         )
         .map_err(|e| format!("{:?}", e))
         .map_err(|e| JsValue::from_serde(&e).unwrap())
-        .map(|hp| format!("{:#?}", hp))?;
+        .map(|hp| format!("{:#?}", hp));
 
         let mut min = Point::new((1 << 20) as f32, (1 << 20) as f32);
         let mut max = Point::new(0., 0.);
@@ -72,7 +73,7 @@ impl MapRender {
 
         self.bounds = [min, max];
 
-        Ok(JsValue::from_str(res.as_str()))
+        Ok(JsValue::from_str(res?.as_str()))
     }
 
     #[wasm_bindgen(js_name=bounds)]
