@@ -29,8 +29,8 @@ pub const MORTON_POS_MAX: i32 = 0b0111111111111111;
 
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure<Id: SpatialKey2d> {
-    #[error("Failed to insert poision {0:?}")]
-    InvalidPosition(Id),
+    #[error("Position {0:?} is out of bounds!")]
+    OutOfBounds(Id),
 }
 
 const SKIP_LEN: usize = 8;
@@ -132,7 +132,7 @@ where
         trace!("MortonTable extend");
         for (id, value) in it {
             if !self.intersects(&id) {
-                return Err(ExtendFailure::InvalidPosition(id));
+                return Err(ExtendFailure::OutOfBounds(id));
             }
             let [x, y] = id.as_array();
             let [x, y] = [x as u16, y as u16];
@@ -187,9 +187,9 @@ where
     }
 
     /// If applicable prefer `extend` and insert many keys at once.
-    pub fn insert(&mut self, id: Pos, row: Row) -> bool {
+    pub fn insert(&mut self, id: Pos, row: Row) -> Result<(), ExtendFailure<Pos>> {
         if !self.intersects(&id) {
-            return false;
+            return Err(ExtendFailure::OutOfBounds(id));
         }
         let [x, y] = id.as_array();
         let [x, y] = [x as u16, y as u16];
@@ -201,14 +201,11 @@ where
         self.keys.insert(ind, MortonKey::new(x, y));
         self.values.insert(ind, (id, row));
         self.rebuild_skip_list();
-        true
+        Ok(())
     }
 
     /// Return false if id is not in the map, otherwise override the first instance found
     pub fn update(&mut self, id: Pos, row: Row) -> bool {
-        if !self.intersects(&id) {
-            return false;
-        }
         self.find_key(&id)
             .map(|ind| {
                 self.values[ind].1 = row;
@@ -216,9 +213,9 @@ where
             .is_ok()
     }
 
-    pub fn insert_or_update(&mut self, id: Pos, row: Row) -> bool {
+    pub fn insert_or_update(&mut self, id: Pos, row: Row) -> Result<(), ExtendFailure<Pos>> {
         if !self.intersects(&id) {
-            return false;
+            return Err(ExtendFailure::OutOfBounds(id));
         }
         match self.find_key(&id) {
             Ok(ind) => {
@@ -232,7 +229,7 @@ where
                 self.rebuild_skip_list();
             }
         }
-        true
+        Ok(())
     }
 
     /// Returns the first item with given id, if any

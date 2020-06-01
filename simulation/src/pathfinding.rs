@@ -287,7 +287,7 @@ mod tests {
 
         for x in 0..25 {
             for y in 0..25 {
-                terrain.insert(Axial::new(x, y), TerrainComponent(TileTerrainType::Plain));
+                terrain.insert(Axial::new(x, y), TerrainComponent(TileTerrainType::Plain)).unwrap();
             }
         }
 

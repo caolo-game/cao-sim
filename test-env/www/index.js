@@ -7,8 +7,21 @@ const CELL_HEIGHT = 2 * CELL_SIZE;
 
 const mapRender = new wasm.MapRender();
 
-const run = () => {
-  const mapGenRes = mapRender.generateMap(32);
+var COUNT = 0;
+var running = true;
+
+const _run = () => {
+  const canvas = document.getElementById("mapGenCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  let error = null;
+  let mapGenRes = null;
+  try {
+    mapGenRes = mapRender.generateMap(32);
+  } catch (e) {
+    error = e;
+  }
 
   document.getElementById("mapGenRes").innerHTML = `<pre>${mapGenRes}</pre>`;
 
@@ -61,19 +74,39 @@ const run = () => {
     console.log("drawing done");
   };
 
-  const canvas = document.getElementById("mapGenCanvas");
-
   const bounds = mapRender.bounds();
   const width = bounds[1].x - bounds[0].x;
   const height = bounds[1].y - bounds[0].y;
 
   canvas.height = CELL_SIZE * height + 2;
   canvas.width = CELL_SIZE * width + 2;
-  const ctx = canvas.getContext("2d");
 
   drawCells(ctx, mapRender);
+
+  if (error) {
+    throw error;
+  }
 };
 
-document.getElementById("genMapBtn").onclick = () => run();
+const run = () => {
+  if (!running) return;
+  COUNT += 1;
+  console.time("running");
+  try {
+    _run();
+    requestAnimationFrame(run);
+  } catch (e) {
+    console.error("Failed to run", e);
+    throw e;
+  } finally {
+    console.timeEnd("running");
+    console.log("Run ", COUNT, "done");
+  }
+};
+
+document.getElementById("genMapBtn").onclick = () => {
+  running = !running;
+  run();
+};
 
 run();

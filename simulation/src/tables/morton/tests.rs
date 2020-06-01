@@ -73,8 +73,7 @@ fn simple_from_iterator() {
 fn insertions() {
     let mut table = MortonTable::new();
 
-    let r = table.insert(Axial::new(16, 32), 123i32);
-    assert!(r);
+    table.insert(Axial::new(16, 32), 123i32).unwrap();
 }
 
 #[test]
@@ -88,8 +87,7 @@ fn test_range_query_all() {
             q: rng.gen_range(0, 128),
             r: rng.gen_range(0, 128),
         };
-        let inserted = table.insert(p, i);
-        assert!(inserted);
+        table.insert(p, i).unwrap();
     }
 
     let mut res = Vec::new();
@@ -203,8 +201,7 @@ fn get_by_id() {
     }
 
     for (p, e) in points.iter() {
-        let inserted = table.insert(p.clone(), *e);
-        assert!(inserted);
+        table.insert(p.clone(), *e).unwrap();
     }
 
     println!("{:?}\n{:?}", table.skiplist, table.keys);
