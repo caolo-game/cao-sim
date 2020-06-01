@@ -136,6 +136,7 @@ pub struct Hexagon {
 
 impl Hexagon {
     pub fn contains(&self, point: &Axial) -> bool {
+        let point = *point - self.center;
         let [x, y, z] = point.hex_axial_to_cube();
         let r = self.radius;
         -r <= x && x <= r && -r <= y && y <= r && -r <= z && z <= r

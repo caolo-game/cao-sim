@@ -3,12 +3,11 @@ mod diamond_square;
 use diamond_square::create_noise;
 
 use crate::model::components::TerrainComponent;
-use crate::model::geometry::Axial;
+use crate::model::geometry::{Axial, Hexagon};
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
-use crate::tables::msb_de_bruijn;
-use crate::tables::MortonTable;
+use crate::tables::{msb_de_bruijn, MortonTable, Table};
 use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -24,6 +23,8 @@ pub enum MapGenerationError {
     TooManyNeighbours(usize),
     #[error("Got an invlid neighbour {0:?}")]
     InvalidNeighbour(Axial),
+    #[error("Internal error: Failed to connect chunks, remaining: {0:?}")]
+    ExpectedSingleChunk(usize),
 }
 
 type MapTables = (UnsafeView<Axial, TerrainComponent>,);
@@ -42,6 +43,8 @@ fn pot(size: u32) -> u32 {
 
 #[derive(Debug, Clone)]
 pub struct HeightMapProperties {
+    pub center: Axial,
+    pub radius: i32,
     /// standard deviation of the height map
     pub std: f32,
     /// mean height of the map
@@ -149,7 +152,15 @@ pub fn generate_room(
     {
         debug!("Filling edges");
         let mut chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
-        assert_eq!(chunk_metadata.chunks.len(), 1, "Expected 1 large chunk");
+        if chunk_metadata.chunks.len() != 1 {
+            error!(
+                "Expected 1 single mesh when applying edges, intead got {}",
+                chunk_metadata.chunks.len()
+            );
+            return Err(MapGenerationError::ExpectedSingleChunk(
+                chunk_metadata.chunks.len(),
+            ));
+        }
         let chunks = &mut chunk_metadata.chunks;
         for edge in edges.iter().cloned() {
             chunks.push(HashSet::with_capacity(radius as usize));
@@ -160,11 +171,33 @@ pub fn generate_room(
         debug!("Filling edges done");
     }
 
+    // cleanup potential post-condition violations
+    // this step is designed to make experimental changes to generation algorithms easier at the
+    // cost of performance.
+    // it is the author's opinion that this is a good trade-off
     debug!("Deduping");
     unsafe {
         terrain.as_mut().dedupe();
     }
     debug!("Deduping done");
+
+    debug!("Cutting outliers");
+    let bounds = Hexagon {
+        center: Axial::new(radius, radius),
+        radius,
+    };
+    let delegates: Vec<Axial> = terrain
+        .iter()
+        .filter(|(p, _)| !bounds.contains(p))
+        .map(|(p, _)| p)
+        .collect();
+    debug!("Deleting {} items from the room", delegates.len());
+    for p in delegates.iter() {
+        unsafe {
+            terrain.as_mut().delete(p);
+        }
+    }
+    debug!("Cutting outliers done");
 
     debug!("Map generation done {:#?}", heightmap_props);
     Ok(heightmap_props)
@@ -178,7 +211,7 @@ fn connect_chunks(
 ) {
     debug!("Connecting {} chunks", chunks.len());
     debug_assert!(radius > 0);
-    for chunk in chunks.iter().skip(1) {
+    'chunks: for chunk in chunks[1..].iter() {
         let avg: Axial =
             chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;
         let closest = *chunks[0]
@@ -206,24 +239,37 @@ fn connect_chunks(
             }
         };
 
+        if current.hex_distance(closest) <= 1 {
+            continue 'chunks;
+        }
         let terrain = unsafe { terrain.as_mut() };
-        let mut dist = current.hex_distance(closest);
-        while dist > 1 {
+        'connecting: loop {
             let vel = get_next_step(current);
-            {
-                current += vel;
-                terrain.insert_or_update(current, TerrainComponent(TileTerrainType::Plain));
-                for _ in 0..3 {
-                    let vel = if rng.gen_bool(0.5) {
-                        vel.rotate_left()
-                    } else {
-                        vel.rotate_right()
-                    };
-                    current = current + vel;
-                    terrain.insert_or_update(current, TerrainComponent(TileTerrainType::Plain));
+            current += vel;
+            terrain
+                .insert_or_update(current, TerrainComponent(TileTerrainType::Plain))
+                .unwrap();
+            if current.hex_distance(closest) < 1 {
+                break 'connecting;
+            }
+            for _ in 0..2 {
+                let vel = if rng.gen_bool(0.5) {
+                    vel.rotate_left()
+                } else {
+                    vel.rotate_right()
+                };
+                let c = current + vel;
+                if !terrain.intersects(&c) {
+                    continue;
+                }
+                current = c;
+                terrain
+                    .insert_or_update(current, TerrainComponent(TileTerrainType::Plain))
+                    .unwrap();
+                if current.hex_distance(closest) < 1 {
+                    break 'connecting;
                 }
             }
-            dist = current.hex_distance(closest);
         }
     }
     debug!("Connecting chunks done");
@@ -244,11 +290,11 @@ fn transform_heightmap_into_terrain(
     let mut normal_std = 0.0;
     let mut i = 1.0;
     let depth = max_grad - min_grad;
+    let center = Axial::new(dsides / 2, dsides / 2);
 
     let points = {
         // the process so far produced a sheared rectangle
         // we'll choose points that cut the result into a hexagonal shape
-        let center = Axial::new(dsides / 2, dsides / 2);
         debug!(
             "Calculating points of a hexagon in the height map around center: {:?}",
             center
@@ -322,6 +368,8 @@ fn transform_heightmap_into_terrain(
     normal_std = (normal_std / i).sqrt();
 
     let props = HeightMapProperties {
+        center,
+        radius,
         normal_mean,
         normal_std,
         std,
@@ -380,7 +428,6 @@ struct ChunkMeta {
 /// The first one will be the largest chunk
 fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
     debug!("calculate_plain_meshes");
-    let mut chunk = HashSet::new();
     let mut visited = HashSet::new();
     let mut todo = HashSet::new();
     let mut startind = 0;
@@ -408,7 +455,7 @@ fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
         startind = i;
         todo.clear();
         todo.insert(current);
-        chunk.clear();
+        let mut chunk = HashSet::new();
 
         while !todo.is_empty() {
             let current = todo.iter().next().cloned().unwrap();
@@ -427,13 +474,19 @@ fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
             chungus_mass = mass;
             chungus_id = chunk_id;
         }
-        let mut c = HashSet::with_capacity(chunk.len());
-        std::mem::swap(&mut c, &mut chunk);
-        chunks.push(c);
+        chunks.push(chunk);
         chunk_id += 1;
     }
     chunks.swap(0, chungus_id);
     debug!("calculate_plain_meshes done, found {} meshes", chunks.len());
+    debug_assert!(
+        chunks
+            .iter()
+            .zip(chunks.iter().skip(1))
+            .find(|(a, b)| !a.is_disjoint(b))
+            .is_none(),
+        "Internal error: chunks must be disjoint!"
+    );
     let meta = ChunkMeta {
         chungus_mass,
         chunks,
