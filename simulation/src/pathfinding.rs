@@ -109,6 +109,7 @@ pub fn find_path_room_scale(
             .ok_or_else(|| PathFindingError::RoomDoesNotExists(current.pos))?
             .0
             .iter()
+            .map(|e| &e.direction)
         {
             if !closed_set.contains_key(&point) {
                 let node = Node::new(
@@ -287,7 +288,9 @@ mod tests {
 
         for x in 0..25 {
             for y in 0..25 {
-                terrain.insert(Axial::new(x, y), TerrainComponent(TileTerrainType::Plain)).unwrap();
+                terrain
+                    .insert(Axial::new(x, y), TerrainComponent(TileTerrainType::Plain))
+                    .unwrap();
             }
         }
 
