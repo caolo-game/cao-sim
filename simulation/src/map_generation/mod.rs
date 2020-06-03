@@ -2,7 +2,7 @@ mod diamond_square;
 
 use diamond_square::create_noise;
 
-use crate::model::components::TerrainComponent;
+use crate::model::components::{RoomConnection, TerrainComponent};
 use crate::model::geometry::{Axial, Hexagon};
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
@@ -25,6 +25,13 @@ pub enum MapGenerationError {
     InvalidNeighbour(Axial),
     #[error("Internal error: Failed to connect chunks, remaining: {0:?}")]
     ExpectedSingleChunk(usize),
+    #[error("Bad edge offsets at edge {edge:?} width a radius of {radius}. Start is {offset_start} and end is {offset_end}")]
+    BadEdgeOffset {
+        edge: Axial,
+        offset_start: i32,
+        offset_end: i32,
+        radius: i32,
+    },
 }
 
 type MapTables = (UnsafeView<Axial, TerrainComponent>,);
@@ -68,7 +75,7 @@ pub struct HeightMapProperties {
 /// Returns property description of the generated height map.
 pub fn generate_room(
     radius: u32,
-    edges: &[Axial],
+    edges: &[RoomConnection],
     (mut terrain,): MapTables,
     seed: Option<[u8; 16]>,
 ) -> Result<HeightMapProperties, MapGenerationError> {
@@ -390,10 +397,15 @@ fn transform_heightmap_into_terrain(
 
 fn fill_edge(
     radius: i32,
-    edge: Axial,
+    edge: RoomConnection,
     mut terrain: UnsafeView<Axial, TerrainComponent>,
     chunk: &mut HashSet<Axial>,
 ) -> Result<(), MapGenerationError> {
+    let RoomConnection {
+        offset_start,
+        offset_end,
+        direction: edge,
+    } = edge;
     if edge.q.abs() > 1 || edge.r.abs() > 1 || edge.r == edge.q {
         return Err(MapGenerationError::InvalidNeighbour(edge));
     }
@@ -402,16 +414,25 @@ fn fill_edge(
     let end = Axial::hex_cube_to_axial(end);
     let vel = end - edge;
 
-    let mut vertex = (edge * radius) + Axial::new(radius, radius);
+    let vertex = (edge * radius) + Axial::new(radius, radius);
 
     debug!(
-        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} ",
-        edge, vertex, end, vel, radius,
+        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} offset_start {} offset_end {}",
+        edge, vertex, end, vel, radius, offset_start, offset_end
     );
+    let offset_start = offset_start as i32;
+    let offset_end = offset_end as i32;
+    if offset_start > radius - offset_end {
+        return Err(MapGenerationError::BadEdgeOffset {
+            radius,
+            edge,
+            offset_start,
+            offset_end,
+        });
+    }
     unsafe { terrain.as_mut() }
-        // the first and last node is left empty on purpose!
-        .extend((1..radius).map(move |_| {
-            vertex += vel;
+        .extend((offset_start..=(radius - offset_end)).map(move |i| {
+            let vertex = vertex + (vel * i);
             chunk.insert(vertex);
             (vertex, TerrainComponent(TileTerrainType::Edge))
         }))

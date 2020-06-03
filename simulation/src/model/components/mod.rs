@@ -1,8 +1,9 @@
 mod resources;
+mod rooms;
 pub use resources::*;
+pub use rooms::*;
 
-use super::terrain::TileTerrainType;
-use super::{geometry::Axial, EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
+use super::{EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
 use crate::tables::{
     BTreeTable, Component, MortonTable, RoomMortonTable, SpatialKey2d, TableId, VecTable,
 };
@@ -129,15 +130,6 @@ impl<Id: TableId> Component<Id> for LogEntry {
     type Table = BTreeTable<Id, Self>;
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
-pub struct TerrainComponent(pub TileTerrainType);
-impl Component<WorldPosition> for TerrainComponent {
-    type Table = RoomMortonTable<Self>;
-}
-impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
-    type Table = MortonTable<Id, Self>;
-}
-
 /// Entities with Scripts
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ScriptComponent(pub cao_lang::CompiledProgram);
@@ -155,12 +147,5 @@ pub const PATH_CACHE_LEN: usize = 64;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PathCacheComponent(pub ArrayVec<[RoomPosition; PATH_CACHE_LEN]>);
 impl<Id: TableId> Component<Id> for PathCacheComponent {
-    type Table = BTreeTable<Id, Self>;
-}
-
-/// Represents connections a room has to their neighbours. At most 6.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct RoomConnections(pub ArrayVec<[Axial; 6]>);
-impl<Id: TableId> Component<Id> for RoomConnections {
     type Table = BTreeTable<Id, Self>;
 }
