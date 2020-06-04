@@ -151,17 +151,17 @@ pub fn generate_room(
     let heightmap_props =
         transform_heightmap_into_terrain(max_grad, min_grad, dsides, radius, &gradient, terrain)?;
 
-    let chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
+    let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
         connect_chunks(radius, &mut rng, &chunk_metadata.chunks, terrain);
     }
 
     {
         debug!("Filling edges");
-        let mut chunk_metadata = calculate_plain_meshes(View::from_table(&*terrain));
+        let mut chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
         if chunk_metadata.chunks.len() != 1 {
             error!(
-                "Expected 1 single mesh when applying edges, intead got {}",
+                "Expected 1 single chunk when applying edges, intead got {}",
                 chunk_metadata.chunks.len()
             );
             return Err(MapGenerationError::ExpectedSingleChunk(
@@ -451,8 +451,8 @@ struct ChunkMeta {
 
 /// Find the connecting `Plain` chunks.
 /// The first one will be the largest chunk
-fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
-    debug!("calculate_plain_meshes");
+fn calculate_plain_chunks(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
+    debug!("calculate_plain_chunks");
     let mut visited = HashSet::new();
     let mut todo = HashSet::new();
     let mut startind = 0;
@@ -503,7 +503,7 @@ fn calculate_plain_meshes(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
         chunk_id += 1;
     }
     chunks.swap(0, chungus_id);
-    debug!("calculate_plain_meshes done, found {} meshes", chunks.len());
+    debug!("calculate_plain_chunks done, found {} chunks", chunks.len());
     debug_assert!(
         chunks
             .iter()
@@ -634,7 +634,7 @@ mod tests {
         let terrain: MortonTable<Axial, TerrainComponent> =
             serde_json::from_str(std::include_str!("./chunk_test_map.json")).unwrap();
 
-        let meta = calculate_plain_meshes(View::from_table(&terrain));
+        let meta = calculate_plain_chunks(View::from_table(&terrain));
 
         assert_eq!(meta.chunks.len(), 2);
     }
