@@ -182,7 +182,7 @@ pub fn generate_room(
 
     {
         let terrain_in = (*terrain).clone();
-        dilate(center, radius, 2, View::from_table(&terrain_in), terrain);
+        dilate(center, radius, 1, View::from_table(&terrain_in), terrain);
     }
 
     // cleanup potential post-condition violations
@@ -230,7 +230,7 @@ fn dilate(
         return;
     }
 
-    let threshold = (kernel_width * kernel_width / 3*2).max(1);
+    let threshold = (kernel_width * kernel_width / 3).max(1);
 
     let points = room_points(center, radius);
     for p in points.filter(|p| {
@@ -241,9 +241,7 @@ fn dilate(
     }) {
         let mut neighbours_on = -1; // account for p
         terrain_in.query_range(&p, kernel_width, &mut |_, TerrainComponent(t)| {
-            if t.is_walkable() {
-                neighbours_on += 1;
-            }
+            neighbours_on += t.is_walkable() as i32;
         });
 
         if neighbours_on > threshold as i32 {
