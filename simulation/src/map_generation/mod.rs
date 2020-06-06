@@ -25,11 +25,11 @@ pub enum MapGenerationError {
     InvalidNeighbour(Axial),
     #[error("Internal error: Failed to connect chunks, remaining: {0:?}")]
     ExpectedSingleChunk(usize),
-    #[error("Bad edge offsets at edge {edge:?} width a radius of {radius}. Start is {offset_start} and end is {offset_end}")]
+    #[error("Bad edge offsets at edge {edge:?} with a radius of {radius}. Start is {offset_start} and length is {length}")]
     BadEdgeOffset {
         edge: Axial,
         offset_start: i32,
-        offset_end: i32,
+        length: i32,
         radius: i32,
     },
 }
@@ -286,6 +286,20 @@ fn connect_chunks(
     debug!("Connecting chunks done");
 }
 
+fn room_points(center: Axial, radius: i32) -> impl Iterator<Item = Axial> {
+    // the process so far produced a sheared rectangle
+    // we'll choose points that cut the result into a hexagonal shape
+    let radius = radius - 1; // skip the edge of the map
+    (-radius..=radius).flat_map(move |x| {
+        let fromy = (-radius).max(-x - radius);
+        let toy = radius.min(-x + radius);
+        (fromy..=toy).map(move |y| {
+            let p = Axial::new(x, -x - y);
+            p + center
+        })
+    })
+}
+
 fn transform_heightmap_into_terrain(
     max_grad: f32,
     min_grad: f32,
@@ -303,24 +317,12 @@ fn transform_heightmap_into_terrain(
     let depth = max_grad - min_grad;
     let center = Axial::new(dsides / 2, dsides / 2);
 
-    let points = {
-        // the process so far produced a sheared rectangle
-        // we'll choose points that cut the result into a hexagonal shape
-        debug!(
-            "Calculating points of a hexagon in the height map around center: {:?}",
-            center
-        );
-        let radius = radius - 1; // skip the edge of the map
-        (-radius..=radius).flat_map(move |x| {
-            let fromy = (-radius).max(-x - radius);
-            let toy = radius.min(-x + radius);
-            (fromy..=toy).map(move |y| {
-                let p = Axial::new(x, -x - y);
-                p + center
-            })
-        })
-    };
+    let points = room_points(center, radius);
 
+    debug!(
+        "Calculating points of a hexagon in the height map around center: {:?}",
+        center
+    );
     unsafe { terrain.as_mut() }
         .extend(points.filter_map(|p| {
             trace!("Computing terrain of gradient point: {:?}", p);
@@ -403,7 +405,7 @@ fn fill_edge(
 ) -> Result<(), MapGenerationError> {
     let RoomConnection {
         offset_start,
-        offset_end,
+        length,
         direction: edge,
     } = edge;
     if edge.q.abs() > 1 || edge.r.abs() > 1 || edge.r == edge.q {
@@ -417,21 +419,21 @@ fn fill_edge(
     let vertex = (edge * radius) + Axial::new(radius, radius);
 
     debug!(
-        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} offset_start {} offset_end {}",
-        edge, vertex, end, vel, radius, offset_start, offset_end
+        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} offset_start {} length {}",
+        edge, vertex, end, vel, radius, offset_start, length
     );
     let offset_start = offset_start as i32;
-    let offset_end = offset_end as i32;
-    if offset_start > radius - offset_end {
+    let length = length as i32;
+    if offset_start + length > radius {
         return Err(MapGenerationError::BadEdgeOffset {
             radius,
             edge,
             offset_start,
-            offset_end,
+            length,
         });
     }
     unsafe { terrain.as_mut() }
-        .extend((offset_start..=(radius - offset_end)).map(move |i| {
+        .extend((offset_start..=(offset_start + length)).map(move |i| {
             let vertex = vertex + (vel * i);
             chunk.insert(vertex);
             (vertex, TerrainComponent(TileTerrainType::Edge))

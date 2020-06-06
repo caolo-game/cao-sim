@@ -52,7 +52,7 @@ impl MapRender {
                 .map(|p| RoomConnection {
                     direction: *p,
                     offset_start: 5,
-                    offset_end: 8,
+                    length: 3,
                 })
                 .collect::<Vec<_>>(),
             (UnsafeView::from_table(&mut self.map),),

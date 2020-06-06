@@ -9,10 +9,10 @@ use serde_derive::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RoomConnection {
     pub direction: Axial,
-    /// Where the connection points start on the edge
+    /// Where the bridge points start on the edge
     pub offset_start: u32,
-    /// Where the connection ends
-    pub offset_end: u32,
+    /// length of the bridge
+    pub length: u32,
 }
 
 /// Represents connections a room has to their neighbours. At most 6.

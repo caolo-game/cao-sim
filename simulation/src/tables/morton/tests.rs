@@ -94,7 +94,7 @@ fn test_range_query_all() {
     let center = Axial::new(64, 64);
     table.find_by_range(
         &center,
-        Axial::new(0, 0).hex_distance(center) as u32 + 1,
+        Axial::new(0, 0).hex_distance(center) as u32 + 2,
         &mut res,
     );
 
