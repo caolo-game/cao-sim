@@ -1,7 +1,7 @@
 import * as wasm from "test-env";
 import { memory } from "test-env/test_env_bg";
 
-const CELL_SIZE = 5;
+const CELL_SIZE = 15;
 const CELL_WIDTH = Math.sqrt(3) * CELL_SIZE;
 const CELL_HEIGHT = 2 * CELL_SIZE;
 
@@ -18,7 +18,7 @@ const _run = () => {
   let error = null;
   let mapGenRes = null;
   try {
-    mapGenRes = mapRender.generateMap(32);
+    mapGenRes = mapRender.generateMap(16);
   } catch (e) {
     error = e;
   }
