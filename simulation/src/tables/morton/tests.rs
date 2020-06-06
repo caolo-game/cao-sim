@@ -94,7 +94,7 @@ fn test_range_query_all() {
     let center = Axial::new(64, 64);
     table.find_by_range(
         &center,
-        Axial::new(0, 0).hex_distance(center) as u32 + 2,
+        Axial::new(0, 0).hex_distance(center) as u32,
         &mut res,
     );
 
@@ -261,8 +261,8 @@ fn dedupe_simple() {
 
     let mut table = MortonTable::from_iterator((0..128).flat_map(|_| {
         let pos = Axial {
-            q: rng.gen_range(0, 3900),
-            r: rng.gen_range(0, 3900),
+            q: rng.gen_range(0, 1 << 15),
+            r: rng.gen_range(0, 1 << 15),
         };
         vec![(pos, 0), (pos, 1), (pos, 3)]
     }))

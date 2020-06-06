@@ -390,7 +390,7 @@ where
         }
 
         for (id, val) in self.values[imin..imax].iter() {
-            if center.dist(id) < radius {
+            if center.dist(id) <= radius {
                 op(*id, val);
             }
         }

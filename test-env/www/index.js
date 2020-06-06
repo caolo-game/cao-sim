@@ -8,7 +8,7 @@ const CELL_HEIGHT = 2 * CELL_SIZE;
 const mapRender = new wasm.MapRender();
 
 var COUNT = 0;
-var running = false;
+var running = true;
 
 const _run = () => {
   const canvas = document.getElementById("mapGenCanvas");
@@ -88,13 +88,11 @@ const _run = () => {
   }
 };
 
-const run = () => {
-  if (!running) return;
+const runOnce = () => {
   COUNT += 1;
   console.time("running");
   try {
     _run();
-    setTimeout(run, 1000);
   } catch (e) {
     console.error("Failed to run", e);
     throw e;
@@ -104,9 +102,19 @@ const run = () => {
   }
 };
 
-document.getElementById("genMapBtn").onclick = () => {
+const run = () => {
+  if (!running) return;
+  runOnce();
+  setTimeout(run, 1000);
+};
+
+document.getElementById("genMapToggle").onclick = () => {
   running = !running;
   run();
 };
 
-_run();
+document.getElementById("genMapBtn").onclick = () => {
+  runOnce();
+};
+
+run();
