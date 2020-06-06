@@ -577,6 +577,8 @@ where
             self.values.remove(ind);
         }
 
+        self.rebuild_skip_list();
+
         Some(val)
     }
 }
