@@ -178,6 +178,13 @@ pub fn generate_room(
         debug!("Filling edges done");
     }
 
+    let center = Axial::new(radius, radius);
+
+    {
+        let terrain_in = (*terrain).clone();
+        dilate(center, radius, 2, View::from_table(&terrain_in), terrain);
+    }
+
     // cleanup potential post-condition violations
     // this step is designed to make experimental changes to generation algorithms easier at the
     // cost of performance.
@@ -189,10 +196,7 @@ pub fn generate_room(
     debug!("Deduping done");
 
     debug!("Cutting outliers");
-    let bounds = Hexagon {
-        center: Axial::new(radius, radius),
-        radius,
-    };
+    let bounds = Hexagon { center, radius };
     let delegates: Vec<Axial> = terrain
         .iter()
         .filter(|(p, _)| !bounds.contains(p))
@@ -208,6 +212,47 @@ pub fn generate_room(
 
     debug!("Map generation done {:#?}", heightmap_props);
     Ok(heightmap_props)
+}
+
+fn dilate(
+    center: Axial,
+    radius: i32,
+    kernel_width: u32,
+    terrain_in: View<Axial, TerrainComponent>,
+    mut terrain_out: UnsafeView<Axial, TerrainComponent>,
+) {
+    debug!(
+        "Dilating terrain center: {:?} radius: {} kernel: {}",
+        center, radius, kernel_width
+    );
+    if radius < kernel_width as i32 + 1 || kernel_width == 0 {
+        debug!("Skipping dilating");
+        return;
+    }
+
+    let threshold = (kernel_width * kernel_width / 3*2).max(1);
+
+    let points = room_points(center, radius);
+    for p in points.filter(|p| {
+        !terrain_in
+            .get_by_id(p)
+            .map(|TerrainComponent(t)| t.is_walkable())
+            .unwrap_or(false)
+    }) {
+        let mut neighbours_on = -1; // account for p
+        terrain_in.query_range(&p, kernel_width, &mut |_, TerrainComponent(t)| {
+            if t.is_walkable() {
+                neighbours_on += 1;
+            }
+        });
+
+        if neighbours_on > threshold as i32 {
+            unsafe { terrain_out.as_mut() }
+                .insert_or_update(p, TerrainComponent(TileTerrainType::Plain))
+                .expect("dilate plain update");
+        }
+    }
+    debug!("Dilate done");
 }
 
 fn connect_chunks(
@@ -260,7 +305,7 @@ fn connect_chunks(
             terrain
                 .insert_or_update(current, TerrainComponent(TileTerrainType::Plain))
                 .unwrap();
-            if current.hex_distance(closest) < 1 {
+            if current.hex_distance(closest) == 0 {
                 break 'connecting;
             }
             for _ in 0..2 {
@@ -489,7 +534,7 @@ fn calculate_plain_chunks(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
             todo.remove(&current);
             visited.insert(current);
             chunk.insert(current);
-            terrain.query_range(&current, 2, &mut |p, t| {
+            terrain.query_range(&current, 1, &mut |p, t| {
                 let TerrainComponent(t) = t;
                 if t.is_walkable() && !visited.contains(&p) {
                     todo.insert(p);
