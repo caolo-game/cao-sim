@@ -156,31 +156,12 @@ pub fn generate_room(
         connect_chunks(radius, &mut rng, &chunk_metadata.chunks, terrain);
     }
 
-    {
-        debug!("Filling edges");
-        let mut chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
-        if chunk_metadata.chunks.len() != 1 {
-            error!(
-                "Expected 1 single chunk when applying edges, intead got {}",
-                chunk_metadata.chunks.len()
-            );
-            return Err(MapGenerationError::ExpectedSingleChunk(
-                chunk_metadata.chunks.len(),
-            ));
-        }
-        let chunks = &mut chunk_metadata.chunks;
-        for edge in edges.iter().cloned() {
-            chunks.push(HashSet::with_capacity(radius as usize));
-            fill_edge(radius, edge, terrain, chunks.last_mut().unwrap())?;
-        }
-        debug!("Connecting edges to the mainland");
-        connect_chunks(radius, &mut rng, &chunk_metadata.chunks, terrain);
-        debug!("Filling edges done");
-    }
+    fill_edges(radius, edges, terrain, &mut rng)?;
 
     let center = Axial::new(radius, radius);
 
     {
+        // to make dilation unbiased we clone the terrain and inject that as separate input
         let terrain_in = (*terrain).clone();
         dilate(center, radius, 1, View::from_table(&terrain_in), terrain);
     }
@@ -196,6 +177,7 @@ pub fn generate_room(
     debug!("Deduping done");
 
     debug!("Cutting outliers");
+    // cut the edges, because generation might insert invalid Plains on the edge
     let bounds = Hexagon { center, radius };
     let delegates: Vec<Axial> = terrain
         .iter()
@@ -212,6 +194,34 @@ pub fn generate_room(
 
     debug!("Map generation done {:#?}", heightmap_props);
     Ok(heightmap_props)
+}
+
+fn fill_edges(
+    radius: i32,
+    edges: &[RoomConnection],
+    terrain: UnsafeView<Axial, TerrainComponent>,
+    rng: &mut impl Rng,
+) -> Result<(), MapGenerationError> {
+    debug!("Filling edges");
+    let mut chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
+    if chunk_metadata.chunks.len() != 1 {
+        error!(
+            "Expected 1 single chunk when applying edges, intead got {}",
+            chunk_metadata.chunks.len()
+        );
+        return Err(MapGenerationError::ExpectedSingleChunk(
+            chunk_metadata.chunks.len(),
+        ));
+    }
+    let chunks = &mut chunk_metadata.chunks;
+    for edge in edges.iter().cloned() {
+        chunks.push(HashSet::with_capacity(radius as usize));
+        fill_edge(radius, edge, terrain, chunks.last_mut().unwrap())?;
+    }
+    debug!("Connecting edges to the mainland");
+    connect_chunks(radius - 1, rng, &chunk_metadata.chunks, terrain);
+    debug!("Filling edges done");
+    Ok(())
 }
 
 fn dilate(
