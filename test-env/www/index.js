@@ -27,7 +27,8 @@ const _run = () => {
 
   const drawCells = (ctx, mapRender) => {
     const bounds = mapRender.bounds();
-    const { x: offsetx, y: offsety } = bounds[0];
+    let { x: offsetx, y: offsety } = bounds[0];
+    offsety -= 1;
 
     const cells = mapRender.getCells();
 
@@ -39,8 +40,10 @@ const _run = () => {
     for (let cell of cells) {
       switch (cell[1]) {
         case "Plain":
-        case "Edge":
           ctx.fillStyle = "#89813a";
+          break;
+        case "Edge":
+          ctx.fillStyle = "#89a13a";
           break;
         case "Wall":
           ctx.fillStyle = "#B3AD6A";
@@ -78,8 +81,8 @@ const _run = () => {
   const width = bounds[1].x - bounds[0].x;
   const height = bounds[1].y - bounds[0].y;
 
-  canvas.height = CELL_SIZE * height + 2;
-  canvas.width = CELL_SIZE * width + 2;
+  canvas.height = CELL_SIZE * (height + 1);
+  canvas.width = CELL_SIZE * (width + 2);
 
   drawCells(ctx, mapRender);
 
