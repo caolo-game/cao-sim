@@ -51,7 +51,7 @@ impl MapRender {
                 .iter()
                 .map(|p| RoomConnection {
                     direction: *p,
-                    offset_start: 0,
+                    offset_start: 5,
                     length: 2,
                 })
                 .collect::<Vec<_>>(),
