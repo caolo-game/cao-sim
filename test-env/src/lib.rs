@@ -44,7 +44,7 @@ impl MapRender {
     #[wasm_bindgen(js_name=generateMap)]
     pub fn generate_map(&mut self, radius: u32) -> Result<JsValue, JsValue> {
         self.map.clear();
-        let res = caolo_sim::map_generation::generate_room(
+        let res = caolo_sim::map_generation::room::generate_room(
             radius,
             &P::new(0, 0)
                 .hex_neighbours()
