@@ -42,10 +42,23 @@ impl MapRender {
     }
 
     #[wasm_bindgen(js_name=generateMap)]
-    pub fn generate_map(&mut self, radius: u32) -> Result<JsValue, JsValue> {
+    pub fn generate_map(
+        &mut self,
+        radius: u32,
+        plain_chance: f32,
+        wall_chance: f32,
+        dilation: u32,
+    ) -> Result<JsValue, JsValue> {
         self.map.clear();
+        let params = caolo_sim::map_generation::room::RoomGenerationParams::builder()
+            .with_radius(radius)
+            .with_chance_plain(plain_chance)
+            .with_chance_wall(wall_chance)
+            .with_plain_dilation(dilation)
+            .build()
+            .expect("expected valid params");
         let res = caolo_sim::map_generation::room::generate_room(
-            radius,
+            &params,
             &P::new(0, 0)
                 .hex_neighbours()
                 .iter()
@@ -56,7 +69,6 @@ impl MapRender {
                 })
                 .collect::<Vec<_>>(),
             (UnsafeView::from_table(&mut self.map),),
-            None,
         )
         .map_err(|e| format!("{:?}", e))
         .map_err(|e| JsValue::from_serde(&e).unwrap())

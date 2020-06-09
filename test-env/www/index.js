@@ -7,10 +7,16 @@ const CELL_HEIGHT = 2 * CELL_SIZE;
 
 const mapRender = new wasm.MapRender();
 
-var COUNT = 0;
-var running = true;
+var count = 0;
+var running = false;
+
+var plain_dilation = 1;
+var chance_plain = 1.0 / 3.0;
+var chance_wall = 1.0 / 3.0;
 
 const _run = () => {
+  console.log("================ run ================");
+
   const canvas = document.getElementById("mapGenCanvas");
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -18,7 +24,12 @@ const _run = () => {
   let error = null;
   let mapGenRes = null;
   try {
-    mapGenRes = mapRender.generateMap(16);
+    mapGenRes = mapRender.generateMap(
+      16,
+      chance_plain,
+      chance_wall,
+      plain_dilation
+    );
   } catch (e) {
     error = e;
   }
@@ -32,10 +43,10 @@ const _run = () => {
 
     const cells = mapRender.getCells();
 
-    console.log("cells", cells);
-    console.log("bounds", bounds);
+    console.debug("cells", cells);
+    console.debug("bounds", bounds);
 
-    console.log("drawing");
+    console.debug("drawing");
 
     for (let cell of cells) {
       switch (cell[1]) {
@@ -92,7 +103,7 @@ const _run = () => {
 };
 
 const runOnce = () => {
-  COUNT += 1;
+  count += 1;
   console.time("running");
   try {
     _run();
@@ -101,7 +112,7 @@ const runOnce = () => {
     throw e;
   } finally {
     console.timeEnd("running");
-    console.log("Run ", COUNT, "done");
+    console.log("Run ", count, "done");
   }
 };
 
@@ -120,4 +131,20 @@ document.getElementById("genMapBtn").onclick = () => {
   runOnce();
 };
 
-run();
+document.getElementById("plain_chance").value = Math.floor(chance_plain * 100);
+document.getElementById("wall_chance").value = Math.floor(chance_wall * 100);
+document.getElementById("plain_dilation").value = plain_dilation;
+
+document.getElementById("plain_chance").onchange = (el) => {
+  chance_plain = parseFloat(el.target.value) / 100.0;
+};
+
+document.getElementById("wall_chance").onchange = (el) => {
+  chance_wall = parseFloat(el.target.value) / 100.0;
+};
+
+document.getElementById("plain_dilation").onchange = (el) => {
+  plain_dilation = parseInt(el.target.value);
+};
+
+runOnce();

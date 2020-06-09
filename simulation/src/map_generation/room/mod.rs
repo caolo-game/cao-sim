@@ -1,6 +1,9 @@
 //! Generate rooms
 //!
 mod diamond_square;
+mod params;
+
+pub use params::*;
 
 use diamond_square::create_noise;
 
@@ -76,23 +79,17 @@ pub struct HeightMapProperties {
 ///
 /// Returns property description of the generated height map.
 pub fn generate_room(
-    radius: u32,
+    params: &RoomGenerationParams,
     edges: &[RoomConnection],
     (mut terrain,): MapTables,
-    seed: Option<[u8; 16]>,
 ) -> Result<HeightMapProperties, RoomGenerationError> {
-    debug!(
-        "Generating Room radius: {} seed: {:?} edges: {:?}",
-        radius, seed, edges
-    );
-    if radius == 0 {
-        return Err(RoomGenerationError::BadArguments { radius });
-    }
+    debug!("Generating Room {:#?}\nedges:\n{:?}", params, edges);
+    let RoomGenerationParams { radius, seed, .. } = params;
     if edges.len() > 6 {
         return Err(RoomGenerationError::TooManyNeighbours(edges.len()));
     }
 
-    let radius = radius as i32;
+    let radius = *radius as i32;
     let from = Axial::new(0, 0);
     let dsides = pot(radius as u32 * 2) as i32;
     let to = Axial::new(from.q + dsides, from.r + dsides);
@@ -158,9 +155,19 @@ pub fn generate_room(
         min_grad,
         dsides,
         radius - 1,
+        params.chance_plain,
+        params.chance_wall,
         &gradient,
         terrain,
     )?;
+
+    // ensure at least 1 plain at this point
+    unsafe { terrain.as_mut() }
+        .insert_or_update(center, TerrainComponent(TileTerrainType::Plain))
+        .map_err(|e| {
+            error!("Failed to update the center point {:?}", e);
+            RoomGenerationError::TerrainExtendFailure(e)
+        })?;
 
     let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
@@ -178,7 +185,13 @@ pub fn generate_room(
     {
         // to make dilation unbiased we clone the terrain and inject that as separate input
         let terrain_in = (*terrain).clone();
-        dilate(center, radius, 1, View::from_table(&terrain_in), terrain);
+        dilate(
+            center,
+            radius,
+            params.plain_dilation,
+            View::from_table(&terrain_in),
+            terrain,
+        );
     }
 
     // cleanup potential post-condition violations
@@ -397,6 +410,8 @@ fn transform_heightmap_into_terrain(
     min_grad: f32,
     dsides: i32,
     radius: i32,
+    chance_plain: f32,
+    chance_wall: f32,
     gradient: &MortonTable<Axial, f32>,
     mut terrain: UnsafeView<Axial, TerrainComponent>,
 ) -> Result<HeightMapProperties, RoomGenerationError> {
@@ -445,19 +460,14 @@ fn transform_heightmap_into_terrain(
 
             trace!("Normalized grad: {}", grad);
 
-            if grad <= 1.0 / 3.0 || !grad.is_finite() {
+            if !grad.is_finite() {
                 return None;
             }
-            let terrain = if grad < 2.0 / 3.0 {
+            let terrain = if grad <= chance_plain {
                 TileTerrainType::Plain
-            } else if grad <= 1.1 {
-                // accounting for numerical errors
+            } else if grad <= chance_plain + chance_wall {
                 TileTerrainType::Wall
             } else {
-                warn!(
-                    "Logic error in map generation: unreachable code executed p: {:?} grad: {:?}",
-                    p, grad
-                );
                 return None;
             };
             Some((p, TerrainComponent(terrain)))
@@ -597,7 +607,9 @@ fn calculate_plain_chunks(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
         chunks.push(chunk);
         chunk_id += 1;
     }
-    chunks.swap(0, chungus_id);
+    if chunks.len() >= 2 {
+        chunks.swap(0, chungus_id);
+    }
     debug!("calculate_plain_chunks done, found {} chunks", chunks.len());
     debug_assert!(
         chunks
@@ -644,13 +656,13 @@ mod tests {
     fn maps_are_not_homogeneous() {
         let mut terrain = MortonTable::with_capacity(512);
 
-        let props = generate_room(
-            5,
-            &[],
-            (UnsafeView::from_table(&mut terrain),),
-            Some(*b"deadbeefstewbisc"),
-        )
-        .unwrap();
+        let params = RoomGenerationParams::builder()
+            .with_radius(5)
+            .with_seed(Some(*b"deadbeefstewbisc"))
+            .build()
+            .unwrap();
+
+        let props = generate_room(&params, &[], (UnsafeView::from_table(&mut terrain),)).unwrap();
 
         dbg!(props);
 
@@ -684,13 +696,12 @@ mod tests {
         let mut plains = Vec::with_capacity(512);
         let mut terrain = MortonTable::with_capacity(512);
 
-        let props = generate_room(
-            8,
-            &[],
-            (UnsafeView::from_table(&mut terrain),),
-            None, // Some(*b"deadbeefstewbisc"),
-        )
-        .unwrap();
+        let params = RoomGenerationParams::builder()
+            .with_radius(8)
+            // .with_seed(Some(*b"deadbeefstewbisc"))
+            .build()
+            .unwrap();
+        let props = generate_room(&params, &[], (UnsafeView::from_table(&mut terrain),)).unwrap();
 
         dbg!(props);
 
