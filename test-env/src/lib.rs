@@ -64,6 +64,7 @@ impl MapRender {
             &P::new(0, 0)
                 .hex_neighbours()
                 .iter()
+                .step_by(2)
                 .map(|p| RoomConnection {
                     direction: *p,
                     offset_start: 5,
