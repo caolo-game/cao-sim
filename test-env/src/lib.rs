@@ -56,7 +56,9 @@ impl MapRender {
             .with_chance_wall(wall_chance)
             .with_plain_dilation(dilation)
             .build()
-            .expect("expected valid params");
+            .map_err(|e| format!("expected valid params {:?}", e))
+            .map_err(|e| JsValue::from_serde(&e).unwrap())?;
+
         let res = caolo_sim::map_generation::room::generate_room(
             &params,
             &P::new(0, 0)
