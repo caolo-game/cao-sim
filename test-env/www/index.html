@@ -9,8 +9,42 @@
       >This page contains webassembly and javascript content, please enable
       javascript in your browser.</noscript
     >
-    <button id="genMapToggle">Toggle map generation</button>
-    <button id="genMapBtn">Generate new</button>
+    <button id="genMapToggle">Toggle automatic map generation</button>
+    <form onsubmit="return false;">
+      <div>
+        <label for="plain_chance">Plain Chance</label>
+        <input
+          id="plain_chance"
+          placeholder="Plain Chance"
+          type="number"
+          step="1.0"
+          min="1.0"
+          max="99"
+        />
+      </div>
+      <div>
+        <label for="wall_chance">Wall Chance</label>
+        <input
+          id="wall_chance"
+          placeholder="wall Chance"
+          type="number"
+          step="1.0"
+          min="1.0"
+          max="99"
+        />
+      </div>
+      <div>
+        <label for="plain_dilation">Plain Dilation</label>
+        <input
+          id="plain_dilation"
+          placeholder="Plain Dilation"
+          type="number"
+          step="1.0"
+          min="0"
+        />
+      </div>
+      <button id="genMapBtn">Generate new</button>
+    </form>
     <div id="mapGenRes"></div>
     <canvas id="mapGenCanvas" style="background-color: #344a48;"></canvas>
     <script src="./bootstrap.js"></script>
