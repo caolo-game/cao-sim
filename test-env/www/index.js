@@ -1,7 +1,7 @@
 import * as wasm from "test-env";
 import { memory } from "test-env/test_env_bg";
 
-const CELL_SIZE = 15;
+const CELL_SIZE = 12;
 const CELL_WIDTH = Math.sqrt(3) * CELL_SIZE;
 const CELL_HEIGHT = 2 * CELL_SIZE;
 
@@ -42,7 +42,7 @@ const _run = () => {
         case "Plain":
           ctx.fillStyle = "#89813a";
           break;
-        case "Edge":
+        case "Bridge":
           ctx.fillStyle = "#89a13a";
           break;
         case "Wall":

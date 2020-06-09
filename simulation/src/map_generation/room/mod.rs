@@ -116,6 +116,8 @@ pub fn generate_room(
     let mut gradient2 = GradientMap::with_capacity(((to.q - from.q) * (to.r - from.r)) as usize);
     debug!("Initializing GradientMap done");
 
+    let center = Axial::new(radius, radius);
+
     let mut min_grad = 1e15f32;
     let mut max_grad = -1e15f32;
 
@@ -150,17 +152,16 @@ pub fn generate_room(
     }
     debug!("Layering maps done");
 
-    let heightmap_props =
-        transform_heightmap_into_terrain(max_grad, min_grad, dsides, radius, &gradient, terrain)?;
+    let heightmap_props = transform_heightmap_into_terrain(
+        center, max_grad, min_grad, dsides, radius, &gradient, terrain,
+    )?;
 
     let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
-        connect_chunks(radius, &mut rng, &chunk_metadata.chunks, terrain);
+        connect_chunks(center, radius, &mut rng, &chunk_metadata.chunks, terrain);
     }
 
-    fill_edges(radius, edges, terrain, &mut rng)?;
-
-    let center = Axial::new(radius, radius);
+    fill_edges(center, radius, edges, terrain, &mut rng)?;
 
     {
         // to make dilation unbiased we clone the terrain and inject that as separate input
@@ -199,6 +200,7 @@ pub fn generate_room(
 }
 
 fn fill_edges(
+    center: Axial,
     radius: i32,
     edges: &[RoomConnection],
     terrain: UnsafeView<Axial, TerrainComponent>,
@@ -218,10 +220,10 @@ fn fill_edges(
     let chunks = &mut chunk_metadata.chunks;
     for edge in edges.iter().cloned() {
         chunks.push(HashSet::with_capacity(radius as usize));
-        fill_edge(radius, edge, terrain, chunks.last_mut().unwrap())?;
+        fill_edge(center, radius, edge, terrain, chunks.last_mut().unwrap())?;
     }
     debug!("Connecting edges to the mainland");
-    connect_chunks(radius - 1, rng, &chunk_metadata.chunks, terrain);
+    connect_chunks(center, radius - 1, rng, &chunk_metadata.chunks, terrain);
     debug!("Filling edges done");
     Ok(())
 }
@@ -266,6 +268,7 @@ fn dilate(
 }
 
 fn connect_chunks(
+    center: Axial,
     radius: i32,
     rng: &mut impl Rng,
     chunks: &[HashSet<Axial>],
@@ -273,10 +276,7 @@ fn connect_chunks(
 ) {
     debug!("Connecting {} chunks", chunks.len());
     debug_assert!(radius > 0);
-    let bounds = Hexagon {
-        center: Axial::new(radius, radius),
-        radius,
-    };
+    let bounds = Hexagon { center, radius };
     'chunks: for chunk in chunks[1..].iter() {
         let avg: Axial =
             chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;
@@ -356,6 +356,7 @@ fn room_points(center: Axial, radius: i32) -> impl Iterator<Item = Axial> {
 }
 
 fn transform_heightmap_into_terrain(
+    center: Axial,
     max_grad: f32,
     min_grad: f32,
     dsides: i32,
@@ -370,7 +371,6 @@ fn transform_heightmap_into_terrain(
     let mut normal_std = 0.0;
     let mut i = 1.0;
     let depth = max_grad - min_grad;
-    let center = Axial::new(dsides / 2, dsides / 2);
 
     let points = room_points(center, radius);
 
@@ -453,6 +453,7 @@ fn transform_heightmap_into_terrain(
 }
 
 fn fill_edge(
+    center: Axial,
     radius: i32,
     edge: RoomConnection,
     mut terrain: UnsafeView<Axial, TerrainComponent>,
@@ -471,7 +472,7 @@ fn fill_edge(
     let end = Axial::hex_cube_to_axial(end);
     let vel = end - edge;
 
-    let vertex = (edge * radius) + Axial::new(radius, radius);
+    let vertex = (edge * radius) + center;
 
     debug!(
         "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} offset_start {} length {}",
@@ -491,7 +492,7 @@ fn fill_edge(
         .extend((offset_start..=(offset_start + length)).map(move |i| {
             let vertex = vertex + (vel * i);
             chunk.insert(vertex);
-            (vertex, TerrainComponent(TileTerrainType::Edge))
+            (vertex, TerrainComponent(TileTerrainType::Bridge))
         }))
         .map_err(|e| {
             error!("Failed to expand terrain with edge {:?} {:?}", edge, e);
@@ -587,7 +588,7 @@ fn print_terrain(from: &Axial, to: &Axial, terrain: View<Axial, TerrainComponent
             match terrain.get_by_id(&Axial::new(x, y)) {
                 Some(TerrainComponent(TileTerrainType::Wall)) => print!("#"),
                 Some(TerrainComponent(TileTerrainType::Plain)) => print!("."),
-                Some(TerrainComponent(TileTerrainType::Edge)) => print!("x"),
+                Some(TerrainComponent(TileTerrainType::Bridge)) => print!("x"),
                 None => print!(" "),
             }
         }
@@ -630,7 +631,7 @@ mod tests {
                 match terrain.get_by_id(&Axial::new(x, y)) {
                     None => seen_empty = true,
                     Some(TerrainComponent(TileTerrainType::Plain))
-                    | Some(TerrainComponent(TileTerrainType::Edge)) => seen_plain = true,
+                    | Some(TerrainComponent(TileTerrainType::Bridge)) => seen_plain = true,
                     Some(TerrainComponent(TileTerrainType::Wall)) => seen_wall = true,
                 }
             }
