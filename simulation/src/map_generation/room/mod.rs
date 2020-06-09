@@ -153,12 +153,24 @@ pub fn generate_room(
     debug!("Layering maps done");
 
     let heightmap_props = transform_heightmap_into_terrain(
-        center, max_grad, min_grad, dsides, radius, &gradient, terrain,
+        center,
+        max_grad,
+        min_grad,
+        dsides,
+        radius - 1,
+        &gradient,
+        terrain,
     )?;
 
     let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
-        connect_chunks(center, radius, &mut rng, &chunk_metadata.chunks, terrain);
+        connect_chunks(
+            center,
+            radius - 1,
+            &mut rng,
+            &chunk_metadata.chunks,
+            terrain,
+        );
     }
 
     fill_edges(center, radius, edges, terrain, &mut rng)?;
@@ -217,14 +229,38 @@ fn fill_edges(
             chunk_metadata.chunks.len(),
         ));
     }
-    let chunks = &mut chunk_metadata.chunks;
-    for edge in edges.iter().cloned() {
-        chunks.push(HashSet::with_capacity(radius as usize));
-        fill_edge(center, radius, edge, terrain, chunks.last_mut().unwrap())?;
+    for mut edge in edges.iter().cloned() {
+        // offset_start - 1 but at least 0
+        edge.offset_start = 1.max(edge.offset_start) - 1;
+        // TODO: offset_end
+        chunk_metadata
+            .chunks
+            .push(HashSet::with_capacity(radius as usize));
+        fill_edge(
+            center,
+            radius - 1,
+            TileTerrainType::Plain,
+            edge,
+            terrain,
+            chunk_metadata.chunks.last_mut().unwrap(),
+        )?;
     }
     debug!("Connecting edges to the mainland");
-    connect_chunks(center, radius - 1, rng, &chunk_metadata.chunks, terrain);
+    connect_chunks(center, radius - 2, rng, &chunk_metadata.chunks, terrain);
     debug!("Filling edges done");
+    for edge in edges.iter().cloned() {
+        chunk_metadata
+            .chunks
+            .push(HashSet::with_capacity(radius as usize));
+        fill_edge(
+            center,
+            radius,
+            TileTerrainType::Bridge,
+            edge,
+            terrain,
+            chunk_metadata.chunks.last_mut().unwrap(),
+        )?;
+    }
     Ok(())
 }
 
@@ -455,6 +491,7 @@ fn transform_heightmap_into_terrain(
 fn fill_edge(
     center: Axial,
     radius: i32,
+    ty: TileTerrainType,
     edge: RoomConnection,
     mut terrain: UnsafeView<Axial, TerrainComponent>,
     chunk: &mut HashSet<Axial>,
@@ -492,7 +529,7 @@ fn fill_edge(
         .extend((offset_start..=(offset_start + length)).map(move |i| {
             let vertex = vertex + (vel * i);
             chunk.insert(vertex);
-            (vertex, TerrainComponent(TileTerrainType::Bridge))
+            (vertex, TerrainComponent(ty))
         }))
         .map_err(|e| {
             error!("Failed to expand terrain with edge {:?} {:?}", edge, e);
