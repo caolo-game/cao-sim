@@ -491,7 +491,7 @@ fn fill_edge(
         .extend((offset_start..=(offset_start + length)).map(move |i| {
             let vertex = vertex + (vel * i);
             chunk.insert(vertex);
-            (vertex, TerrainComponent(TileTerrainType::Edge))
+            (vertex, TerrainComponent(TileTerrainType::Bridge))
         }))
         .map_err(|e| {
             error!("Failed to expand terrain with edge {:?} {:?}", edge, e);
@@ -587,7 +587,7 @@ fn print_terrain(from: &Axial, to: &Axial, terrain: View<Axial, TerrainComponent
             match terrain.get_by_id(&Axial::new(x, y)) {
                 Some(TerrainComponent(TileTerrainType::Wall)) => print!("#"),
                 Some(TerrainComponent(TileTerrainType::Plain)) => print!("."),
-                Some(TerrainComponent(TileTerrainType::Edge)) => print!("x"),
+                Some(TerrainComponent(TileTerrainType::Bridge)) => print!("x"),
                 None => print!(" "),
             }
         }
@@ -630,7 +630,7 @@ mod tests {
                 match terrain.get_by_id(&Axial::new(x, y)) {
                     None => seen_empty = true,
                     Some(TerrainComponent(TileTerrainType::Plain))
-                    | Some(TerrainComponent(TileTerrainType::Edge)) => seen_plain = true,
+                    | Some(TerrainComponent(TileTerrainType::Bridge)) => seen_plain = true,
                     Some(TerrainComponent(TileTerrainType::Wall)) => seen_wall = true,
                 }
             }
