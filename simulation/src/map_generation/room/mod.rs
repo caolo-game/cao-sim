@@ -16,7 +16,7 @@ use std::collections::HashSet;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
-pub enum MapGenerationError {
+pub enum RoomGenerationError {
     #[error("Can not generate room with the given parameters: {radius}")]
     BadArguments { radius: u32 },
     #[error("Failed to generate the initial layout: {0}")]
@@ -80,16 +80,16 @@ pub fn generate_room(
     edges: &[RoomConnection],
     (mut terrain,): MapTables,
     seed: Option<[u8; 16]>,
-) -> Result<HeightMapProperties, MapGenerationError> {
+) -> Result<HeightMapProperties, RoomGenerationError> {
     debug!(
         "Generating Room radius: {} seed: {:?} edges: {:?}",
         radius, seed, edges
     );
     if radius == 0 {
-        return Err(MapGenerationError::BadArguments { radius });
+        return Err(RoomGenerationError::BadArguments { radius });
     }
     if edges.len() > 6 {
-        return Err(MapGenerationError::TooManyNeighbours(edges.len()));
+        return Err(RoomGenerationError::TooManyNeighbours(edges.len()));
     }
 
     let radius = radius as i32;
@@ -110,7 +110,7 @@ pub fn generate_room(
     )
     .map_err(|e| {
         error!("Initializing GradientMap failed {:?}", e);
-        MapGenerationError::TerrainExtendFailure(e)
+        RoomGenerationError::TerrainExtendFailure(e)
     })?;
 
     let mut gradient2 = GradientMap::with_capacity(((to.q - from.q) * (to.r - from.r)) as usize);
@@ -131,7 +131,7 @@ pub fn generate_room(
             )
             .map_err(|e| {
                 error!("Initializing GradientMap failed {:?}", e);
-                MapGenerationError::TerrainExtendFailure(e)
+                RoomGenerationError::TerrainExtendFailure(e)
             })?;
         create_noise(from, to, dsides, &mut rng, &mut gradient2);
 
@@ -147,7 +147,7 @@ pub fn generate_room(
             })
             .map_err(|e| {
                 error!("Failed to merge GradientMaps {:?}", e);
-                MapGenerationError::TerrainExtendFailure(e)
+                RoomGenerationError::TerrainExtendFailure(e)
             })?;
     }
     debug!("Layering maps done");
@@ -217,7 +217,7 @@ fn fill_edges(
     edges: &[RoomConnection],
     terrain: UnsafeView<Axial, TerrainComponent>,
     rng: &mut impl Rng,
-) -> Result<(), MapGenerationError> {
+) -> Result<(), RoomGenerationError> {
     debug!("Filling edges");
     let mut chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() != 1 {
@@ -225,7 +225,7 @@ fn fill_edges(
             "Expected 1 single chunk when applying edges, intead got {}",
             chunk_metadata.chunks.len()
         );
-        return Err(MapGenerationError::ExpectedSingleChunk(
+        return Err(RoomGenerationError::ExpectedSingleChunk(
             chunk_metadata.chunks.len(),
         ));
     }
@@ -399,7 +399,7 @@ fn transform_heightmap_into_terrain(
     radius: i32,
     gradient: &MortonTable<Axial, f32>,
     mut terrain: UnsafeView<Axial, TerrainComponent>,
-) -> Result<HeightMapProperties, MapGenerationError> {
+) -> Result<HeightMapProperties, RoomGenerationError> {
     debug!("Building terrain from height-map");
     let mut mean = 0.0;
     let mut std = 0.0;
@@ -464,7 +464,7 @@ fn transform_heightmap_into_terrain(
         }))
         .map_err(|e| {
             error!("Terrain building failed {:?}", e);
-            MapGenerationError::TerrainExtendFailure(e)
+            RoomGenerationError::TerrainExtendFailure(e)
         })?;
 
     debug!("Building terrain from height-map done");
@@ -495,14 +495,14 @@ fn fill_edge(
     edge: RoomConnection,
     mut terrain: UnsafeView<Axial, TerrainComponent>,
     chunk: &mut HashSet<Axial>,
-) -> Result<(), MapGenerationError> {
+) -> Result<(), RoomGenerationError> {
     let RoomConnection {
         offset_start,
         offset_end,
         direction: edge,
     } = edge;
     if edge.q.abs() > 1 || edge.r.abs() > 1 || edge.r == edge.q {
-        return Err(MapGenerationError::InvalidNeighbour(edge));
+        return Err(RoomGenerationError::InvalidNeighbour(edge));
     }
     let [x, y, z] = edge.hex_axial_to_cube();
     let end = [-z, -x, -y];
@@ -518,7 +518,7 @@ fn fill_edge(
     let offset_start = offset_start as i32;
     let offset_end = offset_end as i32;
     if radius - offset_start - offset_end <= 0 {
-        return Err(MapGenerationError::BadEdgeOffset {
+        return Err(RoomGenerationError::BadEdgeOffset {
             radius,
             edge,
             offset_start,
@@ -533,7 +533,7 @@ fn fill_edge(
         }))
         .map_err(|e| {
             error!("Failed to expand terrain with edge {:?} {:?}", edge, e);
-            MapGenerationError::TerrainExtendFailure(e)
+            RoomGenerationError::TerrainExtendFailure(e)
         })?;
 
     Ok(())
