@@ -27,11 +27,11 @@ pub enum MapGenerationError {
     InvalidNeighbour(Axial),
     #[error("Internal error: Failed to connect chunks, remaining: {0:?}")]
     ExpectedSingleChunk(usize),
-    #[error("Bad edge offsets at edge {edge:?} with a radius of {radius}. Start is {offset_start} and length is {length}")]
+    #[error("Bad edge offsets at edge {edge:?} with a radius of {radius}. Start is {offset_start} and End is {offset_end}")]
     BadEdgeOffset {
         edge: Axial,
         offset_start: i32,
-        length: i32,
+        offset_end: i32,
         radius: i32,
     },
 }
@@ -230,9 +230,9 @@ fn fill_edges(
         ));
     }
     for mut edge in edges.iter().cloned() {
-        // offset_start - 1 but at least 0
+        // offset - 1 but at least 0
         edge.offset_start = 1.max(edge.offset_start) - 1;
-        // TODO: offset_end
+        edge.offset_end = 1.max(edge.offset_end) - 1;
         chunk_metadata
             .chunks
             .push(HashSet::with_capacity(radius as usize));
@@ -498,7 +498,7 @@ fn fill_edge(
 ) -> Result<(), MapGenerationError> {
     let RoomConnection {
         offset_start,
-        length,
+        offset_end,
         direction: edge,
     } = edge;
     if edge.q.abs() > 1 || edge.r.abs() > 1 || edge.r == edge.q {
@@ -512,21 +512,21 @@ fn fill_edge(
     let vertex = (edge * radius) + center;
 
     debug!(
-        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} offset_start {} length {}",
-        edge, vertex, end, vel, radius, offset_start, length
+        "Filling edge {:?}, vertex: {:?} end {:?} vel {:?} radius {} offset_start {} offset_end {}",
+        edge, vertex, end, vel, radius, offset_start, offset_end
     );
     let offset_start = offset_start as i32;
-    let length = length as i32;
-    if offset_start + length > radius {
+    let offset_end = offset_end as i32;
+    if radius - offset_start - offset_end <= 0 {
         return Err(MapGenerationError::BadEdgeOffset {
             radius,
             edge,
             offset_start,
-            length,
+            offset_end,
         });
     }
     unsafe { terrain.as_mut() }
-        .extend((offset_start..=(offset_start + length)).map(move |i| {
+        .extend((offset_start..=(radius - offset_end)).map(move |i| {
             let vertex = vertex + (vel * i);
             chunk.insert(vertex);
             (vertex, TerrainComponent(ty))
