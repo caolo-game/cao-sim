@@ -666,7 +666,8 @@ mod tests {
         let mut terrain = MortonTable::with_capacity(512);
 
         let params = RoomGenerationParams::builder()
-            .with_radius(5)
+            .with_radius(8)
+            .with_plain_dilation(2)
             .with_seed(Some(*b"deadbeefstewbisc"))
             .build()
             .unwrap();
@@ -684,14 +685,13 @@ mod tests {
         let mut seen_plain = false;
 
         // assert that the terrain is not homogeneous
-        for x in 0..=16 {
-            for y in 0..=16 {
-                match terrain.get_by_id(&Axial::new(x, y)) {
-                    None => seen_empty = true,
-                    Some(TerrainComponent(TileTerrainType::Plain))
-                    | Some(TerrainComponent(TileTerrainType::Bridge)) => seen_plain = true,
-                    Some(TerrainComponent(TileTerrainType::Wall)) => seen_wall = true,
-                }
+        // check points in radius-1 to account for the bridges
+        for point in room_points(Axial::new(8, 8), 7) {
+            match terrain.get_by_id(&point) {
+                None => seen_empty = true,
+                Some(TerrainComponent(TileTerrainType::Plain))
+                | Some(TerrainComponent(TileTerrainType::Bridge)) => seen_plain = true,
+                Some(TerrainComponent(TileTerrainType::Wall)) => seen_wall = true,
             }
         }
 
@@ -707,6 +707,7 @@ mod tests {
 
         let params = RoomGenerationParams::builder()
             .with_radius(8)
+            .with_plain_dilation(2)
             // .with_seed(Some(*b"deadbeefstewbisc"))
             .build()
             .unwrap();
