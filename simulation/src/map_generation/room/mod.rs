@@ -120,7 +120,7 @@ pub fn generate_room(
 
     debug!("Layering maps");
     // generate gradient by repeatedly generating noise and layering them on top of each other
-    for i in 0..4 {
+    for i in 0..3 {
         gradient2.clear();
         gradient2
             .extend(
@@ -161,13 +161,22 @@ pub fn generate_room(
         terrain,
     )?;
 
-    // ensure at least 1 plain at this point
-    unsafe { terrain.as_mut() }
-        .insert_or_update(center, TerrainComponent(TileTerrainType::Plain))
-        .map_err(|e| {
-            error!("Failed to update the center point {:?}", e);
-            RoomGenerationError::TerrainExtendFailure(e)
-        })?;
+    {
+        // ensure at least 1 plain at this point
+        let minq = center.q - radius;
+        let minr = center.r - radius;
+        let maxq = center.q + radius;
+        let maxr = center.r + radius;
+
+        let q = rng.gen_range(minq, maxq);
+        let r = rng.gen_range(minr, maxr);
+        unsafe { terrain.as_mut() }
+            .insert_or_update(Axial::new(q, r), TerrainComponent(TileTerrainType::Plain))
+            .map_err(|e| {
+                error!("Failed to update the center point {:?}", e);
+                RoomGenerationError::TerrainExtendFailure(e)
+            })?;
+    }
 
     let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
