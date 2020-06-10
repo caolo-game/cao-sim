@@ -163,10 +163,10 @@ pub fn generate_room(
 
     {
         // ensure at least 1 plain at this point
-        let minq = center.q - radius;
-        let minr = center.r - radius;
-        let maxq = center.q + radius;
-        let maxr = center.r + radius;
+        let minq = center.q - (radius - 1);
+        let minr = center.r - (radius - 1);
+        let maxq = center.q + (radius - 1);
+        let maxr = center.r + (radius - 1);
 
         let q = rng.gen_range(minq, maxq);
         let r = rng.gen_range(minr, maxr);
@@ -177,6 +177,8 @@ pub fn generate_room(
                 RoomGenerationError::TerrainExtendFailure(e)
             })?;
     }
+
+    coastline(center, radius - 1, terrain);
 
     let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
@@ -397,6 +399,30 @@ fn connect_chunks(
         }
     }
     debug!("Connecting chunks done");
+}
+
+/// Turn every `Wall` into `Plain` if it has empty neighbour(s).
+/// This should result in a nice coastline where the `Walls` were neighbours with the ocean.
+fn coastline(center: Axial, radius: i32,mut terrain: UnsafeView<Axial, TerrainComponent>) {
+    debug!("Building coastline");
+    let bounds = Hexagon{center, radius};
+    let mut changeset = vec![];
+    for (p, _) in terrain
+        .iter()
+        .filter(|(p, TerrainComponent(t))| bounds.contains(p) && *t == TileTerrainType::Wall)
+    {
+        let count = terrain.count_in_range(&p, 2);
+        // 7 == 1 + 6 neighbours
+        if count < 7 {
+            // at least 1 neighbour tile is empty
+            changeset.push(p);
+        }
+    }
+    trace!("Changing walls to plains {:#?}", changeset);
+    for p in changeset {
+        unsafe { terrain.as_mut() }.update(p, TerrainComponent(TileTerrainType::Plain));
+    }
+    debug!("Building coastline done");
 }
 
 fn room_points(center: Axial, radius: i32) -> impl Iterator<Item = Axial> {
