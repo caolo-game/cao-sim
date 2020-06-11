@@ -13,6 +13,7 @@ var running = false;
 var plain_dilation = 1;
 var chance_plain = 1.0 / 3.0;
 var chance_wall = 1.0 / 3.0;
+var seed = null;
 
 const _run = () => {
   console.log("================ run ================");
@@ -22,19 +23,11 @@ const _run = () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   let error = null;
-  let mapGenRes = null;
   try {
-    mapGenRes = mapRender.generateMap(
-      16,
-      chance_plain,
-      chance_wall,
-      plain_dilation
-    );
+    mapRender.generateMap(16, chance_plain, chance_wall, plain_dilation, seed);
   } catch (e) {
     error = e;
   }
-
-  document.getElementById("mapGenRes").innerHTML = `<pre>${mapGenRes}</pre>`;
 
   const drawCells = (ctx, mapRender) => {
     const bounds = mapRender.bounds();
@@ -105,6 +98,7 @@ const _run = () => {
 const runOnce = () => {
   count += 1;
   console.time("running");
+  console.log("seed", seed);
   try {
     _run();
   } catch (e) {
@@ -118,6 +112,14 @@ const runOnce = () => {
 
 const run = () => {
   if (!running) return;
+  const s = "ASDFGHJKLMNBVCXZQWERTYUIOPasdfghjklmnbvcxzqwertyuiop09876543210";
+
+  seed = Array.apply(null, Array(16))
+    .map(function () {
+      return s.charAt(Math.floor(Math.random() * s.length));
+    })
+    .join("");
+  document.getElementById("seed").value = seed;
   runOnce();
   setTimeout(run, 1000);
 };
@@ -145,6 +147,10 @@ document.getElementById("wall_chance").onchange = (el) => {
 
 document.getElementById("plain_dilation").onchange = (el) => {
   plain_dilation = parseInt(el.target.value);
+};
+
+document.getElementById("seed").onchange = (el) => {
+  seed = el.target.value;
 };
 
 runOnce();
