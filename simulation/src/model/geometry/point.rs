@@ -6,7 +6,6 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 #[derive(
     Debug, Clone, Default, Copy, Eq, PartialEq, Serialize, Deserialize, Ord, PartialOrd, Hash,
 )]
-#[serde(rename_all = "camelCase")]
 pub struct Axial {
     pub q: i32,
     pub r: i32,

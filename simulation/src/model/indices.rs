@@ -1,10 +1,11 @@
 //! Structs intended to be used as table indices.
 //!
 use crate::model::Axial;
-use crate::tables::SerialId;
+use crate::tables::{SerialId, SpatialKey2d};
 use cao_lang::{prelude::Scalar, traits::AutoByteEncodeProperties};
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use std::ops::Add;
 
 #[derive(
     Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
@@ -71,4 +72,30 @@ impl AutoByteEncodeProperties for RoomPosition {}
     Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
 )]
 pub struct Room(pub Axial);
-impl AutoByteEncodeProperties for Room{}
+impl AutoByteEncodeProperties for Room {}
+
+impl SpatialKey2d for Room {
+    fn as_array(&self) -> [i32; 2] {
+        self.0.as_array()
+    }
+
+    fn get_axis(&self, axis: u8) -> i32 {
+        self.0.get_axis(axis)
+    }
+
+    fn new(x: i32, y: i32) -> Self {
+        Self(Axial::new(x, y))
+    }
+
+    fn dist(&self, Room(ref other): &Self) -> u32 {
+        self.0.dist(other)
+    }
+}
+
+impl Add for Room {
+    type Output = Self;
+
+    fn add(self, Room(b): Self) -> Self {
+        Self(self.0.add(b))
+    }
+}
