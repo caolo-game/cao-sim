@@ -161,23 +161,6 @@ pub fn generate_room(
         terrain,
     )?;
 
-    {
-        // ensure at least 1 plain at this point
-        let minq = center.q - (radius - 1);
-        let minr = center.r - (radius - 1);
-        let maxq = center.q + (radius - 1);
-        let maxr = center.r + (radius - 1);
-
-        let q = rng.gen_range(minq, maxq);
-        let r = rng.gen_range(minr, maxr);
-        unsafe { terrain.as_mut() }
-            .insert_or_update(Axial::new(q, r), TerrainComponent(TileTerrainType::Plain))
-            .map_err(|e| {
-                error!("Failed to update the center point {:?}", e);
-                RoomGenerationError::TerrainExtendFailure(e)
-            })?;
-    }
-
     coastline(center, radius - 1, terrain);
 
     let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
