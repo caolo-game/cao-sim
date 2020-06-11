@@ -5,6 +5,7 @@ use caolo_sim::model::geometry::Axial as P;
 use caolo_sim::model::terrain::TileTerrainType;
 use caolo_sim::storage::views::UnsafeView;
 use caolo_sim::tables::{MortonTable, SpatialKey2d};
+use std::convert::TryInto;
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -48,13 +49,26 @@ impl MapRender {
         plain_chance: f32,
         wall_chance: f32,
         dilation: u32,
+        seed: Option<String>,
     ) -> Result<JsValue, JsValue> {
         self.map.clear();
+        let seed = match seed {
+            None => None,
+            Some(seed) => {
+                let bytes = seed.into_bytes();
+                let bytes = bytes[..]
+                    .try_into()
+                    .map_err(|e| format!("Failed to parse seed. Must be 16 bytes! {:?}", e))
+                    .map_err(|e| JsValue::from_serde(&e).unwrap())?;
+                Some(bytes)
+            }
+        };
         let params = caolo_sim::map_generation::room::RoomGenerationParams::builder()
             .with_radius(radius)
             .with_chance_plain(plain_chance)
             .with_chance_wall(wall_chance)
             .with_plain_dilation(dilation)
+            .with_seed(seed)
             .build()
             .map_err(|e| format!("expected valid params {:?}", e))
             .map_err(|e| JsValue::from_serde(&e).unwrap())?;
