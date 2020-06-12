@@ -39,7 +39,7 @@ storage!(
     key ScriptId, table ScriptComponent = scriptscript,
 
     key Room, table RoomConnections = roomconnections,
-    key Room, table RoomFlagComponent = rooms
+    key Room, table RoomComponent = rooms
 );
 
 #[derive(Debug, Serialize)]

@@ -2,7 +2,6 @@ use super::WorldPosition;
 use crate::model::geometry::Axial;
 use crate::model::terrain::TileTerrainType;
 use crate::tables::{Component, MortonTable, RoomMortonTable, SpatialKey2d};
-use arrayvec::ArrayVec;
 use serde_derive::{Deserialize, Serialize};
 
 /// Represents a connection of a room to another.
@@ -19,7 +18,7 @@ pub struct RoomConnection {
 
 /// Represents connections a room has to their neighbours. At most 6.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct RoomConnections(pub ArrayVec<[RoomConnection; 6]>);
+pub struct RoomConnections(pub [Option<RoomConnection>; 6]);
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomConnections {
     type Table = MortonTable<Id, Self>;
 }
@@ -33,9 +32,12 @@ impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
     type Table = MortonTable<Id, Self>;
 }
 
-/// Used to identify rooms
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
-pub struct RoomFlagComponent;
-impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomFlagComponent {
+pub struct RoomComponent {
+    pub radius: u32,
+    pub center: Axial,
+}
+
+impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomComponent {
     type Table = MortonTable<Id, Self>;
 }
