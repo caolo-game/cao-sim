@@ -35,7 +35,7 @@ impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
 
 /// Used to identify rooms
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
-pub struct RoomFlagComponent;
-impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomFlagComponent {
+pub struct RoomComponent;
+impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomComponent {
     type Table = MortonTable<Id, Self>;
 }

@@ -289,7 +289,11 @@ fn dilate(
 
     let threshold = (kernel_width * kernel_width / 3).max(1);
 
-    let points = room_points(center, radius);
+    let points = Hexagon {
+        center,
+        radius: radius - 1,
+    }
+    .iter_points();
     for p in points.filter(|p| {
         !terrain_in
             .get_by_id(p)
@@ -362,7 +366,7 @@ fn connect_chunks(
                 break 'connecting;
             }
             for _ in 0..2 {
-                let vel = if rng.gen_bool(0.5) {
+                let vel = if rng.gen_bool(1.0 / 2.0) {
                     vel.rotate_left()
                 } else {
                     vel.rotate_right()
@@ -386,9 +390,9 @@ fn connect_chunks(
 
 /// Turn every `Wall` into `Plain` if it has empty neighbour(s).
 /// This should result in a nice coastline where the `Walls` were neighbours with the ocean.
-fn coastline(center: Axial, radius: i32,mut terrain: UnsafeView<Axial, TerrainComponent>) {
+fn coastline(center: Axial, radius: i32, mut terrain: UnsafeView<Axial, TerrainComponent>) {
     debug!("Building coastline");
-    let bounds = Hexagon{center, radius};
+    let bounds = Hexagon { center, radius };
     let mut changeset = vec![];
     for (p, _) in terrain
         .iter()
@@ -406,20 +410,6 @@ fn coastline(center: Axial, radius: i32,mut terrain: UnsafeView<Axial, TerrainCo
         unsafe { terrain.as_mut() }.update(p, TerrainComponent(TileTerrainType::Plain));
     }
     debug!("Building coastline done");
-}
-
-fn room_points(center: Axial, radius: i32) -> impl Iterator<Item = Axial> {
-    // the process so far produced a sheared rectangle
-    // we'll choose points that cut the result into a hexagonal shape
-    let radius = radius - 1; // skip the edge of the map
-    (-radius..=radius).flat_map(move |x| {
-        let fromy = (-radius).max(-x - radius);
-        let toy = radius.min(-x + radius);
-        (fromy..=toy).map(move |y| {
-            let p = Axial::new(x, -x - y);
-            p + center
-        })
-    })
 }
 
 fn transform_heightmap_into_terrain(
@@ -441,7 +431,11 @@ fn transform_heightmap_into_terrain(
     let mut i = 1.0;
     let depth = max_grad - min_grad;
 
-    let points = room_points(center, radius);
+    let points = Hexagon {
+        center,
+        radius: radius - 1,
+    }
+    .iter_points();
 
     debug!(
         "Calculating points of a hexagon in the height map around center: {:?}",
@@ -695,7 +689,9 @@ mod tests {
 
         // assert that the terrain is not homogeneous
         // check points in radius-1 to account for the bridges
-        for point in room_points(Axial::new(8, 8), 7) {
+        let center = Axial::new(8, 8);
+        let points = Hexagon { center, radius: 7 }.iter_points();
+        for point in points {
             match terrain.get_by_id(&point) {
                 None => seen_empty = true,
                 Some(TerrainComponent(TileTerrainType::Plain))

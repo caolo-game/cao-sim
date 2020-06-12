@@ -140,6 +140,19 @@ impl Hexagon {
         let r = self.radius;
         -r <= x && x <= r && -r <= y && y <= r && -r <= z && z <= r
     }
+
+    pub fn iter_points(&self) -> impl Iterator<Item = Axial> {
+        let radius = self.radius;
+        let center = self.center;
+        (-radius..=radius).flat_map(move |x| {
+            let fromy = (-radius).max(-x - radius);
+            let toy = radius.min(-x + radius);
+            (fromy..=toy).map(move |y| {
+                let p = Axial::new(x, -x - y);
+                p + center
+            })
+        })
+    }
 }
 
 impl AutoByteEncodeProperties for Axial {}
