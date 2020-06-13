@@ -2,7 +2,7 @@ use caolo_sim::model::components::EntityComponent;
 use caolo_sim::model::geometry::Axial;
 use caolo_sim::model::EntityId;
 use caolo_sim::tables::MortonTable;
-use criterion::{criterion_group, BenchmarkId, Criterion};
+use criterion::{black_box, criterion_group, BenchmarkId, Criterion};
 use rand::RngCore;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 
@@ -227,7 +227,7 @@ fn random_insert(c: &mut Criterion) {
                 let r = rng.gen_range(0, 29000);
                 let p = Axial::new(q, r);
 
-                table.insert(p, 420);
+                table.insert(p, 420).unwrap();
             }
 
             b.iter(|| {
@@ -236,6 +236,7 @@ fn random_insert(c: &mut Criterion) {
                 let p = Axial::new(q, r);
 
                 table.insert(p, 420)
+                    .unwrap()
             });
         });
     }
@@ -257,15 +258,18 @@ fn random_update(c: &mut Criterion) {
                 let p = Axial::new(q, r);
                 memory.push(p);
 
-                table.insert(p, 420);
+                table.insert(p, 420).unwrap();
             }
 
-            b.iter(|| {
+            let memory = &memory;
+            let table = &mut table;
+
+            b.iter(move || {
                 let i = rng.gen_range(0, memory.len());
                 let p = memory[i].clone();
-                let updated = table.update(p, rng.next_u32());
-                debug_assert!(updated);
-                updated
+                let mut updated = table.update(&p, rng.next_u32());
+                black_box(&mut updated);
+                debug_assert!(updated.is_some());
             });
         });
     }

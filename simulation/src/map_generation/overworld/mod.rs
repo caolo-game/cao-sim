@@ -24,6 +24,10 @@ pub enum OverworldGenerationError {
 }
 
 /// Insert the given number of rooms in the given radius (where the unit is a room).
+/// [ ] TODO: remove some nodes to produce less dense maps?
+/// [ ] TODO: resource map?
+/// [ ] TODO: political map?
+/// [ ] TODO: parallellism?
 pub fn generate_room_layout(
     OverworldGenerationParams {
         radius,
@@ -54,7 +58,15 @@ pub fn generate_room_layout(
         let rooms = rooms.as_mut();
         rooms.clear();
         rooms
-            .extend(bounds.iter_points().map(|p| (Room(p), RoomComponent)))
+            .extend(bounds.iter_points().map(|p| {
+                (
+                    Room(p),
+                    RoomComponent {
+                        radius: radius as u32,
+                        center: Axial::new(radius, radius),
+                    },
+                )
+            }))
             .map_err(OverworldGenerationError::ExtendFail)?;
 
         let connections = connections.as_mut();
@@ -87,8 +99,6 @@ pub fn generate_room_layout(
     debug!("Building connections done");
 
     // TODO: insert more connections if the graph is not fully connected
-    // TODO: remove some nodes?
-    // TODO: resource map?
 
     Ok(())
 }

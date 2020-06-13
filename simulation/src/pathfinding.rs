@@ -1,12 +1,15 @@
+use crate::map_generation::room::iter_edge;
 use crate::model::{
-    components::{EntityComponent, RoomConnections, TerrainComponent},
+    components::{EntityComponent, RoomComponent, RoomConnections, TerrainComponent},
     geometry::Axial,
     indices::Room,
     terrain, RoomPosition, WorldPosition,
 };
 use crate::profile;
 use crate::storage::views::View;
+use arrayvec::ArrayVec;
 use std::collections::{HashMap, HashSet};
+use thiserror::Error;
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 struct Node {
@@ -26,11 +29,17 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Error)]
 pub enum PathFindingError {
-    NotFound,
+    #[error("No path was found")]
+    NotFound { remaining_steps: u32 },
+    #[error("Target is unreachable")]
     Unreachable,
+    #[error("Room {0:?} does not exist")]
     RoomDoesNotExists(Axial),
+
+    #[error("Proposed edge {0:?} does not exist")]
+    EdgeNotExists(Axial),
 }
 
 /// Find path from `from` to `to`. Will append the resulting path to the `path` output vector.
@@ -41,66 +50,135 @@ pub enum PathFindingError {
 pub fn find_path(
     from: WorldPosition,
     to: WorldPosition,
-    (positions, terrain, connections): (
+    (positions, terrain, connections, room_properties): (
         View<WorldPosition, EntityComponent>,
         View<WorldPosition, TerrainComponent>,
         View<Room, RoomConnections>,
+        View<Room, RoomComponent>,
     ),
-    mut max_iterations: u32,
+    max_steps: u32,
     path: &mut Vec<RoomPosition>,
 ) -> Result<u32, PathFindingError> {
     profile!("find_path");
+    debug!("find_path from {:?} to {:?}", from, to);
+    let positions = View::from_table(
+        positions
+            .table
+            .get_by_id(&from.room)
+            .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
+    );
+    let terrain = View::from_table(
+        terrain
+            .table
+            .get_by_id(&from.room)
+            .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
+    );
     if from.room == to.room {
-        let positions = View::from_table(
-            positions
-                .table
-                .get_by_id(&from.room)
-                .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
-        );
-        let terrain = View::from_table(
-            terrain
-                .table
-                .get_by_id(&from.room)
-                .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
-        );
-        find_path_in_room(from.pos, to.pos, (positions, terrain), max_iterations, path)
+        find_path_in_room(from.pos, to.pos, (positions, terrain), max_steps, path)
     } else {
-        let mut rooms = Vec::with_capacity(4);
-        let from_room = from.room;
-        max_iterations =
-            find_path_room_scale(from_room, to.room, connections, max_iterations, &mut rooms)?;
-        let next_room = rooms
-            .pop()
-            .expect("find_path_room_scale returned OK, but the room list is empty");
-
-        let edge = next_room.0 - from_room;
-
-        // TODO: find the edge that connects this room to next_room
-        // find the shortest path to that edge
-        unimplemented!()
+        find_path_multiroom(
+            from,
+            to,
+            (positions, terrain, connections, room_properties),
+            max_steps,
+            path,
+        )
     }
+}
+
+fn find_path_multiroom(
+    from: WorldPosition,
+    to: WorldPosition,
+    (positions, terrain, connections, room_properties): (
+        View<Axial, EntityComponent>,
+        View<Axial, TerrainComponent>,
+        View<Room, RoomConnections>,
+        View<Room, RoomComponent>,
+    ),
+    mut max_steps: u32,
+    path: &mut Vec<RoomPosition>,
+) -> Result<u32, PathFindingError> {
+    let mut rooms = Vec::with_capacity(4);
+    let from_room = from.room;
+    max_steps = find_path_overworld(
+        Room(from_room),
+        Room(to.room),
+        connections.clone(),
+        max_steps,
+        &mut rooms,
+    )?;
+    let next_room = rooms
+        .pop()
+        .expect("find_path_overworld returned OK, but the room list is empty");
+
+    let edge = next_room.0 - from_room;
+    let bridge = connections
+        .get_by_id(&Room(from_room))
+        .ok_or_else(|| PathFindingError::RoomDoesNotExists(from_room))?;
+
+    let bridge_ind =
+        Axial::neighbour_index(edge).expect("expected the calculated edge to be a valid neighbour");
+    let bridge = bridge.0[bridge_ind]
+        .as_ref()
+        .expect("expected a connection to the next room!");
+
+    let RoomComponent { center, radius, .. } = room_properties
+        .get_by_id(&Room(from_room))
+        .ok_or_else(|| PathFindingError::RoomDoesNotExists(from_room))?;
+
+    let mut bridge = iter_edge(*center, *radius, bridge)
+        .map_err(|e| {
+            error!("Failed to obtain edge iterator {:?}", e);
+            PathFindingError::EdgeNotExists(edge)
+        })?
+        .take(128)
+        .collect::<ArrayVec<[_; 128]>>();
+
+    bridge.sort_unstable_by_key(|p| p.hex_distance(from.pos));
+
+    'a: for p in bridge {
+        match find_path_in_room(
+            from.pos,
+            p,
+            (positions.clone(), terrain.clone()),
+            max_steps,
+            path,
+        ) {
+            Ok(_) => {
+                break 'a;
+            }
+            Err(PathFindingError::NotFound { remaining_steps: m }) => {
+                max_steps = m;
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(max_steps)
 }
 
 /// find the rooms one has to visit to go from room `from` to room `to`
 /// uses the A* algorithm
 /// return the remaning iterations
-pub fn find_path_room_scale(
-    from: Axial,
-    to: Axial,
+pub fn find_path_overworld(
+    from: Room,
+    to: Room,
     connections: View<Room, RoomConnections>,
-    mut max_iterations: u32,
+    mut max_steps: u32,
     path: &mut Vec<Room>,
 ) -> Result<u32, PathFindingError> {
-    profile!("find_path_room_scale");
+    profile!("find_path_overworld");
+    let from = from.0;
+    let to = to.0;
+
     let current = from;
     let end = to;
 
-    let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_iterations as usize);
-    let mut open_set = HashSet::with_capacity(max_iterations as usize);
+    let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_steps as usize);
+    let mut open_set = HashSet::with_capacity(max_steps as usize);
     let mut current = Node::new(current, current, current.hex_distance(end) as i32, 0);
     closed_set.insert(current.pos, current.clone());
     open_set.insert(current.clone());
-    while current.pos != end && !open_set.is_empty() && max_iterations > 0 {
+    while current.pos != end && !open_set.is_empty() && max_steps > 0 {
         current = open_set.iter().min_by_key(|node| node.f()).unwrap().clone();
         open_set.remove(&current);
         closed_set.insert(current.pos, current.clone());
@@ -109,11 +187,11 @@ pub fn find_path_room_scale(
             .ok_or_else(|| PathFindingError::RoomDoesNotExists(current.pos))?
             .0
             .iter()
-            .filter_map(|e| e.as_ref().map(|e| &e.direction))
+            .filter_map(|e| e.as_ref().map(|e| e.direction + current.pos))
         {
             if !closed_set.contains_key(&point) {
                 let node = Node::new(
-                    *point,
+                    point,
                     current.pos,
                     point.hex_distance(end) as i32,
                     current.g + 1,
@@ -128,14 +206,16 @@ pub fn find_path_room_scale(
                 }
             }
         }
-        max_iterations -= 1;
+        max_steps -= 1;
     }
     if current.pos != end {
-        if max_iterations > 0 {
+        if max_steps > 0 {
             // we ran out of possible paths
             return Err(PathFindingError::Unreachable);
         }
-        return Err(PathFindingError::NotFound);
+        return Err(PathFindingError::NotFound {
+            remaining_steps: max_steps,
+        });
     }
 
     // reconstruct path
@@ -145,7 +225,7 @@ pub fn find_path_room_scale(
         path.push(Room(current));
         current = closed_set[&current].parent;
     }
-    Ok(max_iterations)
+    Ok(max_steps)
 }
 
 fn is_walkable(p: &Axial, terrain: View<Axial, TerrainComponent>) -> bool {
@@ -161,7 +241,7 @@ pub fn find_path_in_room(
     from: Axial,
     to: Axial,
     (positions, terrain): (View<Axial, EntityComponent>, View<Axial, TerrainComponent>),
-    mut max_iterations: u32,
+    mut max_steps: u32,
     path: &mut Vec<RoomPosition>,
 ) -> Result<u32, PathFindingError> {
     profile!("find_path_in_room");
@@ -169,14 +249,14 @@ pub fn find_path_in_room(
     let current = from;
     let end = to;
 
-    let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_iterations as usize);
-    let mut open_set = HashSet::with_capacity(max_iterations as usize);
+    let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_steps as usize);
+    let mut open_set = HashSet::with_capacity(max_steps as usize);
 
     let mut current = Node::new(current, current, current.hex_distance(end) as i32, 0);
     closed_set.insert(current.pos, current.clone());
     open_set.insert(current.clone());
 
-    while current.pos != end && !open_set.is_empty() && max_iterations > 0 {
+    while current.pos != end && !open_set.is_empty() && max_steps > 0 {
         current = open_set.iter().min_by_key(|node| node.f()).unwrap().clone();
         open_set.remove(&current);
         closed_set.insert(current.pos, current.clone());
@@ -209,15 +289,17 @@ pub fn find_path_in_room(
                 }
             }
         }
-        max_iterations -= 1;
+        max_steps -= 1;
     }
 
     if current.pos != end {
-        if max_iterations > 0 {
+        if max_steps > 0 {
             // we ran out of possible paths
             return Err(PathFindingError::Unreachable);
         }
-        return Err(PathFindingError::NotFound);
+        return Err(PathFindingError::NotFound {
+            remaining_steps: max_steps,
+        });
     }
 
     // reconstruct path
@@ -227,7 +309,7 @@ pub fn find_path_in_room(
         path.push(RoomPosition(current));
         current = closed_set[&current].parent;
     }
-    Ok(max_iterations)
+    Ok(max_steps)
 }
 
 #[cfg(test)]

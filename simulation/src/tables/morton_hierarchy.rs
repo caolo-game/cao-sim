@@ -104,7 +104,6 @@ where
 
 struct GroupByRooms<'a, Row> {
     items: &'a [(WorldPosition, Row)],
-    buff: Vec<(Axial, Row)>,
     group_begin: usize,
 }
 
@@ -152,7 +151,6 @@ impl<'a, Row> GroupByRooms<'a, Row> {
         }
         Self {
             items,
-            buff: Vec::with_capacity(512),
             group_begin: 0,
         }
     }
