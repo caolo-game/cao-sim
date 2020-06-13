@@ -39,31 +39,6 @@ impl RoomGenerationParams {
 }
 
 impl RoomGenerationParamsBuilder {
-    pub fn with_radius(mut self, radius: u32) -> Self {
-        self.radius = radius;
-        self
-    }
-
-    pub fn with_plain_dilation(mut self, plain_dilation: u32) -> Self {
-        self.plain_dilation = plain_dilation;
-        self
-    }
-
-    pub fn with_seed(mut self, seed: Option<[u8; 16]>) -> Self {
-        self.seed = seed;
-        self
-    }
-
-    pub fn with_chance_plain(mut self, chance_plain: f32) -> Self {
-        self.chance_plain = chance_plain;
-        self
-    }
-
-    pub fn with_chance_wall(mut self, chance_wall: f32) -> Self {
-        self.chance_wall = chance_wall;
-        self
-    }
-
     pub fn build(self) -> Result<RoomGenerationParams, RoomGenerationParamsError> {
         if !self.chance_wall.is_finite()
             || !self.chance_plain.is_finite()
@@ -90,5 +65,30 @@ impl RoomGenerationParamsBuilder {
             chance_plain: self.chance_plain,
             chance_wall: self.chance_wall,
         })
+    }
+
+    pub fn with_radius(mut self, radius: u32) -> Self {
+        self.radius = radius;
+        self
+    }
+
+    pub fn with_plain_dilation(mut self, plain_dilation: u32) -> Self {
+        self.plain_dilation = plain_dilation;
+        self
+    }
+
+    pub fn with_seed(mut self, seed: Option<[u8; 16]>) -> Self {
+        self.seed = seed;
+        self
+    }
+
+    pub fn with_chance_plain(mut self, chance_plain: f32) -> Self {
+        self.chance_plain = chance_plain;
+        self
+    }
+
+    pub fn with_chance_wall(mut self, chance_wall: f32) -> Self {
+        self.chance_wall = chance_wall;
+        self
     }
 }

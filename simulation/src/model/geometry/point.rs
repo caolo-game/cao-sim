@@ -52,6 +52,30 @@ impl Axial {
         ]
     }
 
+    /// Return the index in `hex_neighbours` of the neighbour if applicable. None otherwise.
+    /// `q` and `r` must be in the set {-1, 0, 1}.
+    /// To get the index of the neighbour of a point
+    /// ```rust
+    /// use caolo_sim::model::geometry::Axial;
+    /// let point = Axial::new(42, 69);
+    /// let neighbour = Axial::new(42, 68);
+    /// // `neighbour - point` will result in the vector pointing from `point` to `neighbour`
+    /// let i = Axial::neighbour_index(neighbour - point);
+    /// assert_eq!(i, Some(2));
+    /// ```
+    pub fn neighbour_index(Axial { q, r }: Axial) -> Option<usize> {
+        let i = match (q, r) {
+            (1, 0) => 0,
+            (1, -1) => 1,
+            (0, -1) => 2,
+            (-1, 0) => 3,
+            (-1, 1) => 4,
+            (0, 1) => 5,
+            _ => return None,
+        };
+        Some(i)
+    }
+
     pub fn rotate_right(self) -> Axial {
         let [x, y, z] = self.hex_axial_to_cube();
         Self::hex_cube_to_axial([-z, -x, -y])
@@ -181,6 +205,17 @@ mod tests {
 
         for p in a.hex_neighbours().iter() {
             assert_eq!(p.hex_distance(a), 1);
+        }
+    }
+
+    #[test]
+    fn neighbour_indices() {
+        let p = Axial::new(13, 42);
+        let neighbours = p.hex_neighbours();
+
+        for (i, n) in neighbours.iter().cloned().enumerate() {
+            let j = Axial::neighbour_index(n - p);
+            assert_eq!(j, Some(i));
         }
     }
 }

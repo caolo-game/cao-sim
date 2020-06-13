@@ -205,14 +205,29 @@ where
     }
 
     /// Return false if id is not in the map, otherwise override the first instance found
-    pub fn update(&mut self, id: Pos, row: Row) -> bool {
-        self.find_key(&id)
-            .map(|ind| {
+    pub fn update<'a>(&'a mut self, id: &Pos, row: Row) -> Option<&'a Row> {
+        self.find_key(id)
+            .map(move |ind| {
                 self.values[ind].1 = row;
+                &self.values[ind].1
             })
-            .is_ok()
+            .ok()
     }
 
+    /// Return a reference to the new Row if it's in the map or None otherwise
+    pub fn update_with<'a, F>(&'a mut self, id: &Pos, f: F) -> Option<&'a Row>
+    where
+        F: FnOnce(&mut Row) -> (),
+    {
+        self.find_key(id)
+            .map(move |ind| {
+                f(&mut self.values[ind].1);
+                &self.values[ind].1
+            })
+            .ok()
+    }
+
+    /// Return a reference to the new Row if it's in the map or None otherwise
     pub fn insert_or_update(&mut self, id: Pos, row: Row) -> Result<(), ExtendFailure<Pos>> {
         if !self.intersects(&id) {
             return Err(ExtendFailure::OutOfBounds(id));

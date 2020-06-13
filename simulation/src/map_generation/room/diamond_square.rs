@@ -79,7 +79,7 @@ pub fn square(
     }
 
     let grad = fheight(&gradient, p, radius, sum / num as f32);
-    gradient.update(p, grad);
+    gradient.update(&p, grad);
     grad
 }
 
@@ -109,6 +109,6 @@ pub fn diamond(
     }
 
     let grad = fheight(&gradient, p, radius, sum / num as f32);
-    gradient.update(p, grad);
+    gradient.update(&p, grad);
     grad
 }

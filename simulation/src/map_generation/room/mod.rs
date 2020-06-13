@@ -406,7 +406,7 @@ fn coastline(center: Axial, radius: i32, mut terrain: UnsafeView<Axial, TerrainC
         }
     }
     trace!("Changing walls to plains {:#?}", changeset);
-    for p in changeset {
+    for p in changeset.iter() {
         unsafe { terrain.as_mut() }.update(p, TerrainComponent(TileTerrainType::Plain));
     }
     debug!("Building coastline done");
