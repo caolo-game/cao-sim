@@ -1,10 +1,14 @@
 use cao_math::mat::mat3f32::JsMatrix;
-use cao_math::vec::vec2f32::Point;
-use caolo_sim::model::components::RoomConnection;
-use caolo_sim::model::geometry::Axial as P;
+use cao_math::vec::vec2f32::Point as Vec3;
+use caolo_sim::map_generation::generate_full_map;
+use caolo_sim::model::components::{RoomComponent, RoomConnections, TerrainComponent};
 use caolo_sim::model::terrain::TileTerrainType;
+use caolo_sim::model::Room;
 use caolo_sim::storage::views::UnsafeView;
-use caolo_sim::tables::{morton::MortonTable, SpatialKey2d};
+use caolo_sim::tables::morton::MortonTable;
+use caolo_sim::tables::morton_hierarchy::RoomMortonTable;
+use caolo_sim::tables::SpatialKey2d;
+
 use std::convert::TryInto;
 use wasm_bindgen::prelude::*;
 
@@ -16,17 +20,19 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
 pub struct MapRender {
-    map: MortonTable<P, caolo_sim::model::components::TerrainComponent>,
-    cells: Vec<(Point, TileTerrainType)>,
+    terrain: RoomMortonTable<TerrainComponent>,
+    rooms: MortonTable<Room, RoomComponent>,
+    room_connections: MortonTable<Room, RoomConnections>,
+    cells: Vec<(Vec3, TileTerrainType)>,
     transform: JsMatrix,
-    bounds: [Point; 2],
+    bounds: [Vec3; 2],
 }
 
 pub fn init() {
     console_error_panic_hook::set_once();
     // console_log::init_with_level(log::Level::Trace).unwrap();
-    console_log::init_with_level(log::Level::Debug).unwrap();
-    // console_log::init_with_level(log::Level::Info).unwrap();
+    // console_log::init_with_level(log::Level::Debug).unwrap();
+    console_log::init_with_level(log::Level::Info).unwrap();
 }
 
 #[wasm_bindgen]
@@ -35,10 +41,12 @@ impl MapRender {
     pub fn new() -> Self {
         init();
         Self {
-            map: Default::default(),
+            terrain: RoomMortonTable::new(),
+            rooms: MortonTable::new(),
+            room_connections: MortonTable::new(),
             cells: Vec::with_capacity(512),
             transform: cao_math::hex::axial_to_pixel_mat_pointy().as_mat3f(),
-            bounds: [Point::new(0., 0.), Point::new(0., 0.)],
+            bounds: [Vec3::new(0., 0.), Vec3::new(0., 0.)],
         }
     }
 
@@ -51,7 +59,10 @@ impl MapRender {
         dilation: u32,
         seed: Option<String>,
     ) -> Result<JsValue, JsValue> {
-        self.map.clear();
+        self.terrain.clear();
+
+        self.rooms.clear();
+        self.room_connections.clear();
         let seed = match seed {
             None => None,
             Some(seed) => {
@@ -63,7 +74,16 @@ impl MapRender {
                 Some(bytes)
             }
         };
-        let params = caolo_sim::map_generation::room::RoomGenerationParams::builder()
+        let params = caolo_sim::map_generation::overworld::OverworldGenerationParams::builder()
+            .with_radius(2)
+            .with_seed(seed)
+            .with_room_radius(radius)
+            .with_min_bridge_len(radius / 2)
+            .with_max_bridge_len(radius)
+            .build()
+            .map_err(|e| format!("expected valid params {:?}", e))
+            .map_err(|e| JsValue::from_serde(&e).unwrap())?;
+        let room_params = caolo_sim::map_generation::room::RoomGenerationParams::builder()
             .with_radius(radius)
             .with_chance_plain(plain_chance)
             .with_chance_wall(wall_chance)
@@ -73,39 +93,44 @@ impl MapRender {
             .map_err(|e| format!("expected valid params {:?}", e))
             .map_err(|e| JsValue::from_serde(&e).unwrap())?;
 
-        let res = caolo_sim::map_generation::room::generate_room(
+        let res = generate_full_map(
             &params,
-            &P::new(0, 0)
-                .hex_neighbours()
-                .iter()
-                .step_by(2)
-                .map(|p| RoomConnection {
-                    direction: *p,
-                    offset_start: 5,
-                    offset_end: 6,
-                })
-                .collect::<Vec<_>>(),
-            (UnsafeView::from_table(&mut self.map),),
+            &room_params,
+            (
+                UnsafeView::from_table(&mut self.terrain),
+                UnsafeView::from_table(&mut self.rooms),
+                UnsafeView::from_table(&mut self.room_connections),
+            ),
         )
         .map_err(|e| format!("{:?}", e))
         .map_err(|e| JsValue::from_serde(&e).unwrap())
         .map(|hp| format!("{:#?}", hp));
 
-        let mut min = Point::new((1 << 20) as f32, (1 << 20) as f32);
-        let mut max = Point::new(0., 0.);
+        let mut min = Vec3::new((1 << 20) as f32, (1 << 20) as f32);
+        let mut max = Vec3::new(0., 0.);
+
+        let trans = cao_math::hex::axial_to_pixel_mat_flat().as_mat3f().val * (radius as f32 + 0.5) * 3.0f32.sqrt();
+        let trans = cao_math::mat::mat3f32::JsMatrix { val: trans };
+
         self.cells = self
-            .map
+            .terrain
             .iter()
-            .map(|(p, t)| {
-                let [x, y] = p.as_array();
-                let p = Point::new(x as f32, y as f32).to_3d_vector();
+            .map(|(world_pos, t)| {
+                let [x, y] = world_pos.room.as_array();
+                let offset = Vec3::new(x as f32, y as f32).to_3d_vector();
+                let offset = trans.right_prod(&offset);
+
+                let [x, y] = world_pos.pos.as_array();
+                let p = Vec3::new(x as f32, y as f32).to_3d_vector();
                 let p = self.transform.right_prod(&p);
+                let p = p + offset;
                 let [x, y] = [p.x, p.y];
+
                 min.x = min.x.min(x);
                 min.y = min.y.min(y);
                 max.x = max.x.max(x);
                 max.y = max.y.max(y);
-                (Point::new(x, y), t.0)
+                (Vec3::new(x, y), t.0)
             })
             .collect();
 
