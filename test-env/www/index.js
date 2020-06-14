@@ -15,6 +15,8 @@ var chancePlain = 1.0 / 3.0;
 var chanceWall = 1.0 / 3.0;
 var seed = null;
 var colorBridges = false;
+var mapRadius = 4;
+var roomRadius = 16;
 
 const render = () => {
   console.time("render");
@@ -95,7 +97,14 @@ const _run = () => {
   let error = null;
   console.time("running mapgen");
   try {
-    mapRender.generateMap(4, 16, chancePlain, chanceWall, plainDilation, seed);
+    mapRender.generateMap(
+      mapRadius,
+      roomRadius,
+      chancePlain,
+      chanceWall,
+      plainDilation,
+      seed
+    );
   } catch (e) {
     error = e;
   } finally {
@@ -148,6 +157,8 @@ document.getElementById("genMapBtn").onclick = () => {
 document.getElementById("plainChance").value = Math.floor(chancePlain * 100);
 document.getElementById("wallChance").value = Math.floor(chanceWall * 100);
 document.getElementById("plainDilation").value = plainDilation;
+document.getElementById("mapRadius").value = mapRadius;
+document.getElementById("roomRadius").value = roomRadius;
 
 document.getElementById("plainChance").onchange = (el) => {
   chancePlain = parseFloat(el.target.value) / 100.0;
@@ -166,9 +177,19 @@ document.getElementById("seed").onchange = (el) => {
 };
 
 document.getElementById("renderBridge").onchange = (el) => {
-  colorBridges = el.target.checked 
+  colorBridges = el.target.checked;
   render();
 };
 document.getElementById("renderBridge").on = colorBridges;
+
+document.getElementById("mapRadius").onchange = (el) => {
+  mapRadius = parseInt(el.target.value);
+  render();
+};
+
+document.getElementById("roomRadius").onchange = (el) => {
+  roomRadius = parseInt(el.target.value);
+  render();
+};
 
 runOnce();
