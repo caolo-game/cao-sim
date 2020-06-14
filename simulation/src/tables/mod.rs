@@ -1,23 +1,20 @@
 //! The game state is represented by a relational model.
 //! Tables are generic collections that store game data split by (shape) components.
 //!
+pub mod btree;
 pub mod iterators;
+pub mod morton;
 pub mod morton_hierarchy;
 pub mod traits;
-pub mod btree;
-pub mod morton;
 pub mod vector;
 
-// TODO: remove reexports as at this point they are becoming a headache
-pub use btree::*;
-pub use morton::*;
-pub use vector::*;
 pub use self::iterators::*;
-pub use self::traits::*;
 pub use self::morton_hierarchy::*;
+pub use self::traits::*;
 
 #[cfg(test)]
 mod tests {
+    use super::btree::*;
     use super::*;
     use serde_derive::Serialize;
     use std::convert::TryInto;

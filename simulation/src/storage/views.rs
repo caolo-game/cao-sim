@@ -7,7 +7,7 @@
 //! use caolo_sim::model::{EntityId,components::{Bot, SpawnComponent, PositionComponent,
 //! EnergyComponent, EntityComponent, ResourceComponent} ,WorldPosition, self};
 //! use caolo_sim::prelude::*;
-//! use caolo_sim::tables::{VecTable,BTreeTable, MortonTable};
+//! use caolo_sim::tables::{vector::VecTable, btree::BTreeTable, morton::MortonTable};
 //!
 //! fn update_minerals(
 //!     (mut entity_positions, mut energy): (
