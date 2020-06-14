@@ -12,6 +12,7 @@ use crate::model::{Room, WorldPosition};
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::MortonTable;
 use arrayvec::ArrayVec;
+use rand::{rngs::SmallRng, thread_rng, RngCore, SeedableRng};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
@@ -29,13 +30,20 @@ pub enum MapGenError {
 pub fn generate_full_map(
     overworld_params: &OverworldGenerationParams,
     room_params: &RoomGenerationParams,
+    seed: Option<[u8; 16]>,
     (mut terrain, rooms, connections): (
         UnsafeView<WorldPosition, TerrainComponent>,
         UnsafeView<Room, RoomComponent>,
         UnsafeView<Room, RoomConnections>,
     ),
 ) -> Result<(), MapGenError> {
-    generate_room_layout(overworld_params, (rooms, connections))
+    let seed = seed.unwrap_or_else(|| {
+        let mut bytes = [0; 16];
+        thread_rng().fill_bytes(&mut bytes);
+        bytes
+    });
+    let mut rng = SmallRng::from_seed(seed);
+    generate_room_layout(overworld_params, &mut rng, (rooms, connections))
         .map_err(|err| MapGenError::OverworldGenerationError { err })?;
 
     let terrain_tables = rooms.iter().try_fold(
@@ -55,6 +63,7 @@ pub fn generate_full_map(
             generate_room(
                 room_params,
                 connections.as_slice(),
+                &mut rng,
                 (UnsafeView::from_table(&mut terrain_table),),
             )
             .map_err(|err| MapGenError::RoomGenerationError { err, room })?;

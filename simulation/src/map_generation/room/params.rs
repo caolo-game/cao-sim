@@ -13,7 +13,6 @@ pub enum RoomGenerationParamsError {
 pub struct RoomGenerationParams {
     pub(crate) radius: u32,
     pub(crate) plain_dilation: u32,
-    pub(crate) seed: Option<[u8; 16]>,
     pub(crate) chance_plain: f32,
     pub(crate) chance_wall: f32,
 }
@@ -22,7 +21,6 @@ pub struct RoomGenerationParams {
 pub struct RoomGenerationParamsBuilder {
     pub radius: u32,
     pub plain_dilation: u32,
-    pub seed: Option<[u8; 16]>,
     pub chance_plain: f32,
     pub chance_wall: f32,
 }
@@ -61,7 +59,6 @@ impl RoomGenerationParamsBuilder {
         Ok(RoomGenerationParams {
             radius: self.radius,
             plain_dilation: self.plain_dilation,
-            seed: self.seed,
             chance_plain: self.chance_plain,
             chance_wall: self.chance_wall,
         })
@@ -74,11 +71,6 @@ impl RoomGenerationParamsBuilder {
 
     pub fn with_plain_dilation(mut self, plain_dilation: u32) -> Self {
         self.plain_dilation = plain_dilation;
-        self
-    }
-
-    pub fn with_seed(mut self, seed: Option<[u8; 16]>) -> Self {
-        self.seed = seed;
         self
     }
 
