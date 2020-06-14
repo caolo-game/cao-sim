@@ -12,7 +12,10 @@ use crate::model::geometry::{Axial, Hexagon};
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
-use crate::tables::{msb_de_bruijn, MortonTable, Table};
+use crate::tables::{
+    morton::{msb_de_bruijn, MortonTable},
+    Table,
+};
 use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
 use std::cmp::Ordering;
 use std::collections::HashSet;

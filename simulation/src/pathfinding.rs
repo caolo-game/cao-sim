@@ -316,7 +316,7 @@ pub fn find_path_in_room(
 mod tests {
     use super::*;
     use crate::model::terrain::TileTerrainType;
-    use crate::tables::MortonTable;
+    use crate::tables::morton::MortonTable;
 
     #[test]
     fn test_simple_wall() {

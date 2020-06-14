@@ -1,7 +1,7 @@
 use super::WorldPosition;
 use crate::model::geometry::Axial;
 use crate::model::terrain::TileTerrainType;
-use crate::tables::{Component, MortonTable, RoomMortonTable, SpatialKey2d};
+use crate::tables::{morton::MortonTable, Component, RoomMortonTable, SpatialKey2d};
 use serde_derive::{Deserialize, Serialize};
 
 /// Represents a connection of a room to another.

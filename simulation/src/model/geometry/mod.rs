@@ -14,4 +14,3 @@ pub fn aabb_over_circle(center: Axial, radius: u32) -> (Axial, Axial) {
 
     (from, to)
 }
-
