@@ -12,9 +12,9 @@
     <button id="genMapToggle">Toggle automatic map generation</button>
     <form onsubmit="return false;">
       <div>
-        <label for="plain_chance">Plain Chance</label>
+        <label for="plainChance">Plain Chance</label>
         <input
-          id="plain_chance"
+          id="plainChance"
           placeholder="Plain Chance"
           type="number"
           step="1.0"
@@ -23,9 +23,9 @@
         />
       </div>
       <div>
-        <label for="wall_chance">Wall Chance</label>
+        <label for="wallChance">Wall Chance</label>
         <input
-          id="wall_chance"
+          id="wallChance"
           placeholder="wall Chance"
           type="number"
           step="1.0"
@@ -34,9 +34,9 @@
         />
       </div>
       <div>
-        <label for="plain_dilation">Plain Dilation</label>
+        <label for="plainDilation">Plain Dilation</label>
         <input
-          id="plain_dilation"
+          id="plainDilation"
           placeholder="Plain Dilation"
           type="number"
           step="1.0"
@@ -46,6 +46,10 @@
       <div>
         <label for="seed">Seed</label>
         <input id="seed" placeholder="Seed" minlength="16" maxlength="16" />
+      </div>
+      <div>
+        <label for="renderBridge">Show bridges</label>
+        <input id="renderBridge" type="checkbox" />
       </div>
       <button id="genMapBtn">Generate new</button>
     </form>
