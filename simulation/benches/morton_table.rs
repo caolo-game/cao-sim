@@ -235,8 +235,7 @@ fn random_insert(c: &mut Criterion) {
                 let r = rng.gen_range(0, 29000);
                 let p = Axial::new(q, r);
 
-                table.insert(p, 420)
-                    .unwrap()
+                table.insert(p, 420).unwrap()
             });
         });
     }

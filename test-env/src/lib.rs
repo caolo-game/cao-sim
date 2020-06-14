@@ -4,7 +4,7 @@ use caolo_sim::model::components::RoomConnection;
 use caolo_sim::model::geometry::Axial as P;
 use caolo_sim::model::terrain::TileTerrainType;
 use caolo_sim::storage::views::UnsafeView;
-use caolo_sim::tables::{MortonTable, SpatialKey2d};
+use caolo_sim::tables::{morton::MortonTable, SpatialKey2d};
 use std::convert::TryInto;
 use wasm_bindgen::prelude::*;
 

@@ -5,7 +5,8 @@ pub use rooms::*;
 
 use super::{EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
 use crate::tables::{
-    BTreeTable, Component, MortonTable, RoomMortonTable, SpatialKey2d, TableId, VecTable,
+    btree::BTreeTable, morton::MortonTable, vector::VecTable, Component, RoomMortonTable,
+    SpatialKey2d, TableId,
 };
 use arrayvec::ArrayVec;
 use serde_derive::{Deserialize, Serialize};

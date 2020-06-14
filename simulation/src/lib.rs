@@ -2,12 +2,12 @@
 extern crate log;
 
 pub mod api;
+pub mod map_generation;
 pub mod model;
+pub mod pathfinding;
 pub mod prelude;
 pub mod storage;
 pub mod tables;
-pub mod pathfinding;
-pub mod map_generation;
 
 mod data_store;
 mod intents;
@@ -18,7 +18,7 @@ use systems::execute_world_update;
 use systems::intent_system::execute_intents;
 use systems::script_execution::execute_scripts;
 
-pub use data_store::{init_inmemory_storage, World, Storage};
+pub use data_store::{init_inmemory_storage, Storage, World};
 
 pub fn forward(storage: &mut World) -> Result<(), Box<dyn std::error::Error>> {
     info!("Executing scripts");
@@ -38,4 +38,3 @@ pub fn forward(storage: &mut World) -> Result<(), Box<dyn std::error::Error>> {
     info!("-----------Tick {} done-----------", storage.time());
     Ok(())
 }
-

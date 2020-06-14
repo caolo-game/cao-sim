@@ -1,3 +1,4 @@
+use super::morton::MortonTable;
 use super::*;
 use crate::model::geometry::Axial;
 use crate::model::WorldPosition;
