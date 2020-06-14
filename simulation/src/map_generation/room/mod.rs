@@ -331,7 +331,7 @@ fn connect_chunks(
 ) {
     debug!("Connecting {} chunks", chunks.len());
     debug_assert!(radius > 0);
-    let bounds = Hexagon { center, radius };
+    let bounds = Hexagon { center, radius: radius -1 };
     'chunks: for chunk in chunks[1..].iter() {
         let avg: Axial =
             chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;
@@ -373,7 +373,7 @@ fn connect_chunks(
             if current.hex_distance(closest) == 0 {
                 break 'connecting;
             }
-            for _ in 0..2 {
+            for _ in 0..4 {
                 let vel = if rng.gen_bool(1.0 / 2.0) {
                     vel.rotate_left()
                 } else {
@@ -679,7 +679,7 @@ mod tests {
     use crate::model::components::EntityComponent;
     use crate::pathfinding::find_path_in_room;
     use crate::storage::views::View;
-    use rand::rngs::{SmallRng};
+    use rand::rngs::SmallRng;
     use rand::SeedableRng;
 
     #[test]

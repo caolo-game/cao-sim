@@ -1,7 +1,7 @@
 import * as wasm from "test-env";
 import { memory } from "test-env/test_env_bg";
 
-const CELL_SIZE = 3;
+const CELL_SIZE = 5;
 const CELL_WIDTH = Math.sqrt(3) * CELL_SIZE;
 const CELL_HEIGHT = 2 * CELL_SIZE;
 
