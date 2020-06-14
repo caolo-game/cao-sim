@@ -53,6 +53,7 @@ impl MapRender {
     #[wasm_bindgen(js_name=generateMap)]
     pub fn generate_map(
         &mut self,
+        world_radius: u32,
         radius: u32,
         plain_chance: f32,
         wall_chance: f32,
@@ -75,8 +76,7 @@ impl MapRender {
             }
         };
         let params = caolo_sim::map_generation::overworld::OverworldGenerationParams::builder()
-            .with_radius(2)
-            .with_seed(seed)
+            .with_radius(world_radius)
             .with_room_radius(radius)
             .with_min_bridge_len(radius / 2)
             .with_max_bridge_len(radius)
@@ -88,7 +88,6 @@ impl MapRender {
             .with_chance_plain(plain_chance)
             .with_chance_wall(wall_chance)
             .with_plain_dilation(dilation)
-            .with_seed(seed)
             .build()
             .map_err(|e| format!("expected valid params {:?}", e))
             .map_err(|e| JsValue::from_serde(&e).unwrap())?;
@@ -96,6 +95,7 @@ impl MapRender {
         let res = generate_full_map(
             &params,
             &room_params,
+            seed,
             (
                 UnsafeView::from_table(&mut self.terrain),
                 UnsafeView::from_table(&mut self.rooms),
@@ -109,7 +109,9 @@ impl MapRender {
         let mut min = Vec3::new((1 << 20) as f32, (1 << 20) as f32);
         let mut max = Vec3::new(0., 0.);
 
-        let trans = cao_math::hex::axial_to_pixel_mat_flat().as_mat3f().val * (radius as f32 + 0.5) * 3.0f32.sqrt();
+        let trans = cao_math::hex::axial_to_pixel_mat_flat().as_mat3f().val
+            * (radius as f32 + 0.5)
+            * 3.0f32.sqrt();
         let trans = cao_math::mat::mat3f32::JsMatrix { val: trans };
 
         self.cells = self

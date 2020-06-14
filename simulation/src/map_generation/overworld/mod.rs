@@ -8,7 +8,7 @@ use crate::model::geometry::{Axial, Hexagon};
 use crate::model::Room;
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::{ExtendFailure, MortonTable};
-use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
+use rand::Rng;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
@@ -34,21 +34,13 @@ pub fn generate_room_layout(
         room_radius,
         min_bridge_len,
         max_bridge_len,
-        seed,
     }: &OverworldGenerationParams,
+    rng: &mut impl Rng,
     (mut rooms, mut connections): (
         UnsafeView<Room, RoomComponent>,
         UnsafeView<Room, RoomConnections>,
     ),
 ) -> Result<(), OverworldGenerationError> {
-    let seed = seed.unwrap_or_else(|| {
-        let mut bytes = [0; 16];
-        thread_rng().fill_bytes(&mut bytes);
-        bytes
-    });
-
-    let mut rng = SmallRng::from_seed(seed);
-
     let radius = *radius as i32;
     let center = Axial::new(radius, radius);
     let bounds = Hexagon { center, radius };
@@ -80,7 +72,8 @@ pub fn generate_room_layout(
 
     // loosely running the Erdos - Runyi model
     let connection_weights = MortonTable::from_iterator(bounds.iter_points().map(|p| {
-        let weight = rng.gen_range(0.1, 1.0);
+        let weight = rng.gen_range(-4.0, 6.0);
+        let weight = sigmoid(weight);
         (p, weight)
     }))
     .map_err(OverworldGenerationError::WeightMapInitFail)?;
@@ -92,7 +85,7 @@ pub fn generate_room_layout(
             *max_bridge_len,
             point,
             &connection_weights,
-            &mut rng,
+            rng,
             connections,
         );
     }
@@ -101,6 +94,10 @@ pub fn generate_room_layout(
     // TODO: insert more connections if the graph is not fully connected
 
     Ok(())
+}
+
+fn sigmoid(f: f32) -> f32 {
+    1.0 / (1.0 + std::f32::consts::E.powf(-f))
 }
 
 fn update_room_connections(
@@ -112,8 +109,7 @@ fn update_room_connections(
     rng: &mut impl Rng,
     mut connections: UnsafeView<Room, RoomConnections>,
 ) {
-    let w = rng.gen_range(0.0, 0.55);
-    // let w = rng.gen_range(0.0, 0.95);
+    let w = rng.gen_range(0.0, std::f32::consts::PI).sin().abs();
     let mut to_connect = [None; 6];
     connection_weights.query_range(&point, 3, &mut |p, weight| {
         if w <= *weight {
@@ -123,6 +119,24 @@ fn update_room_connections(
             }
         }
     });
+
+    if to_connect.iter().find(|c| c.is_some()).is_none() {
+        // if this room has no connections insert 1 at random
+        let mut weights = [0.0; 6];
+        connection_weights.query_range(&point, 3, &mut |p, _| {
+            let n = p - point;
+            if let Some(i) = Axial::neighbour_index(n) {
+                weights[i] = rng.gen_range(0.5, 1.0);
+            }
+        });
+        let (i, _) = weights
+            .iter()
+            .enumerate()
+            .max_by(|(_, w1), (_, w2)| w1.partial_cmp(w2).expect("Expected non-nan values"))
+            .expect("Expected all rooms to have at least 1 neighbour");
+
+        to_connect[i] = Some(point.hex_neighbours()[i] - point);
+    }
 
     let current_connections = {
         let to_connect = &mut to_connect[..];
@@ -207,6 +221,7 @@ mod tests {
             .unwrap();
         generate_room_layout(
             &params,
+            &mut rand::thread_rng(),
             (
                 UnsafeView::from_table(&mut rooms),
                 UnsafeView::from_table(&mut connections),

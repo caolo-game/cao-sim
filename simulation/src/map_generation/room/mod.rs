@@ -16,7 +16,7 @@ use crate::tables::{
     morton::{msb_de_bruijn, MortonTable},
     Table,
 };
-use rand::{rngs::SmallRng, thread_rng, Rng, RngCore, SeedableRng};
+use rand::Rng;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use thiserror::Error;
@@ -84,10 +84,11 @@ pub struct HeightMapProperties {
 pub fn generate_room(
     params: &RoomGenerationParams,
     edges: &[RoomConnection],
+    rng: &mut impl Rng,
     (mut terrain,): MapTables,
 ) -> Result<HeightMapProperties, RoomGenerationError> {
     debug!("Generating Room {:#?}\nedges:\n{:?}", params, edges);
-    let RoomGenerationParams { radius, seed, .. } = params;
+    let RoomGenerationParams { radius, .. } = params;
     if edges.len() > 6 {
         return Err(RoomGenerationError::TooManyNeighbours(edges.len()));
     }
@@ -96,13 +97,6 @@ pub fn generate_room(
     let from = Axial::new(0, 0);
     let dsides = pot(radius as u32 * 2) as i32;
     let to = Axial::new(from.q + dsides, from.r + dsides);
-
-    let seed = seed.unwrap_or_else(|| {
-        let mut bytes = [0; 16];
-        thread_rng().fill_bytes(&mut bytes);
-        bytes
-    });
-    let mut rng = SmallRng::from_seed(seed);
 
     debug!("Initializing GradientMap");
     let mut gradient = GradientMap::from_iterator(
@@ -133,7 +127,7 @@ pub fn generate_room(
                 error!("Initializing GradientMap failed {:?}", e);
                 RoomGenerationError::TerrainExtendFailure(e)
             })?;
-        create_noise(from, to, dsides, &mut rng, &mut gradient2);
+        create_noise(from, to, dsides, rng, &mut gradient2);
 
         let min_grad = &mut min_grad;
         let max_grad = &mut max_grad;
@@ -185,16 +179,10 @@ pub fn generate_room(
 
     let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
-        connect_chunks(
-            center,
-            radius - 1,
-            &mut rng,
-            &chunk_metadata.chunks,
-            terrain,
-        );
+        connect_chunks(center, radius - 1, rng, &chunk_metadata.chunks, terrain);
     }
 
-    fill_edges(center, radius, edges, terrain, &mut rng)?;
+    fill_edges(center, radius, edges, terrain, rng)?;
 
     {
         // to make dilation unbiased we clone the terrain and inject that as separate input
@@ -691,6 +679,7 @@ mod tests {
     use crate::model::components::EntityComponent;
     use crate::pathfinding::find_path_in_room;
     use crate::storage::views::View;
+    use rand::rngs::{SmallRng, SeedableRng};
 
     #[test]
     fn maps_are_not_homogeneous() {
@@ -699,11 +688,18 @@ mod tests {
         let params = RoomGenerationParams::builder()
             .with_radius(8)
             .with_plain_dilation(2)
-            .with_seed(Some(*b"deadbeefstewbisc"))
             .build()
             .unwrap();
 
-        let props = generate_room(&params, &[], (UnsafeView::from_table(&mut terrain),)).unwrap();
+        let mut rng = SmallRng::from_seed(*b"deadbeefstewbisc");
+
+        let props = generate_room(
+            &params,
+            &[],
+            &mut rng,
+            (UnsafeView::from_table(&mut terrain),),
+        )
+        .unwrap();
 
         dbg!(props);
 
@@ -741,10 +737,15 @@ mod tests {
         let params = RoomGenerationParams::builder()
             .with_radius(8)
             .with_plain_dilation(2)
-            // .with_seed(Some(*b"deadbeefstewbisc"))
             .build()
             .unwrap();
-        let props = generate_room(&params, &[], (UnsafeView::from_table(&mut terrain),)).unwrap();
+        let props = generate_room(
+            &params,
+            &[],
+            &mut rand::thread_rng(),
+            (UnsafeView::from_table(&mut terrain),),
+        )
+        .unwrap();
 
         dbg!(props);
 

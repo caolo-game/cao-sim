@@ -21,7 +21,6 @@ pub struct OverworldGenerationParams {
     pub(crate) room_radius: u32,
     pub(crate) min_bridge_len: u32,
     pub(crate) max_bridge_len: u32,
-    pub(crate) seed: Option<[u8; 16]>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -30,7 +29,6 @@ pub struct OverworldGenerationParamsBuilder {
     pub room_radius: u32,
     pub min_bridge_len: u32,
     pub max_bridge_len: u32,
-    pub seed: Option<[u8; 16]>,
 }
 
 impl OverworldGenerationParams {
@@ -62,7 +60,6 @@ impl OverworldGenerationParamsBuilder {
             room_radius: self.room_radius,
             min_bridge_len: self.min_bridge_len,
             max_bridge_len: self.max_bridge_len,
-            seed: self.seed,
         };
         Ok(params)
     }
@@ -81,10 +78,6 @@ impl OverworldGenerationParamsBuilder {
     }
     pub fn with_max_bridge_len(mut self, max_bridge_len: u32) -> Self {
         self.max_bridge_len = max_bridge_len;
-        self
-    }
-    pub fn with_seed(mut self, seed: Option<[u8; 16]>) -> Self {
-        self.seed = seed;
         self
     }
 }

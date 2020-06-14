@@ -10,27 +10,17 @@ const mapRender = new wasm.MapRender();
 var count = 0;
 var running = false;
 
-var plain_dilation = 1;
-var chance_plain = 1.0 / 3.0;
-var chance_wall = 1.0 / 3.0;
+var plainDilation = 1;
+var chancePlain = 1.0 / 3.0;
+var chanceWall = 1.0 / 3.0;
 var seed = null;
+var colorBridges = false;
 
-const _run = () => {
-  console.log("================ run ================");
-
+const render = () => {
+  console.time("render");
   const canvas = document.getElementById("mapGenCanvas");
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  let error = null;
-  console.time("running mapgen");
-  try {
-    mapRender.generateMap(16, chance_plain, chance_wall, plain_dilation, seed);
-  } catch (e) {
-    error = e;
-  } finally {
-    console.timeEnd("running mapgen");
-  }
 
   const drawCells = (ctx, mapRender) => {
     const bounds = mapRender.bounds();
@@ -46,11 +36,14 @@ const _run = () => {
 
     for (let cell of cells) {
       switch (cell[1]) {
+        case "Bridge":
+          if (colorBridges) {
+            ctx.fillStyle = "#89a13a";
+            break;
+          }
+        // else fall through
         case "Plain":
           ctx.fillStyle = "#89813a";
-          break;
-        case "Bridge":
-          ctx.fillStyle = "#89a13a";
           break;
         case "Wall":
           ctx.fillStyle = "#B3AD6A";
@@ -93,6 +86,24 @@ const _run = () => {
 
   drawCells(ctx, mapRender);
 
+  console.timeEnd("render");
+};
+
+const _run = () => {
+  console.log("================ run ================");
+
+  let error = null;
+  console.time("running mapgen");
+  try {
+    mapRender.generateMap(4, 16, chancePlain, chanceWall, plainDilation, seed);
+  } catch (e) {
+    error = e;
+  } finally {
+    console.timeEnd("running mapgen");
+  }
+
+  render();
+
   if (error) {
     throw error;
   }
@@ -100,7 +111,6 @@ const _run = () => {
 
 const runOnce = () => {
   count += 1;
-  console.time("running");
   console.log("seed", seed);
   try {
     _run();
@@ -108,7 +118,6 @@ const runOnce = () => {
     console.error("Failed to run", e);
     throw e;
   } finally {
-    console.timeEnd("running");
     console.log("Run ", count, "done");
   }
 };
@@ -136,24 +145,30 @@ document.getElementById("genMapBtn").onclick = () => {
   runOnce();
 };
 
-document.getElementById("plain_chance").value = Math.floor(chance_plain * 100);
-document.getElementById("wall_chance").value = Math.floor(chance_wall * 100);
-document.getElementById("plain_dilation").value = plain_dilation;
+document.getElementById("plainChance").value = Math.floor(chancePlain * 100);
+document.getElementById("wallChance").value = Math.floor(chanceWall * 100);
+document.getElementById("plainDilation").value = plainDilation;
 
-document.getElementById("plain_chance").onchange = (el) => {
-  chance_plain = parseFloat(el.target.value) / 100.0;
+document.getElementById("plainChance").onchange = (el) => {
+  chancePlain = parseFloat(el.target.value) / 100.0;
 };
 
-document.getElementById("wall_chance").onchange = (el) => {
-  chance_wall = parseFloat(el.target.value) / 100.0;
+document.getElementById("wallChance").onchange = (el) => {
+  chanceWall = parseFloat(el.target.value) / 100.0;
 };
 
-document.getElementById("plain_dilation").onchange = (el) => {
-  plain_dilation = parseInt(el.target.value);
+document.getElementById("plainDilation").onchange = (el) => {
+  plainDilation = parseInt(el.target.value);
 };
 
 document.getElementById("seed").onchange = (el) => {
   seed = el.target.value;
 };
+
+document.getElementById("renderBridge").onchange = (el) => {
+  colorBridges = el.target.checked 
+  render();
+};
+document.getElementById("renderBridge").on = colorBridges;
 
 runOnce();
