@@ -1,7 +1,7 @@
 import * as wasm from "test-env";
 import { memory } from "test-env/test_env_bg";
 
-const CELL_SIZE = 12;
+const CELL_SIZE = 3;
 const CELL_WIDTH = Math.sqrt(3) * CELL_SIZE;
 const CELL_HEIGHT = 2 * CELL_SIZE;
 
@@ -23,10 +23,13 @@ const _run = () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   let error = null;
+  console.time("running mapgen");
   try {
     mapRender.generateMap(16, chance_plain, chance_wall, plain_dilation, seed);
   } catch (e) {
     error = e;
+  } finally {
+    console.timeEnd("running mapgen");
   }
 
   const drawCells = (ctx, mapRender) => {
