@@ -67,6 +67,13 @@ where
         self.table.clear();
     }
 
+    pub fn contains_key(&self, id: &WorldPosition) -> bool {
+        self.table
+            .get_by_id(&id.room)
+            .map(|room| room.contains_key(&id.pos))
+            .unwrap_or(false)
+    }
+
     pub fn get_by_id_mut<'a>(&'a mut self, id: &WorldPosition) -> Option<&'a mut Row> {
         self.table
             .get_by_id_mut(&id.room)
