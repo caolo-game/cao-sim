@@ -6,6 +6,7 @@ use crate::model::components::*;
 use crate::model::*;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
+use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
 use chrono::{DateTime, Duration, Utc};
 use serde_derive::Serialize;
@@ -33,13 +34,14 @@ storage!(
 
     key UserId, table UserComponent = useruser,
 
-    key WorldPosition, table TerrainComponent = pointterrain,
-    key WorldPosition, table EntityComponent = pointentity,
-
     key ScriptId, table ScriptComponent = scriptscript,
 
     key Room, table RoomConnections = roomconnections,
-    key Room, table RoomComponent = rooms
+    key Room, table RoomComponent = rooms,
+
+    // don't forget to implement these in `reset_world_storage`
+    key WorldPosition, table TerrainComponent = pointterrain,
+    key WorldPosition, table EntityComponent = pointentity,
 );
 
 #[derive(Debug, Serialize)]
@@ -146,6 +148,30 @@ impl World {
         let res = self.next_entity;
         self.next_entity = self.next_entity.next();
         res
+    }
+
+    /// # Safety
+    /// This function is safe to call if no references obtained via UnsafeView are held.
+    pub unsafe fn reset_world_storage(&mut self) -> Result<&mut Self, ExtendFailure> {
+        let rooms = self
+            .view::<Room, RoomComponent>()
+            .iter()
+            .map(|(r, _)| r)
+            .collect::<Vec<_>>();
+
+        macro_rules! table {
+            ($component: ty) => {
+                let mut table = self.unsafe_view::<WorldPosition, $component>();
+                let table = table.as_mut();
+                table.clear();
+                table.extend_rooms(rooms.iter().cloned())?;
+            };
+        };
+
+        table!(TerrainComponent);
+        table!(EntityComponent);
+
+        Ok(self)
     }
 }
 

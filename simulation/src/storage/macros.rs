@@ -5,6 +5,7 @@ macro_rules! storage {
         $(
             key $id:ty, table $row: ty = $name: ident
         ),*
+        $(,)*
     ) => {
         pub mod $module {
             use super::*;

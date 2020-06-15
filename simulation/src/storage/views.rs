@@ -30,6 +30,7 @@ use super::{Component, DeleteById, TableId};
 use crate::model::EntityId;
 use crate::World;
 use std::ops::Deref;
+use std::ptr::NonNull;
 
 /// Fetch read-only tables from a Storage
 ///
@@ -69,7 +70,7 @@ pub trait FromWorldMut {
 /// This is a pretty unsafe way to obtain mutable references. Use with caution.
 /// Do not store UnsafeViews for longer than the function scope, that's just asking for trouble.
 ///
-pub struct UnsafeView<Id: TableId, C: Component<Id>>(*mut C::Table);
+pub struct UnsafeView<Id: TableId, C: Component<Id>>(NonNull<C::Table>);
 
 unsafe impl<Id: TableId, C: Component<Id>> Send for UnsafeView<Id, C> {}
 unsafe impl<Id: TableId, C: Component<Id>> Sync for UnsafeView<Id, C> {}
@@ -79,11 +80,12 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
     pub unsafe fn as_mut(&mut self) -> &mut C::Table {
-        &mut *self.0
+        self.0.as_mut()
     }
 
     pub fn from_table(t: &mut C::Table) -> Self {
-        Self(t)
+        let ptr = unsafe { NonNull::new_unchecked(t) };
+        Self(ptr)
     }
 }
 
@@ -117,7 +119,7 @@ impl<Id: TableId, C: Component<Id>> Deref for UnsafeView<Id, C> {
     type Target = C::Table;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.0 }
+        unsafe { self.0.as_ref() }
     }
 }
 

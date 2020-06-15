@@ -1,13 +1,15 @@
 use super::morton::MortonTable;
 use super::*;
 use crate::model::geometry::Axial;
-use crate::model::WorldPosition;
+use crate::model::{Room, WorldPosition};
 use crate::profile;
 use serde_derive::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure {
+    #[error("Failed to extend the room level {0:?}")]
+    RoomExtendFailure(super::morton::ExtendFailure<Axial>),
     #[error("Failed to insert poision {0:?}")]
     InvalidPosition(WorldPosition),
     #[error("Room {0:?} does not exist")]
@@ -77,11 +79,21 @@ where
             .and_then(|room| room.get_by_id(&id.pos))
     }
 
+    pub fn extend_rooms<It>(&mut self, iter: It) -> Result<&mut Self, ExtendFailure>
+    where
+        It: Iterator<Item = Room>,
+    {
+        self.table
+            .extend(iter.map(|Room(p)| (p, Default::default())))
+            .map_err(ExtendFailure::RoomExtendFailure)?;
+        Ok(self)
+    }
+
     /// Extend the map by the items provided.
     pub fn extend_from_slice(
         &mut self,
         values: &mut [(WorldPosition, Row)],
-    ) -> Result<(), ExtendFailure> {
+    ) -> Result<&mut Self, ExtendFailure> {
         trace!("RoomMortonTable extend");
         values.sort_unstable_by_key(|(wp, _)| wp.room);
         for (room_id, items) in GroupByRooms::new(&values) {
@@ -99,7 +111,7 @@ where
                 return Err(ExtendFailure::RoomNotExists(room_id));
             }
         }
-        Ok(())
+        Ok(self)
     }
 }
 
