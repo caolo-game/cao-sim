@@ -28,7 +28,7 @@ impl<'a> System<'a> for PositionSystem {
                 .map_err(|e| {
                     error!("Failed to rebuild position_entities table {:?}", e);
                 })
-                .unwrap_or_default();
+                .ok();
         }
 
         debug!("update positions system done");
