@@ -7,7 +7,7 @@ pub mod room;
 
 use self::overworld::{generate_room_layout, OverworldGenerationError, OverworldGenerationParams};
 use self::room::{generate_room, RoomGenerationError, RoomGenerationParams};
-use crate::model::components::{RoomComponent, RoomConnections, RoomProperties, TerrainComponent};
+use crate::components::{RoomComponent, RoomConnections, RoomProperties, TerrainComponent};
 use crate::model::{EmptyKey, Room, WorldPosition};
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::MortonTable;

@@ -3,8 +3,8 @@
 mod params;
 pub use params::*;
 
-use crate::model::components::{RoomComponent, RoomConnection, RoomConnections, RoomProperties};
-use crate::model::geometry::{Axial, Hexagon};
+use crate::components::{RoomComponent, RoomConnection, RoomConnections, RoomProperties};
+use crate::geometry::{Axial, Hexagon};
 use crate::model::{EmptyKey, Room};
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::{ExtendFailure, MortonTable};

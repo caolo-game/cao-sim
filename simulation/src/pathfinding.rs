@@ -1,7 +1,9 @@
 use crate::map_generation::room::iter_edge;
+use crate::
+    components::{EntityComponent, RoomConnections, RoomProperties, TerrainComponent};
+    use crate::
+    geometry::Axial;
 use crate::model::{
-    components::{EntityComponent, RoomConnections, RoomProperties, TerrainComponent},
-    geometry::Axial,
     indices::Room,
     terrain, EmptyKey, RoomPosition, WorldPosition,
 };

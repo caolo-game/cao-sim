@@ -1,7 +1,7 @@
 use super::IntentExecutionSystem;
 use crate::intents::MoveIntent;
+    use crate::components::{Bot, EntityComponent, PositionComponent};
 use crate::model::{
-    components::{Bot, EntityComponent, PositionComponent},
     EntityId, WorldPosition,
 };
 use crate::storage::views::{UnsafeView, View};

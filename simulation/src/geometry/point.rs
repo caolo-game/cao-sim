@@ -1,5 +1,7 @@
+use crate::tables::SpatialKey2d;
 use cao_lang::traits::AutoByteEncodeProperties;
 use serde_derive::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// Represents a hex point in axial coordinate space
@@ -84,6 +86,27 @@ impl Axial {
     pub fn rotate_left(self) -> Axial {
         let [x, y, z] = self.hex_axial_to_cube();
         Self::hex_cube_to_axial([-y, -z, -x])
+    }
+}
+
+impl SpatialKey2d for Axial {
+    fn as_array(&self) -> [i32; 2] {
+        [self.q, self.r]
+    }
+
+    fn new(q: i32, r: i32) -> Self {
+        Self { q, r }
+    }
+
+    fn get_axis(&self, axis: u8) -> i32 {
+        match axis & 1 {
+            0 => self.q,
+            _ => self.r,
+        }
+    }
+
+    fn dist(&self, other: &Self) -> u32 {
+        u32::try_from(self.hex_distance(*other)).expect("Distance to fit in 32 bits")
     }
 }
 

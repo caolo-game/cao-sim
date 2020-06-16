@@ -1,7 +1,7 @@
 use super::IntentExecutionSystem;
 use crate::intents::DropoffIntent;
+    use crate::components::{CarryComponent, EnergyComponent};
 use crate::model::{
-    components::{CarryComponent, EnergyComponent},
     EntityId,
 };
 use crate::storage::views::UnsafeView;

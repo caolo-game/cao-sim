@@ -1,6 +1,6 @@
 use super::System;
+use crate::    components::{EnergyComponent, EnergyRegenComponent};
 use crate::model::{
-    components::{EnergyComponent, EnergyRegenComponent},
     EntityId,
 };
 use crate::storage::views::{UnsafeView, View};

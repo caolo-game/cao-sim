@@ -1,6 +1,6 @@
 use super::morton::MortonTable;
 use super::*;
-use crate::model::geometry::Axial;
+use crate::geometry::Axial;
 use crate::model::{Room, WorldPosition};
 use crate::profile;
 use serde_derive::{Deserialize, Serialize};

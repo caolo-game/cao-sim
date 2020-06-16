@@ -1,4 +1,4 @@
-use crate::model::components::PathCacheComponent;
+use crate::components::PathCacheComponent;
 use crate::model::EntityId;
 
 /// Update the path cache

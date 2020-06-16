@@ -1,6 +1,6 @@
 //! Structs intended to be used as table indices.
 //!
-use crate::model::Axial;
+use crate::geometry::Axial;
 use crate::tables::{SerialId, SpatialKey2d};
 use cao_lang::{prelude::Scalar, traits::AutoByteEncodeProperties};
 use serde_derive::{Deserialize, Serialize};

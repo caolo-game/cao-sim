@@ -1,5 +1,5 @@
 use super::GradientMap;
-use crate::model::geometry::Axial;
+use crate::geometry::Axial;
 use crate::tables::{SpatialKey2d, Table};
 use rand::Rng;
 

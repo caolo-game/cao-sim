@@ -121,7 +121,7 @@ fn pre_process_move_intents(move_intents: &mut Vec<MoveIntent>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::geometry::Axial;
+    use crate::geometry::Axial;
 
     #[test]
     fn pre_process_move_intents_removes_last_dupe() {

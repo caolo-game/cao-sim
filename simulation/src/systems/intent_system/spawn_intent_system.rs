@@ -1,7 +1,8 @@
 use super::IntentExecutionSystem;
 use crate::intents::SpawnIntent;
+use crate::
+    components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, SpawnComponent};
 use crate::model::{
-    components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, SpawnComponent},
     EntityId,
 };
 use crate::storage::views::{InsertEntityView, UnsafeView, View};

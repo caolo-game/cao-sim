@@ -1,4 +1,5 @@
-use crate::model::{components, EntityId, OperationResult, UserId};
+use crate::components;
+use crate::model::{EntityId, OperationResult, UserId};
 use crate::storage::views::View;
 
 #[derive(Debug, Clone)]

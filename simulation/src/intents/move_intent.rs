@@ -1,7 +1,8 @@
+    use crate::components::{self, EntityComponent, PositionComponent};
+use crate::
+    geometry::Axial;
 use crate::model::{
     self,
-    components::{self, EntityComponent, PositionComponent},
-    geometry::Axial,
     terrain, EntityId, OperationResult, WorldPosition,
 };
 use crate::storage::views::View;

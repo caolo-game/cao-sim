@@ -2,7 +2,7 @@ pub use self::store_impl::*;
 
 use super::storage;
 use crate::intents::Intents;
-use crate::model::components::*;
+use crate::components::*;
 use crate::model::*;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};

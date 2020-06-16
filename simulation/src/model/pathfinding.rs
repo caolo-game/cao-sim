@@ -1,4 +1,5 @@
-use super::geometry::point::Axial;
+use crate::geometry::point::Axial;
+
 
 #[derive(Debug, Clone)]
 pub struct Path {

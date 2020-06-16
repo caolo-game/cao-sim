@@ -1,5 +1,6 @@
 use super::*;
-use crate::model::{components::LogEntry, indices::EntityTime};
+use crate::components::LogEntry; 
+use crate::model::{indices::EntityTime};
 use rayon::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeMap;

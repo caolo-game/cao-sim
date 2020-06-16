@@ -1,5 +1,6 @@
 use super::System;
-use crate::model::{components, EntityId};
+use crate::components;
+use crate::model::{EntityId};
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;
 

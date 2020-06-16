@@ -1,5 +1,5 @@
-use caolo_sim::model::components::EntityComponent;
-use caolo_sim::model::geometry::Axial;
+use caolo_sim::components::EntityComponent;
+use caolo_sim::geometry::Axial;
 use caolo_sim::model::EntityId;
 use caolo_sim::tables::morton::MortonTable;
 use criterion::{black_box, criterion_group, BenchmarkId, Criterion};

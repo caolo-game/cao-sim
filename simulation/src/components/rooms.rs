@@ -1,7 +1,7 @@
-use super::super::indices::EmptyKey;
-use super::WorldPosition;
-use crate::model::geometry::Axial;
+use crate::geometry::Axial;
 use crate::model::terrain::TileTerrainType;
+use crate::model::EmptyKey;
+use crate::model::WorldPosition;
 use crate::tables::{
     morton::MortonTable, unique::UniqueTable, Component, RoomMortonTable, SpatialKey2d,
 };

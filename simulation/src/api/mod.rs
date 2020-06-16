@@ -5,8 +5,9 @@
 pub mod bots;
 pub mod resources;
 pub mod structures;
-use crate::model::geometry::point::Axial;
-use crate::model::{components, EntityId, OperationResult};
+use crate::geometry::point::Axial;
+use crate::components;
+use crate::model::{EntityId, OperationResult};
 use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;
 use cao_lang::scalar::Scalar;

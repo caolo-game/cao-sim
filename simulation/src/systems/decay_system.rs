@@ -1,6 +1,7 @@
 use super::System;
+use crate::
+    components::{DecayComponent, HpComponent};
 use crate::model::{
-    components::{DecayComponent, HpComponent},
     EntityId,
 };
 use crate::storage::views::{DeleteEntityView, UnsafeView};

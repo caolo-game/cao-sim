@@ -1,6 +1,7 @@
 use super::System;
+use crate::
+    components::{EntityComponent, PositionComponent};
 use crate::model::{
-    components::{EntityComponent, PositionComponent},
     EntityId, WorldPosition,
 };
 use crate::storage::views::{UnsafeView, View};

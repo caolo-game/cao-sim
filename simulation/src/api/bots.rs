@@ -4,8 +4,8 @@ use crate::{
         check_dropoff_intent, check_mine_intent, check_move_intent, CachePathIntent, DropoffIntent,
         MineIntent, MoveIntent, PopPathCacheIntent,
     },
-    model::{
         components::{self, PathCacheComponent, Resource, PATH_CACHE_LEN},
+    model::{
         EntityId, OperationResult, UserId, WorldPosition,
     },
     pathfinding, profile,

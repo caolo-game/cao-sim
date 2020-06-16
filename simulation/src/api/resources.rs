@@ -1,5 +1,5 @@
 use super::*;
-use crate::model::components::{EntityComponent, PositionComponent, ResourceComponent};
+use crate::components::{EntityComponent, PositionComponent, ResourceComponent};
 use crate::model::WorldPosition;
 use crate::profile;
 

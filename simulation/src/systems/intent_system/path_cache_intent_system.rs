@@ -1,7 +1,8 @@
 use super::IntentExecutionSystem;
 use crate::intents::{CachePathIntent, PopPathCacheIntent};
+use crate::
+    components::{Bot, PathCacheComponent};
 use crate::model::{
-    components::{Bot, PathCacheComponent},
     EntityId,
 };
 use crate::storage::views::{UnsafeView, View};

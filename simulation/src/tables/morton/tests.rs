@@ -1,5 +1,5 @@
 use super::*;
-use crate::model::geometry::Axial;
+use crate::geometry::Axial;
 use rand::prelude::*;
 use std::collections::{HashMap, HashSet};
 

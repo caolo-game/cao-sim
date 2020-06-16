@@ -7,8 +7,8 @@ pub use params::*;
 
 use diamond_square::create_noise;
 
-use crate::model::components::{RoomConnection, TerrainComponent};
-use crate::model::geometry::{Axial, Hexagon};
+use crate::components::{RoomConnection, TerrainComponent};
+use crate::geometry::{Axial, Hexagon};
 use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
@@ -676,7 +676,7 @@ fn print_terrain(from: &Axial, to: &Axial, terrain: View<Axial, TerrainComponent
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::components::EntityComponent;
+    use crate::components::EntityComponent;
     use crate::pathfinding::find_path_in_room;
     use crate::storage::views::View;
     use rand::rngs::SmallRng;

@@ -1,5 +1,6 @@
+use crate::
+    components::{EntityScript, ScriptComponent};
 use crate::model::{
-    components::{EntityScript, ScriptComponent},
     EntityId, ScriptId, UserId,
 };
 use crate::{intents::Intents, profile, World};

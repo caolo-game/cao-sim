@@ -1,7 +1,8 @@
 use super::IntentExecutionSystem;
 use crate::intents::MineIntent;
+use crate::
+    components::{CarryComponent, EnergyComponent, Resource, ResourceComponent};
 use crate::model::{
-    components::{CarryComponent, EnergyComponent, Resource, ResourceComponent},
     EntityId,
 };
 use crate::storage::views::{UnsafeView, View};

@@ -1,4 +1,5 @@
-use crate::model::{self, components, EntityId, OperationResult, UserId};
+use crate::components;
+use crate::model::{self, EntityId, OperationResult, UserId};
 use crate::World;
 
 #[derive(Debug, Clone)]

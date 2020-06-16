@@ -1,6 +1,7 @@
+use crate::
+    components::{Bot, CarryComponent, EnergyComponent, OwnedEntity, PositionComponent, Resource};
 use crate::model::{
     self,
-    components::{Bot, CarryComponent, EnergyComponent, OwnedEntity, PositionComponent, Resource},
     EntityId, OperationResult,
 };
 use crate::storage::views::View;
