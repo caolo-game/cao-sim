@@ -63,7 +63,17 @@ where
         })
     }
 
+    /// Shallow clear,
+    /// leaves the 'overworld' level intact and clear the rooms.
     pub fn clear(&mut self) {
+        self.table.iter_mut().for_each(|(room, table)| {
+            debug!("clearing {:?}", room);
+            table.clear();
+        });
+    }
+
+    /// Clear the whole table
+    pub fn deep_clear(&mut self) {
         self.table.clear();
     }
 

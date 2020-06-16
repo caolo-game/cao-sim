@@ -120,8 +120,8 @@ where
 
     pub fn clear(&mut self) {
         self.keys.clear();
-        self.skiplist = [Default::default(); SKIP_LEN];
         self.values.clear();
+        self.rebuild_skip_list();
     }
 
     /// Extend the map by the items provided.
