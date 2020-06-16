@@ -156,7 +156,7 @@ impl<'a, Row> Iterator for GroupByRooms<'a, Row> {
         }
         let group_begin = self.group_begin;
         self.group_begin = end + 1;
-        if group_begin != end {
+        if group_begin < end {
             Some((*begin, &self.items[group_begin..end]))
         } else {
             None
