@@ -99,3 +99,8 @@ impl Add for Room {
         Self(self.0.add(b))
     }
 }
+
+#[derive(
+    Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
+)]
+pub struct EmptyKey;

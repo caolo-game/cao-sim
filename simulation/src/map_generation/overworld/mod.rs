@@ -3,9 +3,9 @@
 mod params;
 pub use params::*;
 
-use crate::model::components::{RoomComponent, RoomConnection, RoomConnections};
+use crate::model::components::{RoomComponent, RoomConnection, RoomConnections, RoomProperties};
 use crate::model::geometry::{Axial, Hexagon};
-use crate::model::Room;
+use crate::model::{EmptyKey, Room};
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::{ExtendFailure, MortonTable};
 use rand::Rng;
@@ -36,9 +36,10 @@ pub fn generate_room_layout(
         max_bridge_len,
     }: &OverworldGenerationParams,
     rng: &mut impl Rng,
-    (mut rooms, mut connections): (
+    (mut rooms, mut connections, mut room_props): (
         UnsafeView<Room, RoomComponent>,
         UnsafeView<Room, RoomConnections>,
+        UnsafeView<EmptyKey, RoomProperties>,
     ),
 ) -> Result<(), OverworldGenerationError> {
     let radius = *radius as i32;
@@ -47,18 +48,13 @@ pub fn generate_room_layout(
 
     // Init the grid
     unsafe {
+        room_props.as_mut().value = Some(RoomProperties {
+            radius: *room_radius as u32,
+        });
         let rooms = rooms.as_mut();
         rooms.clear();
         rooms
-            .extend(bounds.iter_points().map(|p| {
-                (
-                    Room(p),
-                    RoomComponent {
-                        radius: radius as u32,
-                        center: Axial::new(radius, radius),
-                    },
-                )
-            }))
+            .extend(bounds.iter_points().map(|p| (Room(p), RoomComponent)))
             .map_err(OverworldGenerationError::ExtendFail)?;
 
         let connections = connections.as_mut();
@@ -194,6 +190,7 @@ fn update_room_connections(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tables::unique::UniqueTable;
 
     use std::sync::Once;
 
@@ -211,6 +208,7 @@ mod tests {
 
         let mut rooms = MortonTable::new();
         let mut connections = MortonTable::new();
+        let mut props = UniqueTable::default();
 
         let params = OverworldGenerationParams::builder()
             .with_radius(12)
@@ -225,10 +223,15 @@ mod tests {
             (
                 UnsafeView::from_table(&mut rooms),
                 UnsafeView::from_table(&mut connections),
+                UnsafeView::from_table(&mut props),
             ),
         )
         .unwrap();
 
+        assert_eq!(
+            props.value.map(|RoomProperties { radius, .. }| radius),
+            Some(16)
+        );
         assert_eq!(rooms.len(), connections.len());
 
         // for each connection of the room test if the corresponding connection of the neighbour

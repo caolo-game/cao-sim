@@ -1,12 +1,15 @@
 use cao_math::mat::mat3f32::JsMatrix;
 use cao_math::vec::vec2f32::Point as Vec3;
 use caolo_sim::map_generation::generate_full_map;
-use caolo_sim::model::components::{RoomComponent, RoomConnections, TerrainComponent};
+use caolo_sim::model::components::{
+    RoomComponent, RoomConnections, RoomProperties, TerrainComponent,
+};
 use caolo_sim::model::terrain::TileTerrainType;
 use caolo_sim::model::Room;
 use caolo_sim::storage::views::UnsafeView;
 use caolo_sim::tables::morton::MortonTable;
 use caolo_sim::tables::morton_hierarchy::RoomMortonTable;
+use caolo_sim::tables::unique::UniqueTable;
 use caolo_sim::tables::SpatialKey2d;
 
 use std::convert::TryInto;
@@ -22,6 +25,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 pub struct MapRender {
     terrain: RoomMortonTable<TerrainComponent>,
     rooms: MortonTable<Room, RoomComponent>,
+    props: UniqueTable<RoomProperties>,
     room_connections: MortonTable<Room, RoomConnections>,
     cells: Vec<(Vec3, TileTerrainType)>,
     transform: JsMatrix,
@@ -41,6 +45,7 @@ impl MapRender {
     pub fn new() -> Self {
         init();
         Self {
+            props: Default::default(),
             terrain: RoomMortonTable::new(),
             rooms: MortonTable::new(),
             room_connections: MortonTable::new(),
@@ -99,6 +104,7 @@ impl MapRender {
             (
                 UnsafeView::from_table(&mut self.terrain),
                 UnsafeView::from_table(&mut self.rooms),
+                UnsafeView::from_table(&mut self.props),
                 UnsafeView::from_table(&mut self.room_connections),
             ),
         )

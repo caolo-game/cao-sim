@@ -1,9 +1,9 @@
 use crate::map_generation::room::iter_edge;
 use crate::model::{
-    components::{EntityComponent, RoomComponent, RoomConnections, TerrainComponent},
+    components::{EntityComponent, RoomConnections, RoomProperties, TerrainComponent},
     geometry::Axial,
     indices::Room,
-    terrain, RoomPosition, WorldPosition,
+    terrain, EmptyKey, RoomPosition, WorldPosition,
 };
 use crate::profile;
 use crate::storage::views::View;
@@ -54,7 +54,7 @@ pub fn find_path(
         View<WorldPosition, EntityComponent>,
         View<WorldPosition, TerrainComponent>,
         View<Room, RoomConnections>,
-        View<Room, RoomComponent>,
+        View<EmptyKey, RoomProperties>,
     ),
     max_steps: u32,
     path: &mut Vec<RoomPosition>,
@@ -93,7 +93,7 @@ fn find_path_multiroom(
         View<Axial, EntityComponent>,
         View<Axial, TerrainComponent>,
         View<Room, RoomConnections>,
-        View<Room, RoomComponent>,
+        View<EmptyKey, RoomProperties>,
     ),
     mut max_steps: u32,
     path: &mut Vec<RoomPosition>,
@@ -122,11 +122,13 @@ fn find_path_multiroom(
         .as_ref()
         .expect("expected a connection to the next room!");
 
-    let RoomComponent { center, radius, .. } = room_properties
-        .get_by_id(&Room(from_room))
-        .ok_or_else(|| PathFindingError::RoomDoesNotExists(from_room))?;
+    let RoomProperties { radius, .. } = room_properties
+        .value
+        .as_ref()
+        .expect("expected RoomProperties to be set");
+    let center = from_room;
 
-    let mut bridge = iter_edge(*center, *radius, bridge)
+    let mut bridge = iter_edge(center, *radius, bridge)
         .map_err(|e| {
             error!("Failed to obtain edge iterator {:?}", e);
             PathFindingError::EdgeNotExists(edge)

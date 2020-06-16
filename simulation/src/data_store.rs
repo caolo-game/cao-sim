@@ -42,6 +42,8 @@ storage!(
     // don't forget to implement these in `reset_world_storage`
     key WorldPosition, table TerrainComponent = pointterrain,
     key WorldPosition, table EntityComponent = pointentity,
+
+    key EmptyKey, table RoomProperties = roomproperties,
 );
 
 #[derive(Debug, Serialize)]

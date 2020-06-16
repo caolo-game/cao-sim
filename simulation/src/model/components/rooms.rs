@@ -1,7 +1,10 @@
+use super::super::indices::EmptyKey;
 use super::WorldPosition;
 use crate::model::geometry::Axial;
 use crate::model::terrain::TileTerrainType;
-use crate::tables::{morton::MortonTable, Component, RoomMortonTable, SpatialKey2d};
+use crate::tables::{
+    morton::MortonTable, unique::UniqueTable, Component, RoomMortonTable, SpatialKey2d,
+};
 use serde_derive::{Deserialize, Serialize};
 
 /// Represents a connection of a room to another.
@@ -32,11 +35,16 @@ impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
     type Table = MortonTable<Id, Self>;
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
-pub struct RoomComponent {
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RoomProperties {
     pub radius: u32,
-    pub center: Axial,
 }
+impl Component<EmptyKey> for RoomProperties {
+    type Table = UniqueTable<Self>;
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
+pub struct RoomComponent;
 
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomComponent {
     type Table = MortonTable<Id, Self>;

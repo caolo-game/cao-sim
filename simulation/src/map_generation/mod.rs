@@ -7,8 +7,8 @@ pub mod room;
 
 use self::overworld::{generate_room_layout, OverworldGenerationError, OverworldGenerationParams};
 use self::room::{generate_room, RoomGenerationError, RoomGenerationParams};
-use crate::model::components::{RoomComponent, RoomConnections, TerrainComponent};
-use crate::model::{Room, WorldPosition};
+use crate::model::components::{RoomComponent, RoomConnections, RoomProperties, TerrainComponent};
+use crate::model::{EmptyKey, Room, WorldPosition};
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::MortonTable;
 use arrayvec::ArrayVec;
@@ -31,9 +31,10 @@ pub fn generate_full_map(
     overworld_params: &OverworldGenerationParams,
     room_params: &RoomGenerationParams,
     seed: Option<[u8; 16]>,
-    (mut terrain, rooms, connections): (
+    (mut terrain, rooms, room_props, connections): (
         UnsafeView<WorldPosition, TerrainComponent>,
         UnsafeView<Room, RoomComponent>,
+        UnsafeView<EmptyKey, RoomProperties>,
         UnsafeView<Room, RoomConnections>,
     ),
 ) -> Result<(), MapGenError> {
@@ -43,7 +44,7 @@ pub fn generate_full_map(
         bytes
     });
     let mut rng = SmallRng::from_seed(seed);
-    generate_room_layout(overworld_params, &mut rng, (rooms, connections))
+    generate_room_layout(overworld_params, &mut rng, (rooms, connections, room_props))
         .map_err(|err| MapGenError::OverworldGenerationError { err })?;
 
     let terrain_tables = rooms.iter().try_fold(
