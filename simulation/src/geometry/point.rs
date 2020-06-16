@@ -58,7 +58,7 @@ impl Axial {
     /// `q` and `r` must be in the set {-1, 0, 1}.
     /// To get the index of the neighbour of a point
     /// ```rust
-    /// use caolo_sim::model::geometry::Axial;
+    /// use caolo_sim::geometry::Axial;
     /// let point = Axial::new(42, 69);
     /// let neighbour = Axial::new(42, 68);
     /// // `neighbour - point` will result in the vector pointing from `point` to `neighbour`

@@ -1,10 +1,7 @@
 use super::IntentExecutionSystem;
+use crate::components::{CarryComponent, EnergyComponent, Resource, ResourceComponent};
 use crate::intents::MineIntent;
-use crate::
-    components::{CarryComponent, EnergyComponent, Resource, ResourceComponent};
-use crate::model::{
-    EntityId,
-};
+use crate::model::EntityId;
 use crate::storage::views::{UnsafeView, View};
 
 pub const MINE_AMOUNT: u16 = 10; // TODO: get from bot body

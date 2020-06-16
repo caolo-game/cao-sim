@@ -8,7 +8,6 @@ pub use cao_lang::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-
 #[derive(Debug, Clone, Eq, PartialEq, Copy)]
 #[repr(i32)]
 pub enum OperationResult {

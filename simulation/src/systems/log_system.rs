@@ -1,5 +1,5 @@
 use super::System;
-use crate::components::LogEntry; 
+use crate::components::LogEntry;
 use crate::model::{indices::EntityTime, Time};
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;

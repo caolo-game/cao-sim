@@ -1,9 +1,7 @@
 use super::IntentExecutionSystem;
+use crate::components::{Bot, EntityComponent, PositionComponent};
 use crate::intents::MoveIntent;
-    use crate::components::{Bot, EntityComponent, PositionComponent};
-use crate::model::{
-    EntityId, WorldPosition,
-};
+use crate::model::{EntityId, WorldPosition};
 use crate::storage::views::{UnsafeView, View};
 
 pub struct MoveSystem;

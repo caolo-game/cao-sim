@@ -1,6 +1,6 @@
 use super::System;
-use crate::geometry::Axial; 
 use crate::components;
+use crate::geometry::Axial;
 use crate::model::{EntityId, WorldPosition};
 use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View};
 use crate::tables::JoinIterator;

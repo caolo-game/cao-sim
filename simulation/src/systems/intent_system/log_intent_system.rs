@@ -1,7 +1,7 @@
 use super::IntentExecutionSystem;
-use crate::intents::LogIntent;
 use crate::components::LogEntry;
-use crate::model::{EntityTime};
+use crate::intents::LogIntent;
+use crate::model::EntityTime;
 use crate::storage::views::UnsafeView;
 
 pub struct LogSystem;

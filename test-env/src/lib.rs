@@ -1,9 +1,7 @@
 use cao_math::mat::mat3f32::JsMatrix;
 use cao_math::vec::vec2f32::Point as Vec3;
+use caolo_sim::components::{RoomComponent, RoomConnections, RoomProperties, TerrainComponent};
 use caolo_sim::map_generation::generate_full_map;
-use caolo_sim::components::{
-    RoomComponent, RoomConnections, RoomProperties, TerrainComponent,
-};
 use caolo_sim::model::terrain::TileTerrainType;
 use caolo_sim::model::Room;
 use caolo_sim::storage::views::UnsafeView;

@@ -1,13 +1,11 @@
 use super::*;
 use crate::{
+    components::{self, PathCacheComponent, Resource, PATH_CACHE_LEN},
     intents::{
         check_dropoff_intent, check_mine_intent, check_move_intent, CachePathIntent, DropoffIntent,
         MineIntent, MoveIntent, PopPathCacheIntent,
     },
-        components::{self, PathCacheComponent, Resource, PATH_CACHE_LEN},
-    model::{
-        EntityId, OperationResult, UserId, WorldPosition,
-    },
+    model::{EntityId, OperationResult, UserId, WorldPosition},
     pathfinding, profile,
     storage::views::FromWorld,
     World,

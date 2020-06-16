@@ -1,9 +1,6 @@
 use super::System;
-use crate::
-    components::{DecayComponent, HpComponent};
-use crate::model::{
-    EntityId,
-};
+use crate::components::{DecayComponent, HpComponent};
+use crate::model::EntityId;
 use crate::storage::views::{DeleteEntityView, UnsafeView};
 use crate::tables::JoinIterator;
 

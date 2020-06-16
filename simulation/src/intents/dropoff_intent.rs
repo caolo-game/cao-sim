@@ -1,9 +1,7 @@
-use crate::
-    components::{Bot, CarryComponent, EnergyComponent, OwnedEntity, PositionComponent, Resource};
-use crate::model::{
-    self,
-    EntityId, OperationResult,
+use crate::components::{
+    Bot, CarryComponent, EnergyComponent, OwnedEntity, PositionComponent, Resource,
 };
+use crate::model::{self, EntityId, OperationResult};
 use crate::storage::views::View;
 
 pub const DROPOFF_RANGE: u32 = 1;

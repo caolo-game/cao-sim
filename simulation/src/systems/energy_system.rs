@@ -1,8 +1,6 @@
 use super::System;
-use crate::    components::{EnergyComponent, EnergyRegenComponent};
-use crate::model::{
-    EntityId,
-};
+use crate::components::{EnergyComponent, EnergyRegenComponent};
+use crate::model::EntityId;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::JoinIterator;
 

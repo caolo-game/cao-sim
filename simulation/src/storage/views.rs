@@ -4,8 +4,9 @@
 //! Using tuples of views:
 //!
 //! ```
-//! use caolo_sim::model::{EntityId,components::{Bot, SpawnComponent, PositionComponent,
-//! EnergyComponent, EntityComponent, ResourceComponent} ,WorldPosition, self};
+//! use caolo_sim::components::{Bot, SpawnComponent, PositionComponent,
+//! EnergyComponent, EntityComponent, ResourceComponent};
+//! use caolo_sim::model::{EntityId, WorldPosition, self};
 //! use caolo_sim::prelude::*;
 //! use caolo_sim::tables::{vector::VecTable, btree::BTreeTable, morton::MortonTable};
 //!

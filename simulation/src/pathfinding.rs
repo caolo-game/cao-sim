@@ -1,12 +1,7 @@
+use crate::components::{EntityComponent, RoomConnections, RoomProperties, TerrainComponent};
+use crate::geometry::Axial;
 use crate::map_generation::room::iter_edge;
-use crate::
-    components::{EntityComponent, RoomConnections, RoomProperties, TerrainComponent};
-    use crate::
-    geometry::Axial;
-use crate::model::{
-    indices::Room,
-    terrain, EmptyKey, RoomPosition, WorldPosition,
-};
+use crate::model::{indices::Room, terrain, EmptyKey, RoomPosition, WorldPosition};
 use crate::profile;
 use crate::storage::views::View;
 use arrayvec::ArrayVec;

@@ -1,9 +1,6 @@
 use super::System;
-use crate::
-    components::{EntityComponent, PositionComponent};
-use crate::model::{
-    EntityId, WorldPosition,
-};
+use crate::components::{EntityComponent, PositionComponent};
+use crate::model::{EntityId, WorldPosition};
 use crate::storage::views::{UnsafeView, View};
 
 pub struct PositionSystem;

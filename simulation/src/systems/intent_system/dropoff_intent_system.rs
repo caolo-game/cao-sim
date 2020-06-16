@@ -1,9 +1,7 @@
 use super::IntentExecutionSystem;
+use crate::components::{CarryComponent, EnergyComponent};
 use crate::intents::DropoffIntent;
-    use crate::components::{CarryComponent, EnergyComponent};
-use crate::model::{
-    EntityId,
-};
+use crate::model::EntityId;
 use crate::storage::views::UnsafeView;
 
 pub struct DropoffSystem;

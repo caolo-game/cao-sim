@@ -1,10 +1,7 @@
 use super::IntentExecutionSystem;
+use crate::components::{Bot, PathCacheComponent};
 use crate::intents::{CachePathIntent, PopPathCacheIntent};
-use crate::
-    components::{Bot, PathCacheComponent};
-use crate::model::{
-    EntityId,
-};
+use crate::model::EntityId;
 use crate::storage::views::{UnsafeView, View};
 
 pub struct UpdatePathCacheSystem;

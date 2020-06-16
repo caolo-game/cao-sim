@@ -1,10 +1,7 @@
 use super::IntentExecutionSystem;
+use crate::components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, SpawnComponent};
 use crate::intents::SpawnIntent;
-use crate::
-    components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, SpawnComponent};
-use crate::model::{
-    EntityId,
-};
+use crate::model::EntityId;
 use crate::storage::views::{InsertEntityView, UnsafeView, View};
 
 pub struct SpawnSystem;

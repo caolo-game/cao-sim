@@ -2,8 +2,8 @@
 extern crate log;
 
 pub mod api;
-pub mod geometry;
 pub mod components;
+pub mod geometry;
 pub mod map_generation;
 pub mod model;
 pub mod pathfinding;

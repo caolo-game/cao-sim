@@ -1,5 +1,5 @@
 use crate::components;
-use crate::model::{indices};
+use crate::model::indices;
 use serde::Serialize;
 use std::ops::Add;
 

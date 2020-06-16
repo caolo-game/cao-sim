@@ -331,7 +331,10 @@ fn connect_chunks(
 ) {
     debug!("Connecting {} chunks", chunks.len());
     debug_assert!(radius > 0);
-    let bounds = Hexagon { center, radius: radius -1 };
+    let bounds = Hexagon {
+        center,
+        radius: radius - 1,
+    };
     'chunks: for chunk in chunks[1..].iter() {
         let avg: Axial =
             chunk.iter().cloned().fold(Axial::default(), |a, b| a + b) / chunk.len() as i32;

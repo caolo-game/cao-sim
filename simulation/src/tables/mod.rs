@@ -6,8 +6,8 @@ pub mod iterators;
 pub mod morton;
 pub mod morton_hierarchy;
 pub mod traits;
-pub mod vector;
 pub mod unique;
+pub mod vector;
 
 pub use self::iterators::*;
 pub use self::morton_hierarchy::*;

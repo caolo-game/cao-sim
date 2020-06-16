@@ -1,10 +1,7 @@
-    use crate::components::{self, EntityComponent, PositionComponent};
-use crate::
-    geometry::Axial;
-use crate::model::{
-    self,
-    terrain, EntityId, OperationResult, WorldPosition,
-};
+
+use crate::components::{self, EntityComponent, PositionComponent};
+use crate::geometry::Axial;
+use crate::model::{self, terrain, EntityId, OperationResult, WorldPosition};
 use crate::storage::views::View;
 
 #[derive(Debug, Clone)]
