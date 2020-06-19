@@ -3,6 +3,8 @@
 #[macro_export(local_inner_macros)]
 macro_rules! profile {
     ($name: expr) => {
+        #[cfg(not(feature = "profile"))]
+        log::trace!($name);
         #[cfg(feature = "profile")]
         let _profile = {
             use crate::utils::profiler::Profiler;
