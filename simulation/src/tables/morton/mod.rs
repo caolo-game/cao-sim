@@ -89,6 +89,25 @@ where
         }
     }
 
+    pub fn from_vec(values: Vec<(Pos, Row)>) -> Result<Self, ExtendFailure<Pos>> {
+        let mut keys = Vec::with_capacity(values.len());
+        for (pos, _) in values.iter() {
+            if !Self::is_valid_pos(pos) {
+                return Err(ExtendFailure::OutOfBounds(*pos));
+            }
+            let [x, y] = pos.as_array();
+            // the above check ensured that x and y are safely convertible
+            keys.push(MortonKey::new(x as u16, y as u16))
+        }
+        let mut res = Self {
+            keys,
+            values,
+            ..Default::default()
+        };
+        res.rebuild_skip_list();
+        Ok(res)
+    }
+
     pub fn with_capacity(cap: usize) -> Self {
         Self {
             skiplist: Default::default(),
@@ -472,10 +491,14 @@ where
         [min, max]
     }
 
-    /// Return wether point is within the bounds of this node
-    pub fn intersects(&self, point: &Pos) -> bool {
+    pub fn is_valid_pos(point: &Pos) -> bool {
         let [x, y] = point.as_array();
         (x & MORTON_POS_MAX) == x && (y & MORTON_POS_MAX) == y
+    }
+
+    /// Return wether point is within the bounds of this node
+    pub fn intersects(&self, point: &Pos) -> bool {
+        Self::is_valid_pos(point)
     }
 
     /// Return [min, max) of the bounds of this table

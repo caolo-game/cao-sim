@@ -53,7 +53,7 @@ where
         }
         let values = values.ok_or_else(|| de::Error::missing_field("values"))?;
         let len = values.len();
-        MortonTable::from_iterator(values.into_iter()).map_err(|e| {
+        MortonTable::from_vec(values).map_err(|e| {
             de::Error::invalid_length(
                 len,
                 &format!("Failed to build MortonTable {:?}", e).as_str(),
