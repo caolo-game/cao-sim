@@ -14,7 +14,6 @@ where
     where
         S: Serializer,
     {
-        // 3 is the number of fields in the struct.
         let mut state = serializer.serialize_struct("MortonTable", 1)?;
         state.serialize_field("values", &self.values)?;
         state.end()
