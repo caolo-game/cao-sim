@@ -37,10 +37,8 @@ pub fn init() {
     console_log::init_with_level(log::Level::Info).unwrap();
 }
 
-#[wasm_bindgen]
-impl MapRender {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
+impl Default for MapRender {
+    fn default() -> Self {
         init();
         Self {
             props: Default::default(),
@@ -51,6 +49,14 @@ impl MapRender {
             transform: cao_math::hex::axial_to_pixel_mat_pointy().as_mat3f(),
             bounds: [Vec3::new(0., 0.), Vec3::new(0., 0.)],
         }
+    }
+}
+
+#[wasm_bindgen]
+impl MapRender {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Default::default()
     }
 
     #[wasm_bindgen(js_name=generateMap)]

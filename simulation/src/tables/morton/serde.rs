@@ -71,7 +71,7 @@ where
     where
         D: Deserializer<'de>,
     {
-        const FIELDS: &'static [&'static str] = &["values"];
+        const FIELDS: &[&str] = &["values"];
         deserializer.deserialize_struct(
             "MortonTable",
             FIELDS,

@@ -80,6 +80,7 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
     /// # Safety
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
+    #[allow(clippy::should_implement_trait)]
     pub unsafe fn as_mut(&mut self) -> &mut C::Table {
         self.0.as_mut()
     }
@@ -166,9 +167,9 @@ where
     /// # Safety
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
-    pub unsafe fn delete_entity(&mut self, id: &EntityId) {
+    pub unsafe fn delete_entity(&mut self, id: EntityId) {
         let storage = &mut (*self.storage).store;
-        storage.delete(id);
+        storage.delete(&id);
     }
 }
 

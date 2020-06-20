@@ -39,6 +39,13 @@ pub enum PathFindingError {
     EdgeNotExists(Axial),
 }
 
+type FindPathTables<'a> = (
+    View<'a, WorldPosition, EntityComponent>,
+    View<'a, WorldPosition, TerrainComponent>,
+    View<'a, Room, RoomConnections>,
+    View<'a, EmptyKey, RoomProperties>,
+);
+
 /// Find path from `from` to `to`. Will append the resulting path to the `path` output vector.
 /// The output' path is in reverse order. Pop the elements to walk the path.
 /// This is a performance consideration, as most callers should not need to reverse the order of
@@ -47,12 +54,7 @@ pub enum PathFindingError {
 pub fn find_path(
     from: WorldPosition,
     to: WorldPosition,
-    (positions, terrain, connections, room_properties): (
-        View<WorldPosition, EntityComponent>,
-        View<WorldPosition, TerrainComponent>,
-        View<Room, RoomConnections>,
-        View<EmptyKey, RoomProperties>,
-    ),
+    (positions, terrain, connections, room_properties): FindPathTables,
     max_steps: u32,
     path: &mut Vec<RoomPosition>,
 ) -> Result<u32, PathFindingError> {
@@ -83,15 +85,17 @@ pub fn find_path(
     }
 }
 
+type FindPathMultiRoomTables<'a> = (
+    View<'a, Axial, EntityComponent>,
+    View<'a, Axial, TerrainComponent>,
+    View<'a, Room, RoomConnections>,
+    View<'a, EmptyKey, RoomProperties>,
+);
+
 fn find_path_multiroom(
     from: WorldPosition,
     to: WorldPosition,
-    (positions, terrain, connections, room_properties): (
-        View<Axial, EntityComponent>,
-        View<Axial, TerrainComponent>,
-        View<Room, RoomConnections>,
-        View<EmptyKey, RoomProperties>,
-    ),
+    (positions, terrain, connections, room_properties): FindPathMultiRoomTables,
     mut max_steps: u32,
     path: &mut Vec<RoomPosition>,
 ) -> Result<u32, PathFindingError> {
@@ -227,9 +231,9 @@ pub fn find_path_overworld(
     Ok(max_steps)
 }
 
-fn is_walkable(p: &Axial, terrain: View<Axial, TerrainComponent>) -> bool {
+fn is_walkable(p: Axial, terrain: View<Axial, TerrainComponent>) -> bool {
     terrain
-        .get_by_id(p)
+        .get_by_id(&p)
         .map(|tile| terrain::is_walkable(tile.0))
         .unwrap_or(false)
 }
@@ -268,7 +272,7 @@ pub fn find_path_in_room(
             res && (
                 // Filter only the free neighbours
                 // End may be in the either tables!
-                *p == &end || (!positions.contains_key(p) && is_walkable(p, terrain.clone()))
+                *p == &end || (!positions.contains_key(p) && is_walkable(**p, terrain.clone()))
             )
         }) {
             if !closed_set.contains_key(&point) {

@@ -16,8 +16,8 @@ impl Default for TileTerrainType {
 }
 
 impl TileTerrainType {
-    pub fn is_walkable(&self) -> bool {
-        is_walkable(*self)
+    pub fn is_walkable(self) -> bool {
+        is_walkable(self)
     }
 }
 

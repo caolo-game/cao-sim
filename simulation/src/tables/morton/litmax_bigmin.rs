@@ -90,9 +90,9 @@ pub fn msb_de_bruijn(v: u32) -> u32 {
     let v = round_down_to_one_less_than_pow_two(v);
 
     // *magic*
-    let ind = v as usize * 0x07c4acdd;
+    let ind = v as usize * 0x07c4_acdd;
     let ind = ind as u32 >> 27;
-    return DE_BRUIJN_BIT_POS[ind as usize];
+    DE_BRUIJN_BIT_POS[ind as usize]
 }
 
 pub fn round_down_to_one_less_than_pow_two(mut v: u32) -> u32 {

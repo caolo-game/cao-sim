@@ -49,7 +49,7 @@ macro_rules! storage {
     ) => {
         $(
             impl HasTable<$id, $row> for Storage {
-                fn view<'a>(&'a self) -> View<'a, $id, $row>{
+                fn view(&'_ self) -> View<'_, $id, $row>{
                     View::from_table(&self.$name)
                 }
 

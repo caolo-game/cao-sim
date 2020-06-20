@@ -139,23 +139,23 @@ fn radix_pass(
     let mut buckets = [0; NUM_BUCKETS];
     // compute the length of each bucket
     keys.iter().for_each(|(key, _)| {
-        let bucket = compute_bucket(k, key);
+        let bucket = compute_bucket(k, *key);
         buckets[bucket] += 1;
     });
 
     // set the output offsets for each bucket
     // this will indicate the 1 after the last index a chunk will occupy
     let mut base = 0;
-    for b_ind in 0..NUM_BUCKETS {
-        buckets[b_ind] += base;
-        base = buckets[b_ind];
+    for bucket in buckets.iter_mut().take(NUM_BUCKETS) {
+        *bucket += base;
+        base = *bucket;
     }
 
     // write the output
     debug_assert_eq!(keys.len(), out.len());
 
     keys.iter().rev().for_each(|(key, id)| {
-        let bucket = compute_bucket(k, key);
+        let bucket = compute_bucket(k, *key);
         buckets[bucket] -= 1;
         let index = buckets[bucket];
         debug_assert!(index < out.len());
@@ -168,7 +168,7 @@ struct UnsafePtr<T>(*mut T);
 unsafe impl<T> Send for UnsafePtr<T> {}
 unsafe impl<T> Sync for UnsafePtr<T> {}
 
-fn compute_bucket(k: u8, key: &MortonKey) -> usize {
+fn compute_bucket(k: u8, key: MortonKey) -> usize {
     let mask = RADIX_MASK << k;
     let ind = key.0 & mask;
     let ind = ind >> k;

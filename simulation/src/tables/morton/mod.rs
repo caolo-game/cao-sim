@@ -26,7 +26,7 @@ use crate::profile;
 
 // at most 15 bits long non-negative integers
 // having the 16th bit set might create problems in find_key
-pub const MORTON_POS_MAX: i32 = 0b0111111111111111;
+pub const MORTON_POS_MAX: i32 = 0b0111_1111_1111_1111;
 
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure<Id: SpatialKey2d> {
@@ -115,6 +115,10 @@ where
             values: Vec::with_capacity(cap),
             keys: Vec::with_capacity(cap),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn len(&self) -> usize {
@@ -306,12 +310,12 @@ where
         let [x, y] = id.as_array();
         let key = MortonKey::new(x as u16, y as u16);
 
-        self.find_key_morton(&key)
+        self.find_key_morton(key)
     }
 
     /// Find the position of `key` or the position where it needs to be inserted to keep the
     /// container sorted
-    fn find_key_morton(&self, key: &MortonKey) -> Result<usize, usize> {
+    fn find_key_morton(&self, key: MortonKey) -> Result<usize, usize> {
         use find_key_partition::find_key_partition;
 
         let step = self.skipstep as usize;
@@ -319,7 +323,7 @@ where
             return self.keys.binary_search(&key);
         }
 
-        let index = find_key_partition(&self.skiplist, &key);
+        let index = find_key_partition(&self.skiplist, key);
 
         let (begin, end) = {
             if index < 8 {
@@ -343,7 +347,7 @@ where
     pub fn get_by_ids<'a>(&'a self, ids: &[Pos]) -> Vec<(Pos, &'a Row)> {
         profile!("get_by_ids");
 
-        ids.into_iter()
+        ids.iter()
             .filter_map(|id| self.get_by_id(id).map(|row| (*id, row)))
             .collect()
     }
@@ -386,7 +390,7 @@ where
         op: &mut impl FnMut(Pos, &'a Row) -> (),
     ) {
         let (imin, pmin) = self
-            .find_key_morton(&min)
+            .find_key_morton(min)
             .map(|i| (i, self.values[i].0.as_array()))
             .unwrap_or_else(|i| {
                 let [x, y] = min.as_point();
@@ -394,7 +398,7 @@ where
             });
 
         let (imax, pmax) = self
-            .find_key_morton(&max)
+            .find_key_morton(max)
             // add 1 to include this node in the range query as otherwise an element might be
             // missed
             .map(|i| (i + 1, self.values[i].0.as_array()))

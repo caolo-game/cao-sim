@@ -27,16 +27,18 @@ pub enum MapGenError {
     OverworldGenerationError { err: OverworldGenerationError },
 }
 
+pub type MapGenerationTables = (
+    UnsafeView<WorldPosition, TerrainComponent>,
+    UnsafeView<Room, RoomComponent>,
+    UnsafeView<EmptyKey, RoomProperties>,
+    UnsafeView<Room, RoomConnections>,
+);
+
 pub fn generate_full_map(
     overworld_params: &OverworldGenerationParams,
     room_params: &RoomGenerationParams,
     seed: Option<[u8; 16]>,
-    (mut terrain, rooms, room_props, connections): (
-        UnsafeView<WorldPosition, TerrainComponent>,
-        UnsafeView<Room, RoomComponent>,
-        UnsafeView<EmptyKey, RoomProperties>,
-        UnsafeView<Room, RoomConnections>,
-    ),
+    (mut terrain, rooms, room_props, connections): MapGenerationTables,
 ) -> Result<(), MapGenError> {
     let seed = seed.unwrap_or_else(|| {
         let mut bytes = [0; 16];

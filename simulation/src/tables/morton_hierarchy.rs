@@ -49,6 +49,10 @@ where
         self.table.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = (WorldPosition, &'a Row)> + 'a {
         self.table.iter().flat_map(|(roomid, t)| {
             t.iter().map(move |(p, v)| {

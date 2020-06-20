@@ -147,13 +147,15 @@ pub fn generate_room(
     debug!("Layering maps done");
 
     let heightmap_props = transform_heightmap_into_terrain(
-        center,
-        max_grad,
-        min_grad,
-        dsides,
-        radius - 1,
-        params.chance_plain,
-        params.chance_wall,
+        HeightMapTransformParams {
+            center,
+            max_grad,
+            min_grad,
+            dsides,
+            radius: radius - 1,
+            chance_plain: params.chance_plain,
+            chance_wall: params.chance_wall,
+        },
         &gradient,
         terrain,
     )?;
@@ -211,7 +213,7 @@ pub fn generate_room(
     let bounds = Hexagon { center, radius };
     let delegates: Vec<Axial> = terrain
         .iter()
-        .filter(|(p, _)| !bounds.contains(p))
+        .filter(|(p, _)| !bounds.contains(*p))
         .map(|(p, _)| p)
         .collect();
     debug!("Deleting {} items from the room", delegates.len());
@@ -383,7 +385,7 @@ fn connect_chunks(
                     vel.rotate_right()
                 };
                 let c = current + vel;
-                if !bounds.contains(&c) {
+                if !bounds.contains(c) {
                     continue;
                 }
                 current = c;
@@ -407,7 +409,7 @@ fn coastline(center: Axial, radius: i32, mut terrain: UnsafeView<Axial, TerrainC
     let mut changeset = vec![];
     for (p, _) in terrain
         .iter()
-        .filter(|(p, TerrainComponent(t))| bounds.contains(p) && *t == TileTerrainType::Wall)
+        .filter(|(p, TerrainComponent(t))| bounds.contains(*p) && *t == TileTerrainType::Wall)
     {
         let count = terrain.count_in_range(&p, 2);
         // 7 == 1 + 6 neighbours
@@ -423,7 +425,7 @@ fn coastline(center: Axial, radius: i32, mut terrain: UnsafeView<Axial, TerrainC
     debug!("Building coastline done");
 }
 
-fn transform_heightmap_into_terrain(
+struct HeightMapTransformParams {
     center: Axial,
     max_grad: f32,
     min_grad: f32,
@@ -431,6 +433,18 @@ fn transform_heightmap_into_terrain(
     radius: i32,
     chance_plain: f32,
     chance_wall: f32,
+}
+
+fn transform_heightmap_into_terrain(
+    HeightMapTransformParams {
+        center,
+        max_grad,
+        min_grad,
+        dsides,
+        radius,
+        chance_plain,
+        chance_wall,
+    }: HeightMapTransformParams,
     gradient: &MortonTable<Axial, f32>,
     mut terrain: UnsafeView<Axial, TerrainComponent>,
 ) -> Result<HeightMapProperties, RoomGenerationError> {
@@ -555,7 +569,7 @@ pub fn iter_edge(
         direction: edge,
     } = edge;
     if edge.q.abs() > 1 || edge.r.abs() > 1 || edge.r == edge.q {
-        return Err(RoomGenerationError::InvalidNeighbour(edge.clone()));
+        return Err(RoomGenerationError::InvalidNeighbour(*edge));
     }
     let end = edge.rotate_right();
     let vel = end - *edge;
@@ -573,10 +587,7 @@ pub fn iter_edge(
         });
     }
 
-    let it = (offset_start..(radius - offset_end)).map(move |i| {
-        let vertex = vertex + (vel * i);
-        vertex
-    });
+    let it = (offset_start..(radius - offset_end)).map(move |i| vertex + (vel * i));
     Ok(it)
 }
 
@@ -650,16 +661,15 @@ fn calculate_plain_chunks(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
             .is_none(),
         "Internal error: chunks must be disjoint!"
     );
-    let meta = ChunkMeta {
+    ChunkMeta {
         chungus_mass,
         chunks,
-    };
-    meta
+    }
 }
 
 /// Print a 2D TerrainComponent map to the console, intended for debugging small maps.
 #[allow(unused)]
-fn print_terrain(from: &Axial, to: &Axial, terrain: View<Axial, TerrainComponent>) {
+fn print_terrain(from: Axial, to: Axial, terrain: View<Axial, TerrainComponent>) {
     assert!(from.q < to.q);
     assert!(from.r < to.r);
 
@@ -672,7 +682,7 @@ fn print_terrain(from: &Axial, to: &Axial, terrain: View<Axial, TerrainComponent
                 None => print!(" "),
             }
         }
-        print!("\n");
+        println!();
     }
 }
 

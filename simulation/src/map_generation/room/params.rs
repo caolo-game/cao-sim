@@ -43,7 +43,6 @@ impl RoomGenerationParamsBuilder {
             || self.chance_wall < 0.0
             || 1.0 <= self.chance_wall
             || self.chance_plain < 0.0
-            || 1.0 <= self.chance_wall
             || 1.0 < self.chance_wall + self.chance_plain
         {
             return Err(RoomGenerationParamsError::BadProbabilities {

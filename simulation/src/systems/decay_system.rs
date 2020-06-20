@@ -30,7 +30,7 @@ impl<'a> System<'a> for DecaySystem {
             if hp.hp == 0 {
                 debug!("Entity {:?} has died, deleting", id);
                 unsafe {
-                    delete.delete_entity(&id);
+                    delete.delete_entity(id);
                 }
             }
         });

@@ -9,7 +9,7 @@ use std::arch::x86_64::*;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[inline(always)]
-pub fn find_key_partition(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -> usize {
+pub fn find_key_partition(skiplist: &[u32; SKIP_LEN], key: MortonKey) -> usize {
     if is_x86_feature_detected!("sse2") {
         unsafe { find_key_partition_sse2(&skiplist, key) }
     } else {
@@ -19,13 +19,13 @@ pub fn find_key_partition(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -> usize 
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 #[inline(always)]
-pub fn find_key_partition(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -> usize {
+pub fn find_key_partition(skiplist: &[u32; SKIP_LEN], key: MortonKey) -> usize {
     find_key_partition_serial(&skiplist, key)
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[inline]
-unsafe fn find_key_partition_sse2(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -> usize {
+unsafe fn find_key_partition_sse2(skiplist: &[u32; SKIP_LEN], key: MortonKey) -> usize {
     let key = key.0 as i32;
     let keys4 = _mm_set_epi32(key, key, key, key);
 
@@ -49,7 +49,7 @@ unsafe fn find_key_partition_sse2(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -
 }
 
 #[inline]
-fn find_key_partition_serial(skiplist: &[u32; SKIP_LEN], key: &MortonKey) -> usize {
+fn find_key_partition_serial(skiplist: &[u32; SKIP_LEN], key: MortonKey) -> usize {
     let key = &key.0;
     for (i, skip) in skiplist.iter().enumerate() {
         if skip > key {
