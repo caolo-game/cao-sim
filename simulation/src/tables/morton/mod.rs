@@ -8,16 +8,17 @@
 mod find_key_partition;
 mod litmax_bigmin;
 mod morton_key;
+mod serde;
 mod sorting;
 #[cfg(test)]
 mod tests;
 
 pub use self::litmax_bigmin::msb_de_bruijn;
 use self::litmax_bigmin::round_down_to_one_less_than_pow_two;
+pub use self::serde::*;
 use super::*;
 use litmax_bigmin::litmax_bigmin;
 use morton_key::*;
-use serde_derive::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
@@ -36,7 +37,7 @@ pub enum ExtendFailure<Id: SpatialKey2d> {
 const SKIP_LEN: usize = 8;
 type SkipList = [u32; SKIP_LEN];
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct MortonTable<Pos, Row>
 where
     Pos: SpatialKey2d,
@@ -76,8 +77,8 @@ where
 
 impl<Pos, Row> MortonTable<Pos, Row>
 where
-    Pos: SpatialKey2d + Sync,
-    Row: TableRow + Send + Sync,
+    Pos: SpatialKey2d,
+    Row: TableRow + Send,
 {
     pub fn new() -> Self {
         Self {
