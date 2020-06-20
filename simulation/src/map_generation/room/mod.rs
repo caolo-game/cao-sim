@@ -719,7 +719,7 @@ mod tests {
 
         let from = Axial::new(0, 0);
         let to = Axial::new(16, 16);
-        print_terrain(&from, &to, View::from_table(&terrain));
+        print_terrain(from, to, View::from_table(&terrain));
 
         let mut seen_empty = false;
         let mut seen_wall = false;
@@ -773,7 +773,7 @@ mod tests {
         let from = Axial::new(0, 0);
         let to = Axial::new(16, 16);
 
-        print_terrain(&from, &to, View::from_table(&terrain));
+        print_terrain(from, to, View::from_table(&terrain));
 
         let positions = MortonTable::<Axial, EntityComponent>::new();
         let mut path = Vec::with_capacity(1024);
