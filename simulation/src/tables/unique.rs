@@ -14,6 +14,19 @@ where
     pub value: Option<Row>,
 }
 
+impl<Row> UniqueTable<Row>
+where
+    Row: TableRow,
+{
+    pub fn unwrap_value(&self) -> &Row {
+        self.value.as_ref().unwrap()
+    }
+
+    pub fn unwrap_mut(&mut self) -> &mut Row {
+        self.value.as_mut().unwrap()
+    }
+}
+
 impl<Row> Table for UniqueTable<Row>
 where
     Row: TableRow,

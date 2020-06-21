@@ -1,5 +1,5 @@
 use cao_math::mat::mat3f32::JsMatrix;
-use cao_math::vec::vec2f32::Point as Vec3;
+use cao_math::vec::vec2f32::Point as Vec2;
 use caolo_sim::components::{RoomComponent, RoomConnections, RoomProperties, TerrainComponent};
 use caolo_sim::map_generation::generate_full_map;
 use caolo_sim::model::terrain::TileTerrainType;
@@ -25,9 +25,9 @@ pub struct MapRender {
     rooms: MortonTable<Room, RoomComponent>,
     props: UniqueTable<RoomProperties>,
     room_connections: MortonTable<Room, RoomConnections>,
-    cells: Vec<(Vec3, TileTerrainType)>,
+    cells: Vec<(Vec2, TileTerrainType)>,
     transform: JsMatrix,
-    bounds: [Vec3; 2],
+    bounds: [Vec2; 2],
 }
 
 pub fn init() {
@@ -47,7 +47,7 @@ impl Default for MapRender {
             room_connections: MortonTable::new(),
             cells: Vec::with_capacity(512),
             transform: cao_math::hex::axial_to_pixel_mat_pointy().as_mat3f(),
-            bounds: [Vec3::new(0., 0.), Vec3::new(0., 0.)],
+            bounds: [Vec2::new(0., 0.), Vec2::new(0., 0.)],
         }
     }
 }
@@ -116,8 +116,8 @@ impl MapRender {
         .map_err(|e| JsValue::from_serde(&e).unwrap())
         .map(|hp| format!("{:#?}", hp));
 
-        let mut min = Vec3::new((1 << 20) as f32, (1 << 20) as f32);
-        let mut max = Vec3::new(0., 0.);
+        let mut min = Vec2::new((1 << 20) as f32, (1 << 20) as f32);
+        let mut max = Vec2::new(0., 0.);
 
         let trans = cao_math::hex::axial_to_pixel_mat_flat().as_mat3f().val
             * (radius as f32 + 0.5)
@@ -129,11 +129,11 @@ impl MapRender {
             .iter()
             .map(|(world_pos, t)| {
                 let [x, y] = world_pos.room.as_array();
-                let offset = Vec3::new(x as f32, y as f32).to_3d_vector();
+                let offset = Vec2::new(x as f32, y as f32).to_3d_vector();
                 let offset = trans.right_prod(&offset);
 
                 let [x, y] = world_pos.pos.as_array();
-                let p = Vec3::new(x as f32, y as f32).to_3d_vector();
+                let p = Vec2::new(x as f32, y as f32).to_3d_vector();
                 let p = self.transform.right_prod(&p);
                 let p = p + offset;
                 let [x, y] = [p.x, p.y];
@@ -142,7 +142,7 @@ impl MapRender {
                 min.y = min.y.min(y);
                 max.x = max.x.max(x);
                 max.y = max.y.max(y);
-                (Vec3::new(x, y), t.0)
+                (Vec2::new(x, y), t.0)
             })
             .collect();
 
