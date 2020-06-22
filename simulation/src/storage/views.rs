@@ -87,7 +87,29 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
 
     pub fn from_table(t: &mut C::Table) -> Self {
         let ptr = unsafe { NonNull::new_unchecked(t) };
-        Self(ptr)
+        let res: UnsafeView<Id, C> = Self(ptr);
+        res.log_table();
+        res
+    }
+
+    #[inline]
+    pub fn log_table(self) {
+        #[cfg(log_tables)]
+        {
+            use log::debug;
+            debug!("Obtained unsafe reference to {:?}", unsafe { *self.table });
+        }
+    }
+}
+
+#[cfg(log_tables)]
+impl<Id: TableId, C: Component<Id>> Drop for UnsafeView<Id, C>
+where
+    crate::data_store::Storage: super::HasTable<Id, C>,
+{
+    fn drop(&mut self) {
+            use log::debug;
+            debug!("Releasing unsafe reference to {:?}", unsafe { *self.table });
     }
 }
 

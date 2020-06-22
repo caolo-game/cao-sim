@@ -18,6 +18,11 @@ pub trait System<'a> {
     type Const: FromWorld<'a>;
 
     fn update(&mut self, m: Self::Mut, c: Self::Const);
+
+    fn name() -> &'static str {
+        use std::any::type_name;
+        type_name::<Self>()
+    }
 }
 
 pub fn execute_world_update(storage: &mut World) {
