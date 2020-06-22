@@ -65,6 +65,7 @@ pub trait FromWorld<'a> {
 
 pub trait FromWorldMut {
     fn new(w: &mut World) -> Self;
+    fn log(&self);
 }
 
 /// Fetch read-write table reference from a Storage.
@@ -96,20 +97,8 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
     pub fn log_table(self) {
         #[cfg(feature = "log_tables")]
         {
-            use log::debug;
-            debug!("Obtained unsafe reference to {:?}", unsafe { *self.table });
+            debug!("UnsafeView references\n{:?}", unsafe { self.0.as_ref() });
         }
-    }
-}
-
-#[cfg(feature = "log_tables")]
-impl<Id: TableId, C: Component<Id>> Drop for UnsafeView<Id, C>
-where
-    crate::data_store::Storage: super::HasTable<Id, C>,
-{
-    fn drop(&mut self) {
-        use log::debug;
-        debug!("Releasing unsafe reference to {:?}", unsafe { *self.table });
     }
 }
 
@@ -128,6 +117,10 @@ where
 {
     fn new(w: &mut World) -> Self {
         w.unsafe_view()
+    }
+
+    fn log(&self) {
+        self.log_table();
     }
 }
 
@@ -173,6 +166,10 @@ impl FromWorldMut for DeferredDeleteEntityView {
     fn new(w: &mut World) -> Self {
         Self { world: w as *mut _ }
     }
+
+    fn log(&self) {
+        debug!("DeferredDeleteEntityView to storage {:x?}", self.world);
+    }
 }
 
 pub struct DeleteEntityView {
@@ -201,6 +198,10 @@ impl FromWorldMut for DeleteEntityView {
             storage: w as *mut _,
         }
     }
+
+    fn log(&self) {
+        debug!("DeferredDeleteEntityView to storage {:x?}", self.storage);
+    }
 }
 
 pub struct InsertEntityView {
@@ -216,6 +217,10 @@ impl FromWorldMut for InsertEntityView {
             storage: w as *mut _,
         }
     }
+
+    fn log(&self) {
+        debug!("InsertEntityView to storage {:x?}", self.storage);
+    }
 }
 
 impl InsertEntityView {
@@ -229,7 +234,7 @@ impl InsertEntityView {
 }
 
 macro_rules! implement_tuple {
-    ($v: ident) => {
+    ($id: tt = $v: ident) => {
         impl<'a, $v: FromWorld<'a> >
             FromWorld <'a> for ( $v, )
             {
@@ -250,10 +255,14 @@ macro_rules! implement_tuple {
                         $v::new(storage),
                     )
                 }
+
+                fn log(&self) {
+                    self.0.log();
+                }
             }
     };
 
-    ($($vv: ident),*) => {
+    ($($id: tt = $vv: ident),*) => {
         impl<'a, $($vv:FromWorld<'a>),* >
             FromWorld <'a> for ( $($vv),* )
             {
@@ -274,22 +283,33 @@ macro_rules! implement_tuple {
                         $($vv::new(storage)),*
                     )
                 }
+
+                #[allow(unused)]
+                fn log(&self) {
+                    let a = self;
+                    $(
+                       a.$id.log();
+                    )*
+                }
             }
     };
 }
 
 implement_tuple!();
-implement_tuple!(V1);
-implement_tuple!(V1, V2);
-implement_tuple!(V1, V2, V3);
-implement_tuple!(V1, V2, V3, V4);
-implement_tuple!(V1, V2, V3, V4, V5);
-implement_tuple!(V1, V2, V3, V4, V5, V6);
-implement_tuple!(V1, V2, V3, V4, V5, V6, V7);
-implement_tuple!(V1, V2, V3, V4, V5, V6, V7, V8);
-implement_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9);
-implement_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10);
-implement_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11);
-implement_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12);
-implement_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13);
-implement_tuple!(V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14);
+implement_tuple!(0 = V1);
+implement_tuple!(0 = V1, 1 = V2);
+implement_tuple!(0 = V1, 1 = V2, 2 = V3);
+implement_tuple!(0 = V1, 1 = V2, 2 = V3, 3 = V4);
+implement_tuple!(0 = V1, 1 = V2, 2 = V3, 3 = V4, 4 = V5);
+implement_tuple!(0 = V1, 1 = V2, 2 = V3, 3 = V4, 4 = V5, 5 = V6);
+implement_tuple!(0 = V1, 1 = V2, 2 = V3, 3 = V4, 4 = V5, 5 = V6, 6 = V7);
+implement_tuple!(
+    0 = V1,
+    1 = V2,
+    2 = V3,
+    3 = V4,
+    4 = V5,
+    5 = V6,
+    6 = V7,
+    7 = V8
+);

@@ -2,7 +2,6 @@
 
 test:
 	cargo check
-	cargo clippy
 	cargo test-all-features
 	cargo test-all-features --benches
 
