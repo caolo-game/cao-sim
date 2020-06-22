@@ -37,7 +37,7 @@ pub enum ExtendFailure<Id: SpatialKey2d> {
 const SKIP_LEN: usize = 8;
 type SkipList = [u32; SKIP_LEN];
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MortonTable<Pos, Row>
 where
     Pos: SpatialKey2d,
@@ -51,6 +51,16 @@ where
     // keys is 24 bytes in memory
     keys: Vec<MortonKey>,
     values: Vec<(Pos, Row)>,
+}
+
+impl<Pos, Row> std::fmt::Debug for MortonTable<Pos, Row>
+where
+    Pos: SpatialKey2d,
+    Row: TableRow,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "MortonTable\n{:?}", self.values)
+    }
 }
 
 impl<Pos, Row> Default for MortonTable<Pos, Row>
