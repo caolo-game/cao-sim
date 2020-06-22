@@ -14,7 +14,7 @@ use crate::World;
 pub trait System<'a> {
     // Requiring these traits instead of From impl disallows Storage as an `update` parameter
     // Thus requiring callers to explicitly state their dependencies
-    type Mut: FromWorldMut;
+    type Mut: FromWorldMut + Clone;
     type Const: FromWorld<'a>;
 
     fn update(&mut self, m: Self::Mut, c: Self::Const);
@@ -49,5 +49,8 @@ pub fn execute_world_update(storage: &mut World) {
 
 #[inline]
 fn update<'a, Sys: System<'a>>(sys: &mut Sys, storage: &'a mut World) {
-    sys.update(Sys::Mut::new(storage), Sys::Const::new(storage as &_));
+    let m = Sys::Mut::new(storage);
+    let c = Sys::Const::new(storage as &_);
+    sys.update(m.clone(), c);
+    m.log();
 }

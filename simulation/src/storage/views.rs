@@ -97,7 +97,11 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
     pub fn log_table(self) {
         #[cfg(feature = "log_tables")]
         {
-            debug!("UnsafeView references\n{:?}", unsafe { self.0.as_ref() });
+            trace!(
+                "UnsafeView references {:x?}\n{:?}",
+                self.0.as_ptr(),
+                unsafe { self.0.as_ref() }
+            );
         }
     }
 }
@@ -140,8 +144,9 @@ impl<Id: TableId, C: Component<Id>> Deref for UnsafeView<Id, C> {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct DeferredDeleteEntityView {
-    world: *mut World,
+    world: NonNull<World>,
 }
 
 unsafe impl Send for DeferredDeleteEntityView {}
@@ -157,23 +162,26 @@ where
     pub unsafe fn delete_entity(&mut self, id: EntityId) {
         use super::DeferredDeleteById;
 
-        let world = &mut (*self.world);
+        let world = self.world.as_mut();
         world.deferred_delete(id);
     }
 }
 
 impl FromWorldMut for DeferredDeleteEntityView {
     fn new(w: &mut World) -> Self {
-        Self { world: w as *mut _ }
+        Self {
+            world: unsafe { NonNull::new_unchecked(w) },
+        }
     }
 
     fn log(&self) {
-        debug!("DeferredDeleteEntityView to storage {:x?}", self.world);
+        trace!("DeferredDeleteEntityView to storage {:x?}", self.world);
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct DeleteEntityView {
-    storage: *mut World,
+    storage: NonNull<World>,
 }
 
 unsafe impl Send for DeleteEntityView {}
@@ -187,7 +195,7 @@ where
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
     pub unsafe fn delete_entity(&mut self, id: EntityId) {
-        let storage = &mut (*self.storage).store;
+        let storage = &mut self.storage.as_mut().store;
         storage.delete(&id);
     }
 }
@@ -195,17 +203,18 @@ where
 impl FromWorldMut for DeleteEntityView {
     fn new(w: &mut World) -> Self {
         Self {
-            storage: w as *mut _,
+            storage: unsafe { NonNull::new_unchecked(w) },
         }
     }
 
     fn log(&self) {
-        debug!("DeferredDeleteEntityView to storage {:x?}", self.storage);
+        trace!("DeferredDeleteEntityView to storage {:x?}", self.storage);
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct InsertEntityView {
-    storage: *mut World,
+    storage: NonNull<World>,
 }
 
 unsafe impl Send for InsertEntityView {}
@@ -214,12 +223,12 @@ unsafe impl Sync for InsertEntityView {}
 impl FromWorldMut for InsertEntityView {
     fn new(w: &mut World) -> Self {
         Self {
-            storage: w as *mut _,
+            storage: unsafe { NonNull::new_unchecked(w) },
         }
     }
 
     fn log(&self) {
-        debug!("InsertEntityView to storage {:x?}", self.storage);
+        trace!("InsertEntityView to storage {:x?}", self.storage);
     }
 }
 
@@ -228,7 +237,7 @@ impl InsertEntityView {
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
     pub unsafe fn insert_entity(&mut self) -> EntityId {
-        let storage = &mut *self.storage;
+        let storage = self.storage.as_mut();
         storage.insert_entity()
     }
 }

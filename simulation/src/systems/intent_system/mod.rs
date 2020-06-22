@@ -18,7 +18,7 @@ use crate::World;
 use rayon::prelude::*;
 
 pub trait IntentExecutionSystem<'a> {
-    type Mut: FromWorldMut;
+    type Mut: FromWorldMut + Clone;
     type Const: FromWorld<'a>;
     type Intent;
 
@@ -79,7 +79,8 @@ where
     let immutable = Sys::Const::new(storage);
 
     move |intents| {
-        sys.execute(mutable, immutable, intents.into());
+        sys.execute(mutable.clone(), immutable, intents.into());
+        mutable.log();
     }
 }
 
