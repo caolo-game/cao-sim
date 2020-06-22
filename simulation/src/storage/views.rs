@@ -94,7 +94,7 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
 
     #[inline]
     pub fn log_table(self) {
-        #[cfg(log_tables)]
+        #[cfg(feature = "log_tables")]
         {
             use log::debug;
             debug!("Obtained unsafe reference to {:?}", unsafe { *self.table });
@@ -102,14 +102,14 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
     }
 }
 
-#[cfg(log_tables)]
+#[cfg(feature = "log_tables")]
 impl<Id: TableId, C: Component<Id>> Drop for UnsafeView<Id, C>
 where
     crate::data_store::Storage: super::HasTable<Id, C>,
 {
     fn drop(&mut self) {
-            use log::debug;
-            debug!("Releasing unsafe reference to {:?}", unsafe { *self.table });
+        use log::debug;
+        debug!("Releasing unsafe reference to {:?}", unsafe { *self.table });
     }
 }
 

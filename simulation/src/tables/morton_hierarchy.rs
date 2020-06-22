@@ -71,7 +71,7 @@ where
     /// leaves the 'overworld' level intact and clear the rooms.
     pub fn clear(&mut self) {
         self.table.iter_mut().for_each(|(room, table)| {
-            debug!("clearing {:?}", room);
+            trace!("clearing {:?}", room);
             table.clear();
         });
     }
