@@ -12,6 +12,9 @@ use chrono::{DateTime, Duration, Utc};
 use serde_derive::Serialize;
 use std::pin::Pin;
 
+#[cfg(feature = "log_tables")]
+use crate::storage::views::logging::LogGuard;
+
 storage!(
     module store_impl
 
@@ -57,6 +60,9 @@ pub struct World {
     pub last_tick: DateTime<Utc>,
     #[serde(skip)]
     pub dt: Duration,
+
+    #[cfg(feature = "log_tables")]
+    _guard: LogGuard,
 }
 
 impl<Id: TableId, C: Component<Id>> storage::HasTable<Id, C> for World
@@ -102,6 +108,11 @@ impl World {
             last_tick: Utc::now(),
             next_entity: crate::model::EntityId::default(),
             dt: Duration::zero(),
+
+            #[cfg(feature = "log_tables")]
+            _guard: LogGuard {
+                fname: "./tables.log".to_owned(),
+            },
         }
     }
 
@@ -198,5 +209,17 @@ where
 impl<'a> storage::views::FromWorld<'a> for Time {
     fn new(w: &'a World) -> Self {
         Time(w.time())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::setup_testing;
+
+    #[test]
+    fn check_world_sanity() {
+        setup_testing();
+        let _world = init_inmemory_storage();
     }
 }

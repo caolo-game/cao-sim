@@ -191,20 +191,11 @@ fn update_room_connections(
 mod tests {
     use super::*;
     use crate::tables::unique::UniqueTable;
-
-    use std::sync::Once;
-
-    static INIT: Once = Once::new();
-
-    fn setup() {
-        INIT.call_once(|| {
-            env_logger::init();
-        });
-    }
+    use crate::utils::setup_testing;
 
     #[test]
     fn overworld_connections_are_valid() {
-        setup();
+        setup_testing();
 
         let mut rooms = MortonTable::new();
         let mut connections = MortonTable::new();

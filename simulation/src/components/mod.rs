@@ -12,7 +12,7 @@ use arrayvec::ArrayVec;
 use serde_derive::{Deserialize, Serialize};
 
 /// For tables that store entity ids as values
-#[derive(Debug, Clone, Serialize, Deserialize, Copy, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy, Default, Ord, PartialOrd, Eq, PartialEq)]
 pub struct EntityComponent(pub EntityId);
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for EntityComponent {
     type Table = MortonTable<Id, Self>;

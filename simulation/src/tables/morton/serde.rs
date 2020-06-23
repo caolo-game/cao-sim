@@ -43,9 +43,10 @@ where
     where
         V: MapAccess<'de>,
     {
+        use std::borrow::Cow;
         let mut values: Option<Vec<(Pos, Row)>> = None;
-        'a: while let Some(key) = seq.next_key::<&'de str>()? {
-            if key == "values" {
+        'a: while let Some(key) = seq.next_key::<Cow<String>>()? {
+            if key == Cow::Borrowed("values") {
                 let value = seq.next_value()?;
                 values = value;
                 break 'a;

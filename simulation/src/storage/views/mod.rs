@@ -27,37 +27,19 @@
 //! update_minerals(FromWorldMut::new(&mut storage), FromWorld::new(&storage));
 //! ```
 //!
+mod unsafe_view;
+mod view;
+
+#[cfg(feature = "log_tables")]
+pub mod logging;
+
+pub use unsafe_view::*;
+pub use view::*;
+
 use super::{Component, DeleteById, TableId};
 use crate::model::EntityId;
 use crate::World;
-use std::ops::Deref;
 use std::ptr::NonNull;
-
-/// Fetch read-only tables from a Storage
-///
-#[derive(Clone, Copy)]
-pub struct View<'a, Id: TableId, C: Component<Id>>(&'a C::Table);
-
-unsafe impl<'a, Id: TableId, C: Component<Id>> Send for View<'a, Id, C> {}
-unsafe impl<'a, Id: TableId, C: Component<Id>> Sync for View<'a, Id, C> {}
-
-impl<'a, Id: TableId, C: Component<Id>> View<'a, Id, C> {
-    pub fn reborrow(self) -> &'a C::Table {
-        self.0
-    }
-
-    pub fn from_table(t: &'a C::Table) -> Self {
-        Self(t)
-    }
-}
-
-impl<'a, Id: TableId, C: Component<Id>> Deref for View<'a, Id, C> {
-    type Target = C::Table;
-
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
 
 pub trait FromWorld<'a> {
     fn new(w: &'a World) -> Self;
@@ -66,82 +48,6 @@ pub trait FromWorld<'a> {
 pub trait FromWorldMut {
     fn new(w: &mut World) -> Self;
     fn log(&self);
-}
-
-/// Fetch read-write table reference from a Storage.
-/// This is a pretty unsafe way to obtain mutable references. Use with caution.
-/// Do not store UnsafeViews for longer than the function scope, that's just asking for trouble.
-///
-pub struct UnsafeView<Id: TableId, C: Component<Id>>(NonNull<C::Table>);
-
-unsafe impl<Id: TableId, C: Component<Id>> Send for UnsafeView<Id, C> {}
-unsafe impl<Id: TableId, C: Component<Id>> Sync for UnsafeView<Id, C> {}
-
-impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
-    /// # Safety
-    /// This function should only be called if the pointed to Storage is in memory and no other
-    /// threads have access to it at this time!
-    #[allow(clippy::should_implement_trait)]
-    pub unsafe fn as_mut(&mut self) -> &mut C::Table {
-        self.0.as_mut()
-    }
-
-    pub fn from_table(t: &mut C::Table) -> Self {
-        let ptr = unsafe { NonNull::new_unchecked(t) };
-        let res: UnsafeView<Id, C> = Self(ptr);
-        res.log_table();
-        res
-    }
-
-    #[inline]
-    pub fn log_table(self) {
-        #[cfg(feature = "log_tables")]
-        {
-            trace!(
-                "UnsafeView references {:x?}\n{:?}",
-                self.0.as_ptr(),
-                unsafe { self.0.as_ref() }
-            );
-        }
-    }
-}
-
-impl<'a, Id: TableId, C: Component<Id>> FromWorld<'a> for View<'a, Id, C>
-where
-    crate::data_store::Storage: super::HasTable<Id, C>,
-{
-    fn new(w: &'a World) -> Self {
-        w.view()
-    }
-}
-
-impl<Id: TableId, C: Component<Id>> FromWorldMut for UnsafeView<Id, C>
-where
-    crate::data_store::Storage: super::HasTable<Id, C>,
-{
-    fn new(w: &mut World) -> Self {
-        w.unsafe_view()
-    }
-
-    fn log(&self) {
-        self.log_table();
-    }
-}
-
-impl<Id: TableId, C: Component<Id>> Clone for UnsafeView<Id, C> {
-    fn clone(&self) -> Self {
-        Self(self.0)
-    }
-}
-
-impl<Id: TableId, C: Component<Id>> Copy for UnsafeView<Id, C> {}
-
-impl<Id: TableId, C: Component<Id>> Deref for UnsafeView<Id, C> {
-    type Target = C::Table;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { self.0.as_ref() }
-    }
 }
 
 #[derive(Clone, Copy)]
