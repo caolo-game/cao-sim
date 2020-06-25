@@ -19,22 +19,22 @@ jobs:
           rust-version: ${{ matrix.rust }}
       - uses: actions/checkout@v2
 
-      # - name: Check
-      #   run: cargo check
-      # - name: Clippy
-      #   run: cargo clippy -- -D warnings
-      #
-      # - name: Install cargo-all-features
-      #   run: cargo install cargo-all-features
-      #
-      # - name: Run tests
-      #   run: cargo test-all-features
-      #   env:
-      #     RUST_BACKTRACE: 1
-      # - name: Test benches
-      #   run: cargo test --benches
-      #   env:
-      #     RUST_BACKTRACE: 1
+      - name: Check
+        run: cargo check
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Install cargo-all-features
+        run: cargo install cargo-all-features
+
+      - name: Run tests
+        run: cargo test-all-features
+        env:
+          RUST_BACKTRACE: 1
+      - name: Test benches
+        run: cargo test --benches
+        env:
+          RUST_BACKTRACE: 1
 
       - name: Install grcov
         if: ${{ matrix.rust == 'nightly' }}
@@ -45,7 +45,7 @@ jobs:
         run: |
           cargo +nightly test
           mkdir ./coverage
-          ./grcov ./target/debug -s . --token ${{ secrets.COVERALLS_TOKEN }} --ignore /* > ./coverage/lcov.info
+          ./grcov ./target/debug -s . --token ${{ secrets.COVERALLS_TOKEN }} --ignore="/*" > ./coverage/lcov.info
 
         env:
           RUST_BACKTRACE: 1
