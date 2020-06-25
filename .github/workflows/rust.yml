@@ -9,12 +9,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        rust: [stable, nightly]
+
     steps:
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.rust }}
       - uses: actions/checkout@v2
-      - name: Install cargo-all-features
-        run: cargo install cargo-all-features
+
       - name: Check
         run: cargo check
+
+      - name: Install cargo-all-features
+        run: cargo install cargo-all-features
+
       - name: Clippy
         run: cargo clippy
       - name: Run tests
@@ -39,8 +49,10 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests "
           RUSTDOCFLAGS: "-Cpanic=abort"
+        if: ${{ matrix.rust == 'nightly' }}
 
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ matrix.rust == 'nightly' }}
