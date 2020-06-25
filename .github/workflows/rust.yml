@@ -38,11 +38,13 @@ jobs:
 
       - name: Install grcov
         run: cargo install grcov
+        if: ${{ matrix.rust == 'nightly' }}
 
       - name: Generate coverage report
         run: |
           cargo +nightly test
-          grcov ./target/debug -t coveralls+ -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
+          mkdir ./coverage
+          grcov ./target/debug -s . --token ${{ secrets.COVERALLS_TOKEN }} > ./coverage/lcov.info
 
         env:
           RUST_BACKTRACE: 1
@@ -50,6 +52,7 @@ jobs:
           RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests "
           RUSTDOCFLAGS: "-Cpanic=abort"
         if: ${{ matrix.rust == 'nightly' }}
+
 
       - name: Coveralls
         uses: coverallsapp/github-action@master
