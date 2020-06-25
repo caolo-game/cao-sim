@@ -44,7 +44,7 @@ jobs:
         run: |
           cargo +nightly test
           mkdir ./coverage
-          grcov ./target/debug -s . --token ${{ secrets.COVERALLS_TOKEN }} > ./coverage/lcov.info
+          grcov ./target/debug -s . --token ${{ secrets.COVERALLS_TOKEN }} --ignore="test-env/ /usr/"> ./coverage/lcov.info
 
         env:
           RUST_BACKTRACE: 1
