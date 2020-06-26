@@ -52,6 +52,7 @@ pub fn find_closest_resource_by_range(
         .min_by_key(|(pos, _)| pos.hex_distance(*pos))
     {
         None => {
+            debug!("No resource was found");
             vm.set_value(OperationResult::OperationFailed)?;
         }
         Some((_pos, entity)) => {

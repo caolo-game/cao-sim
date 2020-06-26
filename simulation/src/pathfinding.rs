@@ -99,6 +99,8 @@ fn find_path_multiroom(
     mut max_steps: u32,
     path: &mut Vec<RoomPosition>,
 ) -> Result<u32, PathFindingError> {
+    debug!("find_path_multiroom from {:?} to {:?}", from, to);
+
     let mut rooms = Vec::with_capacity(4);
     let from_room = from.room;
     max_steps = find_path_overworld(
@@ -296,6 +298,7 @@ pub fn find_path_in_room(
     }
 
     if current.pos != end {
+        debug!("find_path_in_room failed, remaining_steps: {}", max_steps);
         if max_steps > 0 {
             // we ran out of possible paths
             return Err(PathFindingError::Unreachable);
@@ -312,6 +315,10 @@ pub fn find_path_in_room(
         path.push(RoomPosition(current));
         current = closed_set[&current].parent;
     }
+    debug!(
+        "find_path_in_room succeeded, remaining_steps: {}",
+        max_steps
+    );
     Ok(max_steps)
 }
 
