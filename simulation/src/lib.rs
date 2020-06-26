@@ -22,7 +22,7 @@ use systems::script_execution::execute_scripts;
 
 pub use data_store::{init_inmemory_storage, Storage, World};
 
-pub fn forward(storage: &mut World) -> Result<(), Box<dyn std::error::Error>> {
+pub fn forward(storage: &mut World) -> anyhow::Result<()> {
     info!("Executing scripts");
     let final_intents = execute_scripts(storage);
     info!("Executing scripts - done");
