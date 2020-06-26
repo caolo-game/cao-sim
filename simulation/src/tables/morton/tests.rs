@@ -76,29 +76,70 @@ fn insertions() {
     table.insert(Axial::new(16, 32), 123i32).unwrap();
 }
 
-#[test]
-fn test_range_query_all() {
-    let mut rng = rand::thread_rng();
+fn test_range_query_all_by_rng(rng: &mut impl rand::Rng) {
+    let center = Axial::new(64, 64);
 
-    let mut table = MortonTable::new();
+    let points = (0..256)
+        .map(|i| {
+            let p = Axial {
+                q: rng.gen_range(-64, 64),
+                r: rng.gen_range(-64, 64),
+            } + center;
+            (p, i)
+        })
+        .collect::<HashSet<_>>();
 
-    for i in 0..256 {
-        let p = Axial {
-            q: rng.gen_range(0, 128),
-            r: rng.gen_range(0, 128),
-        };
-        table.insert(p, i).unwrap();
-    }
+    let table = MortonTable::from_iterator(points.iter().cloned()).unwrap();
 
     let mut res = Vec::new();
-    let center = Axial::new(64, 64);
     table.find_by_range(
         &center,
-        Axial::new(0, 0).hex_distance(center) as u32 + 3,
+        Axial::new(0, 0).hex_distance(center) as u32 + 1,
         &mut res,
     );
 
-    assert_eq!(res.len(), 256);
+    let res = res
+        .into_iter()
+        .map(|(p, i)| (p, *i))
+        .collect::<HashSet<_>>();
+    let exp = points;
+
+    let reslen = res.len();
+
+    let diff = res.symmetric_difference(&exp).collect::<Vec<_>>();
+
+    assert!(
+        diff.is_empty(),
+        "Result did not contain the expected values. Res len: {} Exp len: {} Difference:\n{:#?}",
+        reslen,
+        exp.len(),
+        diff
+    );
+}
+
+#[test]
+fn regression_query_all_duplicated_items_bug() {
+    let seed = [
+        26, 84, 47, 127, 109, 136, 2, 23, 141, 90, 81, 183, 80, 116, 43, 39,
+    ];
+
+    let mut rng = rand::rngs::SmallRng::from_seed(seed);
+
+    test_range_query_all_by_rng(&mut rng);
+}
+
+#[test]
+fn test_range_query_all() {
+    for _ in 0..16 {
+        let mut rng = rand::thread_rng();
+        let mut seed = [0; 16];
+        rng.fill_bytes(&mut seed);
+
+        dbg!(&seed);
+        let mut rng = rand::rngs::SmallRng::from_seed(seed);
+
+        test_range_query_all_by_rng(&mut rng);
+    }
 }
 #[test]
 fn regression_get_by_id_bug1() {

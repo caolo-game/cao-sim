@@ -114,6 +114,7 @@ where
             values,
             ..Default::default()
         };
+        sorting::sort(&mut res.keys, &mut res.values);
         res.rebuild_skip_list();
         Ok(res)
     }
@@ -401,7 +402,14 @@ where
     ) {
         let (imin, pmin) = self
             .find_key_morton(min)
-            .map(|i| (i, self.values[i].0.as_array()))
+            .map(|mut i| {
+                // find_key_morton might not return the first index of a 'duplicate group'
+                // we need to find the first index, so none gets missed
+                while 0 < i && self.keys[i - 1] == min {
+                    i -= 1;
+                }
+                (i, self.values[i].0.as_array())
+            })
             .unwrap_or_else(|i| {
                 let [x, y] = min.as_point();
                 (i, [x as i32, y as i32])
@@ -409,17 +417,28 @@ where
 
         let (imax, pmax) = self
             .find_key_morton(max)
-            // add 1 to include this node in the range query as otherwise an element might be
-            // missed
-            .map(|i| (i + 1, self.values[i].0.as_array()))
+            .map(|i| {
+                let mut j = i;
+                // add 1 to include this node in the range query as otherwise an element might be
+                // missed
+                //
+                // also it seems like we missed duplicate values.
+                while j < self.keys.len() && self.keys[j] == max {
+                    j += 1;
+                }
+                (j, self.values[i].0.as_array())
+            })
             .unwrap_or_else(|i| {
                 let [x, y] = max.as_point();
                 (i, [x as i32, y as i32])
             });
 
-        if imax < imin {
-            return;
-        }
+        debug_assert!(
+            imin <= imax,
+            "find_key_morton returned bad indices: (min,max): ({}, {})",
+            imin,
+            imax
+        );
 
         // The original paper counts the garbage items and splits above a threshold.
         // Instead let's speculate if we need a split or if it more beneficial to just scan the
