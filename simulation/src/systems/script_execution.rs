@@ -2,7 +2,7 @@ use crate::components::{EntityScript, ScriptComponent};
 use crate::model::{EntityId, ScriptId, UserId};
 use crate::{intents::Intents, profile, World};
 use cao_lang::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 pub type ExecutionResult = Result<Intents, String>;
 
@@ -11,17 +11,16 @@ pub type ExecutionResult = Result<Intents, String>;
 pub fn execute_scripts(storage: &World) -> Intents {
     profile!("execute_scripts");
 
-    let intents = Arc::new(Mutex::new(Intents::new()));
-    execute_scripts_parallel(Arc::clone(&intents), storage);
+    let n_stricts = storage.view::<EntityId, EntityScript>().len();
+    let intents = Mutex::new(Intents::with_capacity(n_stricts));
+    execute_scripts_parallel(&intents, storage);
 
-    let intents = Arc::try_unwrap(intents).expect("Arc unwrap");
     intents.into_inner().expect("Mutex unwrap")
 }
 
-fn execute_scripts_parallel(intents: Arc<Mutex<Intents>>, storage: &World) {
+fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
     rayon::scope(move |s| {
         for (entityid, script) in storage.view::<EntityId, EntityScript>().reborrow().iter() {
-            let intents = intents.clone();
             s.spawn(
                 move |_| match execute_single_script(entityid, script.script_id, storage) {
                     Ok(ints) => {

@@ -28,6 +28,12 @@ macro_rules! intents {
             $(pub $name: Vec<$type>),*
         }
         impl Intents {
+            pub fn with_capacity(cap: usize) -> Self {
+                Self{
+                    $($name: Vec::<$type>::with_capacity(cap)),*
+                }
+            }
+
             pub fn merge(&mut self, other: &Intents) -> &mut Self {
                 $(self.$name.extend_from_slice(&other.$name));* ;
                 self

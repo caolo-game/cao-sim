@@ -72,6 +72,13 @@ where
             .and_then(|x| x.as_ref().map(|(_, row)| row))
     }
 
+    /// This table might have 'gaps' in the storage
+    /// Meaning that a `len` method has to count the non-null elements.
+    ///
+    pub fn count_set(&self) -> usize {
+        self.iter().count()
+    }
+
     pub fn iter<'a>(&'a self) -> impl TableIterator<Id, &'a Row> + 'a {
         self.data
             .iter()
