@@ -18,7 +18,7 @@ pub fn unload(
     vm: &mut VM<ScriptExecutionData>,
     (amount, ty, structure): (i32, Resource, TPointer),
 ) -> Result<(), ExecutionError> {
-    profile!("unload");
+    profile!(trace "unload");
 
     let amount = TryFrom::try_from(amount).map_err(|e| {
         warn!("unload called with invalid amount: {}", e);
@@ -56,7 +56,7 @@ pub fn mine_resource(
     vm: &mut VM<ScriptExecutionData>,
     entity_id: TPointer,
 ) -> Result<(), ExecutionError> {
-    profile!("mine_resource");
+    profile!(trace "mine_resource");
 
     let entity_id: EntityId = vm.get_value(entity_id).ok_or_else(|| {
         warn!("mine_resource called without a target");
@@ -84,7 +84,7 @@ pub fn approach_entity(
     vm: &mut VM<ScriptExecutionData>,
     target: TPointer,
 ) -> Result<(), ExecutionError> {
-    profile!("approach_entity");
+    profile!(trace "approach_entity");
 
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
         warn!("approach_entity called without a target");
@@ -132,7 +132,7 @@ pub fn move_bot_to_position(
     vm: &mut VM<ScriptExecutionData>,
     point: TPointer,
 ) -> Result<(), ExecutionError> {
-    profile!("move_bot_to_position");
+    profile!(trace "move_bot_to_position");
 
     let aux = vm.get_aux();
     let entity = aux.entity_id;

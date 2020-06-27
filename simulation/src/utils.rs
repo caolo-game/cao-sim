@@ -18,7 +18,14 @@ pub fn setup_testing() {
 #[macro_export(local_inner_macros)]
 macro_rules! profile {
     ($name: expr) => {
-        #[cfg(not(feature = "profile"))]
+        #[cfg(feature = "profile")]
+        let _profile = {
+            use crate::utils::profiler::Profiler;
+
+            Profiler::new(std::file!(), std::line!(), $name)
+        };
+    };
+    (trace $name: expr) => {
         log::trace!($name);
         #[cfg(feature = "profile")]
         let _profile = {

@@ -10,7 +10,7 @@ pub fn find_closest_resource_by_range(
     vm: &mut VM<ScriptExecutionData>,
     _: (),
 ) -> Result<(), ExecutionError> {
-    profile!("find_closest_resource_by_range");
+    profile!(trace "find_closest_resource_by_range");
 
     let entity_id = vm.get_aux().entity_id;
     let storage = vm.get_aux().storage();
