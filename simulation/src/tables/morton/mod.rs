@@ -198,9 +198,14 @@ where
             if self.keys.len() > 2 {
                 let mut it = self.keys.iter();
                 let mut current = it.next().unwrap();
-                for item in it {
-                    assert!(current <= item);
-                    current = item;
+                for next in it {
+                    assert!(
+                        current <= next,
+                        "`keys` was not sorted when calling `rebuild_skip_list` current: {:?} next: {:?}",
+                        current,
+                        next
+                    );
+                    current = next;
                 }
             }
         }
@@ -241,6 +246,7 @@ where
 
     /// Return false if id is not in the map, otherwise override the first instance found
     pub fn update<'a>(&'a mut self, id: &Pos, row: Row) -> Option<&'a Row> {
+        profile!("update");
         self.find_key(id)
             .map(move |ind| {
                 self.values[ind].1 = row;
@@ -254,6 +260,7 @@ where
     where
         F: FnOnce(&mut Row) -> (),
     {
+        profile!("update_with");
         self.find_key(id)
             .map(move |ind| {
                 f(&mut self.values[ind].1);
@@ -264,6 +271,7 @@ where
 
     /// Return a reference to the new Row if it's in the map or None otherwise
     pub fn insert_or_update(&mut self, id: Pos, row: Row) -> Result<(), ExtendFailure<Pos>> {
+        profile!("insert_or_update");
         if !self.intersects(&id) {
             return Err(ExtendFailure::OutOfBounds(id));
         }
@@ -318,6 +326,8 @@ where
     /// Find the position of `id` or the position where it needs to be inserted to keep the
     /// container sorted
     fn find_key(&self, id: &Pos) -> Result<usize, usize> {
+        profile!("find_key");
+
         let [x, y] = id.as_array();
         let key = MortonKey::new(x as u16, y as u16);
 
@@ -327,6 +337,8 @@ where
     /// Find the position of `key` or the position where it needs to be inserted to keep the
     /// container sorted
     fn find_key_morton(&self, key: MortonKey) -> Result<usize, usize> {
+        profile!("find_key_morton");
+
         use find_key_partition::find_key_partition;
 
         let step = self.skipstep as usize;
@@ -366,6 +378,7 @@ where
     /// Filter all in Pos'(P) in Circle (C,r) where ||C-P|| < r
     /// This is a simplfication of `query_range`, mainly here for backwards compatibility
     pub fn find_by_range<'a>(&'a self, center: &Pos, radius: u32, out: &mut Vec<(Pos, &'a Row)>) {
+        profile!("find_by_range");
         self.query_range(center, radius, &mut |id, v| {
             out.push((id, v));
         });
@@ -375,6 +388,7 @@ where
     where
         Op: FnMut(Pos, &'a Row) -> (),
     {
+        profile!("query_range");
         debug_assert!(
             radius & 0xefff == radius,
             "Radius must fit into 31 bits!; {} != {}",
@@ -545,6 +559,8 @@ where
     /// Compute the minimum and maximum positions for this table's AABB.
     /// Note that this might be (a lot) larger than the minimum bounding box that might hold this table!
     pub fn aabb(&self) -> Option<[Pos; 2]> {
+        profile!("aabb");
+
         let min = self.keys.get(0)?;
         let [minx, miny] = self.values[0].0.as_array();
         let min_loc = round_down_to_one_less_than_pow_two(min.0) + 1;
@@ -566,6 +582,8 @@ where
     /// Note that during sorting the order of values may alter from the order which they were
     /// inserted.
     pub fn dedupe(&mut self) -> &mut Self {
+        profile!("dedupe");
+
         for i in (1..self.keys.len()).rev() {
             if self.keys[i] == self.keys[i - 1] {
                 self.keys.remove(i);
@@ -582,6 +600,8 @@ where
     where
         F: FnMut(&Pos, &Row, &Row) -> Row,
     {
+        profile!("merge");
+
         let inserts = {
             let mut lhs = self.iter_mut();
             let mut rhs = other.iter();
