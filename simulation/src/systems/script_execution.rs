@@ -3,8 +3,21 @@ use crate::model::{EntityId, ScriptId, UserId};
 use crate::{intents::Intents, profile, World};
 use cao_lang::prelude::*;
 use std::sync::Mutex;
+use thiserror::Error;
 
-pub type ExecutionResult = Result<Intents, String>;
+pub type ExecutionResult = Result<Intents, ExecutionError>;
+
+#[derive(Debug, Error, Clone)]
+pub enum ExecutionError {
+    #[error("{0:?} was not found")]
+    ScriptNotFound(ScriptId),
+    #[error(" {script_id:?} of {entity_id:?} failed {error:?}")]
+    RuntimeError {
+        script_id: ScriptId,
+        entity_id: EntityId,
+        error: cao_lang::prelude::ExecutionError,
+    },
+}
 
 /// Must be called from a tokio runtime!
 /// Returns the intents that are expected to be executed
@@ -27,10 +40,10 @@ fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
                         let mut intents = intents.lock().unwrap();
                         intents.merge(&ints);
                     }
-                    Err(e) => {
-                        error!(
-                            "Execution failure of script {:?} of entity {:?}: {:?}",
-                            script.script_id, entityid, e
+                    Err(err) => {
+                        warn!(
+                            "Execution failure in {:?} of {:?}:\n{}",
+                            script.script_id, entityid, err
                         );
                     }
                 },
@@ -51,8 +64,8 @@ pub fn execute_single_script(
         .reborrow()
         .get_by_id(&script_id)
         .ok_or_else(|| {
-            error!("Script by ID {:?} does not exist", script_id);
-            "not found"
+            warn!("Script by ID {:?} does not exist", script_id);
+            ExecutionError::ScriptNotFound(script_id)
         })?;
 
     let data = ScriptExecutionData {
@@ -64,12 +77,16 @@ pub fn execute_single_script(
     let mut vm = VM::new(data);
     crate::api::make_import().execute_imports(&mut vm);
 
-    vm.run(&program.0).map_err(|e| {
+    vm.run(&program.0).map_err(|err| {
         warn!(
             "Error while executing script {:?} of entity {:?}\n{:?}",
-            script_id, entity_id, e
+            script_id, entity_id, err
         );
-        "runtime error"
+        ExecutionError::RuntimeError {
+            script_id,
+            entity_id,
+            error: err,
+        }
     })?;
 
     Ok(vm.unwrap_aux().intents)
