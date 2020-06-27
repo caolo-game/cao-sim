@@ -148,6 +148,7 @@ impl World {
 
     pub fn signal_done(&mut self, _intents: &Intents) {
         self.deferred_deletes.execute_all(&mut self.store);
+        self.deferred_deletes.clear();
 
         let now = Utc::now();
         self.dt = now - self.last_tick;

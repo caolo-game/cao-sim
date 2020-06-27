@@ -70,7 +70,7 @@ pub fn execute_single_script(
         })?;
 
     let data = ScriptExecutionData {
-        intents: Intents::new(),
+        intents: Intents::with_capacity(4),
         storage: storage as *const _,
         entity_id,
         user_id: Some(Default::default()), // None, // TODO
