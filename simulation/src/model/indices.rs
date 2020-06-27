@@ -104,3 +104,9 @@ impl Add for Room {
     Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
 )]
 pub struct EmptyKey;
+
+unsafe impl Send for EmptyKey {}
+unsafe impl Send for Room {}
+unsafe impl Send for UserId {}
+unsafe impl Send for EntityId {}
+unsafe impl Send for ScriptId {}

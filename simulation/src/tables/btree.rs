@@ -13,6 +13,20 @@ where
 {
     data: BTreeMap<Id, Row>,
 }
+impl<'a, Id, Row> BTreeTable<Id, Row>
+where
+    Id: TableId + Send,
+    Row: TableRow + Send,
+    BTreeMap<Id, Row>: rayon::iter::IntoParallelRefIterator<'a>,
+{
+    pub fn par_iter(
+        &'a self,
+    ) -> impl ParallelIterator<
+        Item = <BTreeMap<Id, Row> as rayon::iter::IntoParallelRefIterator<'_>>::Item,
+    > + 'a {
+        self.data.par_iter()
+    }
+}
 
 impl<Id, Row> BTreeTable<Id, Row>
 where

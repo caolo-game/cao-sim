@@ -3,6 +3,7 @@
 //! Because of this one should use this if the domain of the ids is small or dense.
 //!
 use super::*;
+use rayon::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use std::mem;
 
@@ -15,6 +16,20 @@ where
     data: Vec<Option<(Id, Row)>>,
     /// the `as_usize` index of the first item in the vector
     offset: usize,
+}
+
+impl<'a, Id, Row> VecTable<Id, Row>
+where
+    Id: SerialId + Send + Sync,
+    Row: TableRow + Send + Sync,
+    Vec<Option<(Id, Row)>>: rayon::iter::IntoParallelRefIterator<'a, Item = Option<(Id, Row)>>,
+{
+    pub fn par_iter(&'a self) -> impl ParallelIterator<Item = (Id, &'a Row)> + 'a {
+        self.data[self.offset..]
+            .par_iter()
+            .filter_map(|k| k.as_ref())
+            .map(|(id, row)| (*id, row))
+    }
 }
 
 impl<Id, Row> VecTable<Id, Row>
@@ -82,6 +97,7 @@ where
     pub fn iter<'a>(&'a self) -> impl TableIterator<Id, &'a Row> + 'a {
         self.data
             .iter()
+            .skip(self.offset)
             .filter_map(|k| k.as_ref())
             .map(move |(id, row)| (*id, row))
     }
@@ -89,6 +105,7 @@ where
     pub fn iter_mut<'a>(&'a mut self) -> impl TableIterator<Id, &'a mut Row> + 'a {
         self.data
             .iter_mut()
+            .skip(self.offset)
             .filter_map(|k| k.as_mut())
             .map(move |(id, row)| (*id, row))
     }

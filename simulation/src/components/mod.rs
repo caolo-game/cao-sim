@@ -119,6 +119,7 @@ impl<Id: TableId> Component<Id> for CarryComponent {
 pub struct EntityScript {
     pub script_id: ScriptId,
 }
+unsafe impl Send for EntityScript {}
 impl<Id: TableId> Component<Id> for EntityScript {
     type Table = BTreeTable<Id, Self>;
 }

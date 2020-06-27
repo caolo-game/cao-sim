@@ -2,6 +2,7 @@ use crate::components::{EntityScript, ScriptComponent};
 use crate::model::{EntityId, ScriptId, UserId};
 use crate::{intents::Intents, profile, World};
 use cao_lang::prelude::*;
+use rayon::prelude::*;
 use std::sync::Mutex;
 use thiserror::Error;
 
@@ -32,24 +33,24 @@ pub fn execute_scripts(storage: &World) -> Intents {
 }
 
 fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
-    rayon::scope(move |s| {
-        for (entityid, script) in storage.view::<EntityId, EntityScript>().reborrow().iter() {
-            s.spawn(
-                move |_| match execute_single_script(entityid, script.script_id, storage) {
-                    Ok(ints) => {
-                        let mut intents = intents.lock().unwrap();
-                        intents.merge(&ints);
-                    }
-                    Err(err) => {
-                        warn!(
-                            "Execution failure in {:?} of {:?}:\n{}",
-                            script.script_id, entityid, err
-                        );
-                    }
-                },
-            );
-        }
-    });
+    storage
+        .view::<EntityId, EntityScript>()
+        .reborrow()
+        .par_iter()
+        .for_each(|(entity_id, script)| {
+            match execute_single_script(*entity_id, script.script_id, storage) {
+                Ok(ints) => {
+                    let mut intents = intents.lock().unwrap();
+                    intents.merge(&ints);
+                }
+                Err(err) => {
+                    warn!(
+                        "Execution failure in {:?} of {:?}:\n{}",
+                        script.script_id, entity_id, err
+                    );
+                }
+            }
+        });
 }
 
 pub fn execute_single_script(
