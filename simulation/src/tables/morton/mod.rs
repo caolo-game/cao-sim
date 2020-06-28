@@ -478,6 +478,21 @@ where
         }
     }
 
+    /// If any found return the closest one to `center` and the distance to it.
+    // TODO: try spiraling out from center to find a match faster
+    pub fn find_closest_by_filter<F>(&self, center: &Pos, filter: F) -> Option<(u32, Pos, &Row)>
+    where
+        F: Fn(&Pos, &Row) -> bool,
+    {
+        profile!("find_closest_by_filter");
+
+        self.values
+            .iter()
+            .filter(|(id, row)| filter(id, row))
+            .map(|(id, row)| (id.dist(center), *id, row))
+            .min_by_key(|t| t.0)
+    }
+
     /// Count in AABB
     pub fn count_in_range<'a>(&'a self, center: &Pos, radius: u32) -> u32 {
         profile!("count_in_range");

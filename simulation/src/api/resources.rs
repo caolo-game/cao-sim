@@ -1,7 +1,5 @@
 use super::*;
-use crate::components::{EntityComponent, PositionComponent, ResourceComponent, RoomProperties};
-use crate::geometry::Axial;
-use crate::model::indices::EmptyKey;
+use crate::components::{EntityComponent, PositionComponent, ResourceComponent};
 use crate::model::WorldPosition;
 use crate::profile;
 
@@ -28,45 +26,16 @@ pub fn find_closest_resource_by_range(
         }
     };
 
-    let radius = storage
-        .view::<EmptyKey, RoomProperties>()
-        .unwrap_value()
-        .radius;
-
     let WorldPosition { room, pos } = position.0;
 
-    let mut candidate: Option<(Axial, EntityId)> = None;
-
     let resources = storage.view::<EntityId, ResourceComponent>();
-    storage
+
+    let room = storage
         .view::<WorldPosition, EntityComponent>()
         .reborrow()
         .table
         .get_by_id(&room)
         // search the whole room
-        .map(|room| {
-            let candidate = &mut candidate;
-            room.query_range(
-                &Axial::new(radius as i32, radius as i32),
-                radius,
-                &mut |pp, entity| {
-                    let resource = resources.get_by_id(&entity.0);
-                    // filter only entities that are 'resources'
-                    if resource.is_some() {
-                        // find the one with min distance
-                        *candidate = candidate
-                            .map(|current| {
-                                if pos.hex_distance(current.0) < pos.hex_distance(pp) {
-                                    current
-                                } else {
-                                    (pp, entity.0)
-                                }
-                            })
-                            .or_else(|| Some((pp, entity.0)));
-                    }
-                },
-            )
-        })
         .ok_or_else(|| {
             warn!(
                 "find_closest_resource_by_range called on invalid room {:?}",
@@ -75,15 +44,17 @@ pub fn find_closest_resource_by_range(
             ExecutionError::InvalidArgument
         })?;
 
+    let candidate =
+        room.find_closest_by_filter(&pos, |_, entity| resources.get_by_id(&entity.0).is_some());
     match candidate {
-        None => {
-            debug!("No resource was found");
-            vm.set_value(OperationResult::OperationFailed)?;
-        }
-        Some((_, entity)) => {
+        Some((_distance, _pos, entity)) => {
             let id = entity.0; // move out of the result to free the storage borrow
             vm.set_value(id)?;
             vm.set_value(OperationResult::Ok)?;
+        }
+        None => {
+            debug!("No resource was found");
+            vm.set_value(OperationResult::OperationFailed)?;
         }
     }
     Ok(())
