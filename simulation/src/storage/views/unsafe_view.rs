@@ -40,18 +40,16 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
             if log_enabled!(Level::Trace) {
                 let key = C::Table::name();
 
-                let logger = {
-                    // release the mutex asap
-                    let table = logging::TABLE_LOG_HISTORY.lock();
-                    let mut table = table.expect("Failed to aquire TABLE_LOG_HISTORY");
-                    let logger = table.entry(key).or_insert_with(|| Default::default());
-                    unsafe { logger.inserter() }
-                };
-
                 let table = unsafe { self.0.as_ref() };
                 let val = serde_json::to_value(table).expect("Table serialization failed");
-                logger(val);
 
+                // release the mutex asap
+                let mut table = logging::TABLE_LOG_HISTORY
+                    .lock()
+                    .expect("Failed to aquire TABLE_LOG_HISTORY");
+                let logger = table.entry(key).or_insert_with(|| Default::default());
+                let logger = unsafe { logger.inserter() };
+                logger(val);
                 trace!("UnsafeView references {:x?}", self.0.as_ptr());
             }
         }

@@ -29,12 +29,13 @@ impl Drop for LogGuard {
             let table = table
                 .iter()
                 .map(|(k, logger)| {
-                    let mut history = logger
-                        .history
+                    let history = logger.history.lock().expect("LogGuard drop history mutex");
+                    let mut history = history
                         .iter()
                         .filter(|(_, value)| !value.is_null())
                         .collect::<Vec<_>>();
                     history.sort_unstable_by_key(|(i, _)| i);
+                    let history = serde_json::to_value(&history).unwrap();
                     (k, history)
                 })
                 .collect::<HashMap<_, _>>();
@@ -51,14 +52,16 @@ impl Drop for LogGuard {
 
 #[derive(Debug)]
 pub struct TableLog {
-    history: Pin<Box<[(usize, Value)]>>,
+    history: Mutex<Pin<Box<[(usize, Value)]>>>,
     next: AtomicUsize,
 }
 
 impl Default for TableLog {
     fn default() -> Self {
         Self {
-            history: Pin::new(vec![Default::default(); MAX_LOG_HISTORY].into_boxed_slice()),
+            history: Mutex::new(Pin::new(
+                vec![Default::default(); MAX_LOG_HISTORY].into_boxed_slice(),
+            )),
             next: AtomicUsize::new(0),
         }
     }
@@ -71,18 +74,18 @@ impl TableLog {
     /// # Safety
     /// as long as MAX_LOG_HISTORY is larger than the number of threads accessing this table
     /// we're most likely fine, but this is pretty unsafe
-    pub unsafe fn inserter(&self) -> impl FnOnce(Value) -> () {
-        let history = self.history.as_ptr();
+    pub unsafe fn inserter<'a>(&'a self) -> impl FnOnce(Value) -> () + 'a {
         let i = self.next.fetch_add(1, Ordering::AcqRel);
+        let history = &self.history;
         move |value| {
-            let p = history as *mut (usize, Value);
-            let i = i % MAX_LOG_HISTORY;
-            *p.offset(i as isize) = (i, value);
+            let j = i % MAX_LOG_HISTORY;
+            let p = &mut history.lock().expect("TableLog insert")[j];
+            *p = (i, value);
         }
     }
 }
 
-pub const MAX_LOG_HISTORY: usize = 16;
+pub const MAX_LOG_HISTORY: usize = 32;
 
 lazy_static! {
     pub static ref TABLE_LOG_HISTORY: Mutex<HashMap<&'static str, TableLog>> = {
@@ -107,6 +110,8 @@ mod tests {
 
     #[test]
     fn saves_log() {
+        crate::utils::setup_testing();
+
         let p = Axial::new(1, 2);
         let mut table: TestTable = MortonTable::from_iterator((0..16).map(move |i| {
             let p = p * i;
