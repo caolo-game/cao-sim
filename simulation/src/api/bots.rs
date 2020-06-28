@@ -48,7 +48,7 @@ pub fn unload(
             .dropoff_intents
             .push(dropoff_intent);
     }
-    vm.set_value(checkresult)?;
+    vm.stack_push(checkresult)?;
     Ok(())
 }
 
@@ -73,7 +73,7 @@ pub fn mine_resource(
     };
 
     let checkresult = check_mine_intent(&intent, user_id, FromWorld::new(storage));
-    vm.set_value(checkresult)?;
+    vm.stack_push(checkresult)?;
     if let OperationResult::Ok = checkresult {
         vm.get_aux_mut().intents.mine_intents.push(intent);
     }
@@ -104,7 +104,7 @@ pub fn approach_entity(
         Some(x) => x,
         None => {
             warn!("entity {:?} does not have position component!", target);
-            vm.set_value(OperationResult::InvalidInput)?;
+            vm.stack_push(OperationResult::InvalidInput)?;
             return Ok(());
         }
     };
@@ -124,7 +124,7 @@ pub fn approach_entity(
         }
         Err(e) => e,
     };
-    vm.set_value(checkresult)?;
+    vm.stack_push(checkresult)?;
     Ok(())
 }
 
@@ -158,7 +158,7 @@ pub fn move_bot_to_position(
         }
         Err(e) => e,
     };
-    vm.set_value(checkresult)?;
+    vm.stack_push(checkresult)?;
     Ok(())
 }
 

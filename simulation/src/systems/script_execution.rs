@@ -93,9 +93,10 @@ pub fn execute_single_script(
     Ok(vm.unwrap_aux().intents)
 }
 
+// TODO: take immutable reference to World??
+#[derive(Debug)]
 pub struct ScriptExecutionData {
-    storage: *const World,
-
+    pub storage: *const World,
     pub intents: Intents,
     pub entity_id: EntityId,
     pub user_id: Option<UserId>,

@@ -21,19 +21,19 @@ pub enum OperationResult {
     Full = -7,
 }
 
-impl TryFrom<i32> for OperationResult {
-    type Error = i32;
+impl TryFrom<Scalar> for OperationResult {
+    type Error = Scalar;
 
-    fn try_from(i: i32) -> Result<OperationResult, i32> {
+    fn try_from(i: Scalar) -> Result<OperationResult, Scalar> {
         let op = match i {
-            0 => OperationResult::Ok,
-            -1 => OperationResult::NotOwner,
-            -2 => OperationResult::InvalidInput,
-            -3 => OperationResult::OperationFailed,
-            -4 => OperationResult::NotInRange,
-            -5 => OperationResult::InvalidTarget,
-            -6 => OperationResult::Empty,
-            -7 => OperationResult::Full,
+            Scalar::Integer(0) => OperationResult::Ok,
+            Scalar::Integer(-1) => OperationResult::NotOwner,
+            Scalar::Integer(-2) => OperationResult::InvalidInput,
+            Scalar::Integer(-3) => OperationResult::OperationFailed,
+            Scalar::Integer(-4) => OperationResult::NotInRange,
+            Scalar::Integer(-5) => OperationResult::InvalidTarget,
+            Scalar::Integer(-6) => OperationResult::Empty,
+            Scalar::Integer(-7) => OperationResult::Full,
             _ => {
                 return Err(i);
             }
@@ -43,6 +43,12 @@ impl TryFrom<i32> for OperationResult {
 }
 
 impl cao_lang::traits::AutoByteEncodeProperties for OperationResult {}
+
+impl Into<Scalar> for OperationResult {
+    fn into(self) -> Scalar {
+        Scalar::Integer(self as i32)
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

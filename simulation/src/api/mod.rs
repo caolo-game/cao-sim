@@ -3,7 +3,7 @@
 //! Methods that may fail return an OperationResult
 //!
 pub mod bots;
-pub mod resources;
+pub mod find_api;
 pub mod structures;
 use crate::components;
 use crate::geometry::point::Axial;
@@ -12,17 +12,7 @@ use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;
 use cao_lang::scalar::Scalar;
 use cao_lang::traits::ByteEncodeProperties;
-use std::convert::TryFrom;
-
-/// Write an OperationResult to the program
-pub fn make_operation_result(
-    vm: &mut VM<ScriptExecutionData>,
-    op: i32,
-) -> Result<(), ExecutionError> {
-    let op = OperationResult::try_from(op).map_err(|_| ExecutionError::InvalidArgument)?;
-    vm.set_value(op)?;
-    Ok(())
-}
+use find_api::FindConstant;
 
 pub fn make_point(
     vm: &mut VM<ScriptExecutionData>,
@@ -162,24 +152,12 @@ pub fn make_import() -> Schema {
             FunctionRow {
                 desc: subprogram_description!(
                     find_closest_resource_by_range,
-                    "Find the resource closest to the current entity",
-                    [],
+                    "Find an object of type `FindConstant`, closest to the current entity",
+                    [FindConstant],
                     [OperationResult, EntityId],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(
-                    resources::find_closest_resource_by_range,
-                )),
-            },
-            FunctionRow {
-                desc: subprogram_description!(
-                    make_operation_result,
-                    "Produces an OperationResult",
-                    [i32],
-                    [OperationResult],
-                    []
-                ),
-                fo: Procedure::new(FunctionWrapper::new(make_operation_result)),
+                fo: Procedure::new(FunctionWrapper::new(find_api::find_closest_by_range)),
             },
             FunctionRow {
                 desc: subprogram_description!(

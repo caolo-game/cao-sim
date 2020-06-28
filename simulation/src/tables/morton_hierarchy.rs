@@ -88,6 +88,23 @@ where
             .unwrap_or(false)
     }
 
+    /// Inserts the item at the given position. Creates a table for the room if it's not found
+    pub fn insert<'a>(&'a mut self, id: WorldPosition, val: Row) -> Result<(), ExtendFailure> {
+        let mut room = self.table.get_by_id_mut(&id.room);
+        if room.is_none() {
+            self.table
+                .insert(id.room, MortonTable::new())
+                .map_err(ExtendFailure::RoomExtendFailure)?;
+            room = self.table.get_by_id_mut(&id.room);
+        }
+        room.unwrap()
+            .insert(id.pos, val)
+            .map_err(|error| ExtendFailure::InnerExtendFailure {
+                error,
+                room: id.room,
+            })
+    }
+
     pub fn get_by_id_mut<'a>(&'a mut self, id: &WorldPosition) -> Option<&'a mut Row> {
         self.table
             .get_by_id_mut(&id.room)
