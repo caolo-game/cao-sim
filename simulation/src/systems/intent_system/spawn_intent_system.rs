@@ -25,7 +25,7 @@ impl<'a> IntentExecutionSystem<'a> for SpawnSystem {
         intents: &[Self::Intent],
     ) {
         for intent in intents {
-            debug!("Spawning bot from structure {:?}", intent.spawn_id);
+            trace!("Spawning bot from structure {:?}", intent.spawn_id);
 
             let mut spawn = match spawn_table.get_by_id(&intent.spawn_id).cloned() {
                 Some(x) => x,

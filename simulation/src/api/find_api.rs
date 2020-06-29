@@ -45,7 +45,7 @@ pub fn find_closest_by_range(
     {
         Some(p) => p.0,
         None => {
-            debug!("{:?} has no PositionComponent", entity_id);
+            trace!("{:?} has no PositionComponent", entity_id);
             vm.stack_push(OperationResult::InvalidInput)?;
             return Ok(());
         }
@@ -84,7 +84,7 @@ impl FindConstant {
                 vm.stack_push(OperationResult::Ok)?;
             }
             None => {
-                debug!("No stuff was found");
+                trace!("No stuff was found");
                 vm.stack_push(OperationResult::OperationFailed)?;
             }
         }
@@ -93,7 +93,6 @@ impl FindConstant {
 }
 
 fn find_closest_entity_impl<F>(
-    // vm: &mut VM<ScriptExecutionData>,
     storage: &World,
     position: WorldPosition,
     filter: F,
@@ -104,18 +103,15 @@ where
     let WorldPosition { room, pos } = position;
     let entities_by_pos = storage.view::<WorldPosition, EntityComponent>().reborrow();
 
-    let room = entities_by_pos
-        .table
-        .get_by_id(&room)
-        // search the whole room
-        .ok_or_else(|| {
-            warn!(
-                "find_closest_resource_by_range called on invalid room {:?}",
-                position
-            );
-            ExecutionError::InvalidArgument
-        })?;
+    let room = entities_by_pos.table.get_by_id(&room).ok_or_else(|| {
+        warn!(
+            "find_closest_resource_by_range called on invalid room {:?}",
+            position
+        );
+        ExecutionError::InvalidArgument
+    })?;
 
+    // search the whole room
     let candidate = room.find_closest_by_filter(&pos, |_, entity| filter(entity.0));
     let candidate = candidate.map(|(_, _, id)| id.0);
     Ok(candidate)

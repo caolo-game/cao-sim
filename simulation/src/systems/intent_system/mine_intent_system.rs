@@ -23,14 +23,14 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
         intents: &[Self::Intent],
     ) {
         for intent in intents {
-            debug!("Bot [{:?}] is mining [{:?}]", intent.bot, intent.resource);
+            trace!("Bot [{:?}] is mining [{:?}]", intent.bot, intent.resource);
             match resource_table.get_by_id(&intent.resource) {
                 None => warn!("Resource not found"),
                 Some(ResourceComponent(Resource::Energy)) => {
                     let mut resource_energy = match energy_table.get_by_id(&intent.resource) {
                         Some(resource_energy) => {
                             if resource_energy.energy == 0 {
-                                debug!("Mineral is empty!");
+                                trace!("Mineral is empty!");
                                 continue;
                             }
                             *resource_energy
@@ -54,7 +54,7 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
                     resource_energy.energy -= mined;
 
                     unsafe {
-                        debug!(
+                        trace!(
                             "Mine succeeded new bot carry {:?} new resource energy {:?}",
                             carry, resource_energy
                         );

@@ -28,14 +28,14 @@ pub fn console_log(
     message: TPointer,
 ) -> Result<(), ExecutionError> {
     let message: String = vm.get_value(message).ok_or_else(|| {
-        debug!("console_log called with invalid message");
+        trace!("console_log called with invalid message");
         ExecutionError::InvalidArgument
     })?;
     let entity_id = vm.get_aux().entity_id;
     let time = vm.get_aux().storage().time();
 
     let payload = format!("{:?} says {}", entity_id, message);
-    debug!("{}", payload);
+    trace!("{}", payload);
     vm.get_aux_mut()
         .intents
         .log_intents
@@ -52,7 +52,7 @@ pub fn log_scalar(vm: &mut VM<ScriptExecutionData>, value: Scalar) -> Result<(),
     let entity_id = vm.get_aux().entity_id;
     let time = vm.get_aux().storage().time();
     let payload = format!("{:?} says {:?}", entity_id, value);
-    debug!("{}", payload);
+    trace!("{}", payload);
     vm.get_aux_mut()
         .intents
         .log_intents

@@ -13,7 +13,7 @@ impl<'a> IntentExecutionSystem<'a> for LogSystem {
 
     fn execute(&mut self, (mut log_table,): Self::Mut, _: Self::Const, intents: &[Self::Intent]) {
         for intent in intents {
-            debug!("inserting log entry {:?}", intent);
+            trace!("inserting log entry {:?}", intent);
             let id = EntityTime(intent.entity, intent.time);
             let entry = match log_table.get_by_id(&id).cloned() {
                 Some(mut entry) => {

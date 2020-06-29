@@ -1,12 +1,11 @@
 use crate::components::{self, EntityComponent, PositionComponent};
-use crate::geometry::Axial;
 use crate::model::{self, terrain, EntityId, OperationResult, WorldPosition};
 use crate::storage::views::View;
 
 #[derive(Debug, Clone)]
 pub struct MoveIntent {
     pub bot: EntityId,
-    pub position: Axial,
+    pub position: WorldPosition,
 }
 
 type CheckInput<'a> = (
@@ -42,26 +41,23 @@ pub fn check_move_intent(
     };
 
     // TODO: bot speed component?
-    if 1 < pos.0.pos.hex_distance(intent.position) {
-        debug!(
+    if 1 < pos.0.pos.hex_distance(intent.position.pos) || pos.0.room != intent.position.room {
+        trace!(
             "Bot move target {:?} is out of range of bot position {:?} and velocity {:?}",
-            intent.position, pos, 1
+            intent.position,
+            pos,
+            1
         );
         return OperationResult::InvalidInput;
     }
 
-    let intended_pos = WorldPosition {
-        room: pos.0.room,
-        pos: intent.position,
-    };
-
     if let Some(components::TerrainComponent(terrain::TileTerrainType::Wall)) =
-        terrain.get_by_id(&intended_pos)
+        terrain.get_by_id(&intent.position)
     {
         debug!("Position is occupied by terrain");
         return OperationResult::InvalidInput;
     }
-    if let Some(entity) = entity_positions.get_by_id(&intended_pos) {
+    if let Some(entity) = entity_positions.get_by_id(&intent.position) {
         debug!("Position is occupied by another entity {:?}", entity);
         return OperationResult::InvalidInput;
     }

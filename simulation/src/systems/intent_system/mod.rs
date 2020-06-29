@@ -123,17 +123,24 @@ fn pre_process_move_intents(move_intents: &mut Vec<MoveIntent>) {
 mod tests {
     use super::*;
     use crate::geometry::Axial;
+    use crate::model::WorldPosition;
 
     #[test]
     fn pre_process_move_intents_removes_last_dupe() {
         let mut intents = vec![
             MoveIntent {
                 bot: Default::default(),
-                position: Axial::new(42, 69),
+                position: WorldPosition {
+                    room: Default::default(),
+                    pos: Axial::new(42, 69),
+                },
             },
             MoveIntent {
                 bot: Default::default(),
-                position: Axial::new(42, 69),
+                position: WorldPosition {
+                    room: Default::default(),
+                    pos: Axial::new(42, 69),
+                },
             },
         ];
 
@@ -146,15 +153,24 @@ mod tests {
         let mut intents = vec![
             MoveIntent {
                 bot: Default::default(),
-                position: Axial::new(42, 42),
+                position: WorldPosition {
+                    room: Default::default(),
+                    pos: Axial::new(42, 42),
+                },
             },
             MoveIntent {
                 bot: Default::default(),
-                position: Axial::new(42, 69),
+                position: WorldPosition {
+                    room: Default::default(),
+                    pos: Axial::new(42, 69),
+                },
             },
             MoveIntent {
                 bot: Default::default(),
-                position: Axial::new(69, 69),
+                position: WorldPosition {
+                    room: Default::default(),
+                    pos: Axial::new(69, 69),
+                },
             },
         ];
 

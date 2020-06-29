@@ -42,6 +42,8 @@ impl<'a> System<'a> for MineralSystem {
             energy_iter,
         )
         .for_each(|(id, ((_resource, position), energy))| {
+            trace!("updating {:?}", id);
+
             if energy.energy > 0 {
                 return;
             }
@@ -66,9 +68,10 @@ impl<'a> System<'a> for MineralSystem {
                 15,
                 100,
             );
-            debug!(
+            trace!(
                 "Mineral [{:?}] has been depleted, respawning at {:?}",
-                id, pos
+                id,
+                pos
             );
             match pos {
                 Some(pos) => {

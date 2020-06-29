@@ -21,7 +21,7 @@ impl<'a> IntentExecutionSystem<'a> for DropoffSystem {
         intents: &[Self::Intent],
     ) {
         for intent in intents {
-            debug!("Executing dropoff intent {:?}", intent);
+            trace!("Executing dropoff intent {:?}", intent);
             // dropoff amount = min(bot carry , amount , structure capacity)
             let mut carry_component = match carry_table.get_by_id(&intent.bot).cloned() {
                 Some(x) => x,

@@ -10,7 +10,6 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
     type Mut = (UnsafeView<EntityId, PositionComponent>,);
     type Const = (
         View<'a, EntityId, Bot>,
-        View<'a, EntityId, PositionComponent>,
         View<'a, WorldPosition, EntityComponent>,
     );
     type Intent = MoveIntent;
@@ -18,49 +17,29 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
     fn execute(
         &mut self,
         (mut positions,): Self::Mut,
-        (bots, const_positions, pos_entities): Self::Const,
+        (bots, pos_entities): Self::Const,
         intents: &[Self::Intent],
     ) {
         for intent in intents {
-            debug!("Moving bot[{:?}] to {:?}", intent.bot, intent.position);
+            trace!("Moving bot[{:?}] to {:?}", intent.bot, intent.position);
 
             if bots.get_by_id(&intent.bot).is_none() {
-                debug!("Bot by id {:?} does not exist", intent.bot);
+                trace!("Bot by id {:?} does not exist", intent.bot);
                 continue;
             }
 
-            let current_pos = match const_positions.get_by_id(&intent.bot) {
-                Some(current_pos) => current_pos,
-                None => {
-                    warn!(
-                        "Bot {:?} attempts to move but has no position component",
-                        intent.bot
-                    );
-                    continue;
-                }
-            };
-
-            if pos_entities
-                .table
-                .get_by_id(&current_pos.0.room)
-                .and_then(|room| room.get_by_id(&intent.position))
-                .is_some()
-            {
-                debug!("Occupied {:?} ", intent.position);
+            if pos_entities.get_by_id(&intent.position).is_some() {
+                trace!("Occupied {:?} ", intent.position);
                 continue;
             }
 
             unsafe {
-                positions.as_mut().insert_or_update(
-                    intent.bot,
-                    PositionComponent(WorldPosition {
-                        room: current_pos.0.room,
-                        pos: intent.position,
-                    }),
-                );
+                positions
+                    .as_mut()
+                    .insert_or_update(intent.bot, PositionComponent(intent.position));
             }
 
-            debug!("Move successful");
+            trace!("Move successful");
         }
     }
 }

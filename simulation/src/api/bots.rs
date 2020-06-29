@@ -175,6 +175,15 @@ fn move_to_pos(
     ),
     OperationResult,
 > {
+    let botpos = storage
+        .view::<EntityId, components::PositionComponent>()
+        .reborrow()
+        .get_by_id(&bot)
+        .ok_or_else(|| {
+            warn!("entity {:?} does not have position component!", bot);
+            OperationResult::InvalidInput
+        })?;
+
     // attempt to use the cached path
     // which requires non-empty cache with a valid next step
     if let Some(cache) = storage
@@ -185,26 +194,21 @@ fn move_to_pos(
         if let Some(position) = cache.0.last().cloned() {
             let intent = MoveIntent {
                 bot,
-                position: position.0,
+                position: WorldPosition {
+                    room: botpos.0.room,
+                    pos: position.0,
+                },
             };
             if let OperationResult::Ok =
                 check_move_intent(&intent, user_id, FromWorld::new(storage))
             {
-                debug!("Bot {:?} path cache hit", bot);
+                trace!("Bot {:?} path cache hit", bot);
                 return Ok((intent, Some(PopPathCacheIntent { bot }), None));
             }
         }
     }
-    debug!("Bot {:?} path cache miss", bot);
+    trace!("Bot {:?} path cache miss", bot);
 
-    let botpos = storage
-        .view::<EntityId, components::PositionComponent>()
-        .reborrow()
-        .get_by_id(&bot)
-        .ok_or_else(|| {
-            warn!("entity {:?} does not have position component!", bot);
-            OperationResult::InvalidInput
-        })?;
     let mut path = Vec::with_capacity(MAX_PATHFINDING_ITER);
     if let Err(e) = pathfinding::find_path(
         botpos.0,
@@ -213,17 +217,20 @@ fn move_to_pos(
         MAX_PATHFINDING_ITER as u32,
         &mut path,
     ) {
-        debug!("pathfinding failed {:?}", e);
+        trace!("pathfinding failed {:?}", e);
         return Err(OperationResult::InvalidTarget);
     }
 
     let intent = match path.pop() {
         Some(position) => MoveIntent {
             bot,
-            position: position.0,
+            position: WorldPosition {
+                room: botpos.0.room,
+                pos: position.0,
+            },
         },
         None => {
-            debug!("Entity {:?} is trying to move to its own position", bot);
+            trace!("Entity {:?} is trying to move to its own position", bot);
             return Err(OperationResult::InvalidTarget);
         }
     };
