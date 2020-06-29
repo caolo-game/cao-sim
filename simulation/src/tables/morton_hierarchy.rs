@@ -161,15 +161,15 @@ impl<'a, Row> Iterator for GroupByRooms<'a, Row> {
     type Item = (Axial, &'a [(WorldPosition, Row)]);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut end = self.group_begin;
-        let begin = &self.items[self.group_begin].0.room;
         if self.items.len() <= self.group_begin {
             return None;
         }
+        let mut end = self.group_begin;
+        let begin = &self.items[self.group_begin].0.room;
         for (i, (WorldPosition { room, .. }, _)) in
             self.items[self.group_begin..].iter().enumerate()
         {
-            end = i;
+            end = i + self.group_begin;
             if room != begin {
                 break;
             }
