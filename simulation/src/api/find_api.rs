@@ -32,9 +32,11 @@ pub fn find_closest_by_range(
     vm: &mut VM<ScriptExecutionData>,
     param: FindConstant,
 ) -> Result<(), ExecutionError> {
-    profile!(trace "find_closest_by_range");
+    profile!("find_closest_by_range");
 
     let entity_id = vm.get_aux().entity_id;
+
+    trace!("find_closest_by_range {:?} {:?}", entity_id, param);
 
     let position = match vm
         .get_aux()
@@ -48,6 +50,8 @@ pub fn find_closest_by_range(
             return Err(ExecutionError::InvalidArgument);
         }
     };
+
+    trace!("Executing find_closest_by_range {:?}", position);
 
     param.execute(vm, position)
 }
@@ -99,7 +103,7 @@ where
     F: Fn(EntityId) -> bool,
 {
     let WorldPosition { room, pos } = position;
-    let entities_by_pos = storage.view::<WorldPosition, EntityComponent>().reborrow();
+    let entities_by_pos = storage.view::<WorldPosition, EntityComponent>();
 
     let room = entities_by_pos.table.get_by_id(&room).ok_or_else(|| {
         warn!(
