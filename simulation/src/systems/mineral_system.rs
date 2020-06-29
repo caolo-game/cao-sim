@@ -42,11 +42,19 @@ impl<'a> System<'a> for MineralSystem {
             energy_iter,
         )
         .for_each(|(id, ((_resource, position), energy))| {
-            trace!("updating {:?}", id);
+            trace!(
+                "updating {:?} {:?} {:?} {:?}",
+                id,
+                _resource,
+                position,
+                energy
+            );
 
             if energy.energy > 0 {
                 return;
             }
+            trace!("Respawning {:?}", id);
+
             let position_entities = position_entities
                 .table
                 .get_by_id(&position.0.room)
@@ -99,6 +107,13 @@ fn random_uncontested_pos_in_range<'a>(
     range: u16,
     max_tries: u16,
 ) -> Option<Axial> {
+    trace!(
+        "random_uncontested_pos_in_range {:?} range: {}, max_tries: {}",
+        around,
+        range,
+        max_tries
+    );
+
     let range = range as i32;
     let x = around.q as i32;
     let y = around.r as i32;
@@ -126,5 +141,5 @@ fn random_uncontested_pos_in_range<'a>(
             break;
         }
     }
-    result
+    trace!("random_uncontested_pos_in_range returns {:?}", result): result
 }

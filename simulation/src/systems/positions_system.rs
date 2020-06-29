@@ -15,14 +15,14 @@ impl<'a> System<'a> for PositionSystem {
 
         let mut positions = positions
             .iter()
-            .map(|(id, pos)| (pos.0, EntityComponent(id)))
+            .map(|(id, PositionComponent(pos))| (*pos, EntityComponent(id)))
             .collect::<Vec<_>>();
 
         unsafe {
             position_entities.as_mut().clear();
             position_entities
                 .as_mut()
-                .extend_from_slice(&mut positions)
+                .extend_from_slice(positions.as_mut_slice())
                 .map_err(|e| {
                     error!("Failed to rebuild position_entities table {:?}", e);
                 })

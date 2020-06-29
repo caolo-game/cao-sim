@@ -36,14 +36,14 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
                             *resource_energy
                         }
                         None => {
-                            error!("MineIntent resource has no energy component!");
+                            warn!("MineIntent resource has no energy component!");
                             continue;
                         }
                     };
                     let mut carry = match carry_table.get_by_id(&intent.bot).cloned() {
                         Some(x) => x,
                         None => {
-                            error!("MineIntent bot has no carry component");
+                            warn!("MineIntent bot has no carry component");
                             continue;
                         }
                     };
@@ -56,7 +56,8 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
                     unsafe {
                         trace!(
                             "Mine succeeded new bot carry {:?} new resource energy {:?}",
-                            carry, resource_energy
+                            carry,
+                            resource_energy
                         );
                         carry_table.as_mut().insert_or_update(intent.bot, carry);
                         energy_table

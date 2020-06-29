@@ -54,14 +54,13 @@ where
     }
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = (WorldPosition, &'a Row)> + 'a {
-        self.table.iter().flat_map(|(roomid, t)| {
-            t.iter().map(move |(p, v)| {
+        self.table.iter().flat_map(|(room, t)| {
+            t.iter().map(move |(pos, value)| {
                 (
                     WorldPosition {
-                        room: roomid,
-                        pos: p,
+                        room,pos
                     },
-                    v,
+                    value,
                 )
             })
         })
