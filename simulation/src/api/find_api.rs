@@ -40,14 +40,12 @@ pub fn find_closest_by_range(
         .get_aux()
         .storage()
         .view::<EntityId, PositionComponent>()
-        .reborrow()
         .get_by_id(&entity_id)
     {
         Some(p) => p.0,
         None => {
-            trace!("{:?} has no PositionComponent", entity_id);
-            vm.stack_push(OperationResult::InvalidInput)?;
-            return Ok(());
+            warn!("{:?} has no PositionComponent", entity_id);
+            return Err(ExecutionError::InvalidArgument);
         }
     };
 
