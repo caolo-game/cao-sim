@@ -141,5 +141,6 @@ fn random_uncontested_pos_in_range<'a>(
             break;
         }
     }
-    trace!("random_uncontested_pos_in_range returns {:?}", result): result
+    trace!("random_uncontested_pos_in_range returns {:?}", result);
+    result
 }
