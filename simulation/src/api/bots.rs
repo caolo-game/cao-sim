@@ -12,8 +12,6 @@ use crate::{
 };
 use std::convert::TryFrom;
 
-const MAX_PATHFINDING_ITER: usize = 200;
-
 pub fn unload(
     vm: &mut VM<ScriptExecutionData>,
     (amount, ty, structure): (i32, Resource, TPointer),
@@ -209,12 +207,18 @@ fn move_to_pos(
     }
     trace!("Bot {:?} path cache miss", bot);
 
-    let mut path = Vec::with_capacity(MAX_PATHFINDING_ITER);
+    // TODO: config omponent and read from there
+    let max_pathfinding_iter: u32 = std::env::var("MAX_PATHFINDING_ITER")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(2000);
+
+    let mut path = Vec::with_capacity(max_pathfinding_iter as usize);
     if let Err(e) = pathfinding::find_path(
         botpos.0,
         to,
         FromWorld::new(storage),
-        MAX_PATHFINDING_ITER as u32,
+        max_pathfinding_iter,
         &mut path,
     ) {
         trace!("pathfinding failed {:?}", e);
