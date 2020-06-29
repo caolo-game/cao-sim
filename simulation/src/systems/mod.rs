@@ -51,6 +51,6 @@ pub fn execute_world_update(storage: &mut World) {
 fn update<'a, Sys: System<'a>>(sys: &mut Sys, storage: &'a mut World) {
     let m = Sys::Mut::new(storage);
     let c = Sys::Const::new(storage as &_);
-    sys.update(m.clone(), c);
+    sys.update(Sys::Mut::clone(&m), c);
     m.log();
 }
