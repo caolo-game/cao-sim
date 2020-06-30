@@ -59,19 +59,15 @@ pub fn find_path(
     path: &mut Vec<RoomPosition>,
 ) -> Result<u32, PathFindingError> {
     profile!("find_path");
-    debug!("find_path from {:?} to {:?}", from, to);
-    let positions = View::from_table(
-        positions
-            .table
-            .get_by_id(&from.room)
-            .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
-    );
-    let terrain = View::from_table(
-        terrain
-            .table
-            .get_by_id(&from.room)
-            .ok_or_else(|| PathFindingError::RoomDoesNotExists(from.room))?,
-    );
+    trace!("find_path from {:?} to {:?}", from, to);
+    let positions = View::from_table(positions.table.get_by_id(&from.room).ok_or_else(|| {
+        trace!("Room of EntityComponents not found");
+        PathFindingError::RoomDoesNotExists(from.room)
+    })?);
+    let terrain = View::from_table(terrain.table.get_by_id(&from.room).ok_or_else(|| {
+        trace!("Room of TerrainComponents not found");
+        PathFindingError::RoomDoesNotExists(from.room)
+    })?);
     if from.room == to.room {
         find_path_in_room(from.pos, to.pos, (positions, terrain), max_steps, path)
     } else {
@@ -99,7 +95,7 @@ fn find_path_multiroom(
     mut max_steps: u32,
     path: &mut Vec<RoomPosition>,
 ) -> Result<u32, PathFindingError> {
-    debug!("find_path_multiroom from {:?} to {:?}", from, to);
+    trace!("find_path_multiroom from {:?} to {:?}", from, to);
 
     let mut rooms = Vec::with_capacity(4);
     let from_room = from.room;
@@ -115,9 +111,10 @@ fn find_path_multiroom(
         .expect("find_path_overworld returned OK, but the room list is empty");
 
     let edge = next_room.0 - from_room;
-    let bridge = connections
-        .get_by_id(&Room(from_room))
-        .ok_or_else(|| PathFindingError::RoomDoesNotExists(from_room))?;
+    let bridge = connections.get_by_id(&Room(from_room)).ok_or_else(|| {
+        trace!("Room of bridge not found");
+        PathFindingError::RoomDoesNotExists(from_room)
+    })?;
 
     let bridge_ind =
         Axial::neighbour_index(edge).expect("expected the calculated edge to be a valid neighbour");
@@ -171,7 +168,7 @@ pub fn find_path_overworld(
     mut max_steps: u32,
     path: &mut Vec<Room>,
 ) -> Result<u32, PathFindingError> {
-    profile!("find_path_overworld");
+    profile!(trace "find_path_overworld");
     let from = from.0;
     let to = to.0;
 
@@ -189,7 +186,10 @@ pub fn find_path_overworld(
         closed_set.insert(current.pos, current.clone());
         for point in connections
             .get_by_id(&Room(current.pos))
-            .ok_or_else(|| PathFindingError::RoomDoesNotExists(current.pos))?
+            .ok_or_else(|| {
+                trace!("Room not found in RoomConnections table");
+                PathFindingError::RoomDoesNotExists(current.pos)
+            })?
             .0
             .iter()
             .filter_map(|e| e.as_ref().map(|e| e.direction + current.pos))
@@ -250,6 +250,7 @@ pub fn find_path_in_room(
     path: &mut Vec<RoomPosition>,
 ) -> Result<u32, PathFindingError> {
     profile!("find_path_in_room");
+    trace!("find_path_in_room from {:?} to {:?}", from, to);
 
     let current = from;
     let end = to;
