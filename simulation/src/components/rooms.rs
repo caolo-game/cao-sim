@@ -38,6 +38,7 @@ impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RoomProperties {
     pub radius: u32,
+    pub center: Axial,
 }
 impl Component<EmptyKey> for RoomProperties {
     type Table = UniqueTable<Self>;

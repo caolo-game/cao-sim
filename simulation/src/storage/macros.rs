@@ -1,10 +1,10 @@
-/// Mutation Query
+/// # Mutation Queries
 ///
 /// Designed to reduce boilerplate when updating tables.
 /// The query does nothing special, just calls the provided methods on the tables
 /// obtained by `unsafe_view::<key, value>()`.
 ///
-/// # Safety
+/// ## Safety
 ///
 /// Updates on Storage are an unsafe operation. Be sure that no other threads have write access to
 /// the tables you're mutating!
@@ -53,8 +53,9 @@ macro_rules! query {
                     ).*;
             )*
         }
-    }
+    };
 }
+
 #[macro_export(local_inner_macros)]
 macro_rules! storage {
     (

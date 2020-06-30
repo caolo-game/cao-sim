@@ -50,6 +50,7 @@ pub fn generate_room_layout(
     unsafe {
         room_props.as_mut().value = Some(RoomProperties {
             radius: *room_radius as u32,
+            center,
         });
         let rooms = rooms.as_mut();
         rooms.clear();

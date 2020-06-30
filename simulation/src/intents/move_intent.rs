@@ -1,3 +1,6 @@
+//! Represents a bot's intent to move to a new location.
+//! Currently only bots are allowed to move!
+//!
 use crate::components::{self, EntityComponent, PositionComponent};
 use crate::model::{self, terrain, EntityId, OperationResult, WorldPosition};
 use crate::storage::views::View;
@@ -18,14 +21,14 @@ type CheckInput<'a> = (
 
 pub fn check_move_intent(
     intent: &MoveIntent,
-    userid: model::UserId,
+    user_id: model::UserId,
     (owner_ids, positions, bots, terrain, entity_positions): CheckInput,
 ) -> OperationResult {
     let id = intent.bot;
     match bots.get_by_id(&id) {
         Some(_) => {
             let owner_id = owner_ids.get_by_id(&id);
-            if owner_id.map(|id| id.owner_id != userid).unwrap_or(true) {
+            if owner_id.map(|id| id.owner_id != user_id).unwrap_or(true) {
                 return OperationResult::NotOwner;
             }
         }
@@ -35,7 +38,7 @@ pub fn check_move_intent(
     let pos = match positions.get_by_id(&id) {
         Some(pos) => pos,
         None => {
-            debug!("Bot has no position");
+            warn!("Bot has no position");
             return OperationResult::InvalidInput;
         }
     };
