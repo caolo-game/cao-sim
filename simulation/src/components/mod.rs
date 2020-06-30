@@ -22,7 +22,7 @@ impl Component<WorldPosition> for EntityComponent {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-pub struct Bot {}
+pub struct Bot;
 
 impl Component<EntityId> for Bot {
     type Table = VecTable<EntityId, Self>;

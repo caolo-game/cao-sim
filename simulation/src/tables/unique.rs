@@ -25,6 +25,10 @@ where
     pub fn unwrap_mut(&mut self) -> &mut Row {
         self.value.as_mut().unwrap()
     }
+
+    pub fn update(&mut self, value: Option<Row>) {
+        self.value = value;
+    }
 }
 
 impl<Row> Table for UniqueTable<Row>
