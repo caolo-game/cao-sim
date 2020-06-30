@@ -1,9 +1,10 @@
-use super::morton::MortonTable;
+use super::morton::{MortonKey, MortonTable};
 use super::*;
 use crate::geometry::Axial;
 use crate::model::{Room, WorldPosition};
 use crate::profile;
 use serde_derive::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
@@ -55,14 +56,8 @@ where
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = (WorldPosition, &'a Row)> + 'a {
         self.table.iter().flat_map(|(room, t)| {
-            t.iter().map(move |(pos, value)| {
-                (
-                    WorldPosition {
-                        room,pos
-                    },
-                    value,
-                )
-            })
+            t.iter()
+                .map(move |(pos, value)| (WorldPosition { room, pos }, value))
         })
     }
 
@@ -132,7 +127,12 @@ where
         values: &mut [(WorldPosition, Row)],
     ) -> Result<&mut Self, ExtendFailure> {
         trace!("RoomMortonTable extend");
-        values.sort_unstable_by_key(|(wp, _)| wp.room);
+        values.sort_unstable_by_key(|(wp, _)| {
+            MortonKey::new(
+                u16::try_from(wp.room.q).unwrap(),
+                u16::try_from(wp.room.r).unwrap(),
+            )
+        });
         for (room_id, items) in GroupByRooms::new(&values) {
             if let Some(room) = self.table.get_by_id_mut(&room_id) {
                 room.extend(
@@ -169,15 +169,16 @@ impl<'a, Row> Iterator for GroupByRooms<'a, Row> {
         for (i, (WorldPosition { room, .. }, _)) in
             self.items[self.group_begin..].iter().enumerate()
         {
-            end = i + self.group_begin;
             if room != begin {
                 break;
             }
+            end = i;
         }
+        end += self.group_begin;
         let group_begin = self.group_begin;
         self.group_begin = end + 1;
-        if group_begin < end {
-            Some((*begin, &self.items[group_begin..end]))
+        if group_begin <= end {
+            Some((*begin, &self.items[group_begin..=end]))
         } else {
             None
         }
@@ -219,5 +220,72 @@ where
         let WorldPosition { room, pos } = id;
         let room = self.table.get_by_id_mut(&room)?;
         room.delete(&pos)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extends_multiple_rooms_correctly() {
+        let mut pts = [
+            (
+                WorldPosition {
+                    room: Axial::new(42, 69),
+                    pos: Axial::new(1, 2),
+                },
+                1,
+            ),
+            (
+                WorldPosition {
+                    room: Axial::new(42, 69),
+                    pos: Axial::new(2, 4),
+                },
+                2,
+            ),
+            (
+                WorldPosition {
+                    room: Axial::new(42, 69),
+                    pos: Axial::new(1, 2),
+                },
+                3,
+            ),
+            (
+                WorldPosition {
+                    room: Axial::new(42, 69),
+                    pos: Axial::new(2, 4),
+                },
+                4,
+            ),
+            (
+                WorldPosition {
+                    room: Axial::new(69, 69),
+                    pos: Axial::new(8, 9),
+                },
+                5,
+            ),
+            (
+                WorldPosition {
+                    room: Axial::new(69, 69),
+                    pos: Axial::new(8, 8),
+                },
+                6,
+            ),
+        ];
+
+        let mut table = RoomMortonTable::new();
+        table
+            .extend_rooms(
+                [Axial::new(69, 69), Axial::new(42, 69)]
+                    .iter()
+                    .cloned()
+                    .map(|p| Room(p)),
+            )
+            .unwrap();
+        table.extend_from_slice(&mut pts).unwrap();
+
+        assert_eq!(table.table.get_by_id(&Axial::new(69, 69)).unwrap().len(), 2);
+        assert_eq!(table.table.get_by_id(&Axial::new(42, 69)).unwrap().len(), 4);
     }
 }
