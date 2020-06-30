@@ -13,9 +13,9 @@ mod sorting;
 #[cfg(test)]
 mod tests;
 
-pub use self::morton_key::*;
 pub use self::litmax_bigmin::msb_de_bruijn;
 use self::litmax_bigmin::round_down_to_one_less_than_pow_two;
+pub use self::morton_key::*;
 pub use self::serde::*;
 use super::*;
 use litmax_bigmin::litmax_bigmin;
