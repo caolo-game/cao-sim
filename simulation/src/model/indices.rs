@@ -62,7 +62,7 @@ impl AutoByteEncodeProperties for WorldPosition {}
 
 impl WorldPosition {
     pub fn absolute(&self, room_radius: i32) -> Axial {
-        let offset = self.room * room_radius;
+        let offset = self.room * room_radius * 2;
         offset + self.pos
     }
 }
