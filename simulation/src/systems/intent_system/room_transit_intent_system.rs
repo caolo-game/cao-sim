@@ -2,10 +2,13 @@ use super::IntentExecutionSystem;
 use crate::components::{
     Bot, EntityComponent, PositionComponent, RoomConnections, RoomProperties, TerrainComponent,
 };
-use crate::map_generation::room::iter_edge;
+use crate::geometry::Axial;
 use crate::intents::RoomTransitIntent;
+use crate::map_generation::room::iter_edge;
+use crate::model::terrain::TileTerrainType;
 use crate::model::{EmptyKey, EntityId, Room, WorldPosition};
 use crate::storage::views::{UnsafeView, View};
+use arrayvec::ArrayVec;
 
 pub struct RoomTransitSystem;
 
@@ -34,7 +37,7 @@ impl<'a> IntentExecutionSystem<'a> for RoomTransitSystem {
             );
 
             if bots.get_by_id(&intent.bot).is_none() {
-                trace!("Bot by id {:?} does not exist", intent.bot);
+                error!("Bot by id {:?} does not exist", intent.bot);
                 continue;
             }
 
@@ -44,24 +47,78 @@ impl<'a> IntentExecutionSystem<'a> for RoomTransitSystem {
             // to obtain the edge we require the bot's current pos (room)
             // the room_connection
 
+            let current_pos = match positions.get_by_id(&intent.bot) {
+                Some(pos) => pos,
+                None => {
+                    error!("Bot by id {:?} has no position", intent.bot);
+                    continue;
+                }
+            };
+
+            let bridge = match room_connections
+                .get_by_id(&intent.target_room)
+                .and_then(|c| {
+                    let direction = intent.target_room.0 - current_pos.0.room;
+                    let ind = Axial::neighbour_index(direction)?;
+                    c.0[ind].as_ref()
+                }) {
+                Some(conn) => conn,
+                None => {
+                    error!("Room {:?} has no (valid) connections", intent.target_room);
+                    continue;
+                }
+            };
             // to obtain the pos we need an edge point that's absolute position is 1 away from
             // current pos and is uncontested.
+            let props = room_properties.unwrap_value();
 
-            // let candidates = [];
-            unimplemented!();
+            let current_abs = current_pos.0.absolute(props.radius as i32);
 
-            // if pos_entities.get_by_id(&intent.position).is_some() {
-            //     trace!("Occupied {:?} ", intent.position);
-            //     continue;
-            // }
-            //
-            // unsafe {
-            //     positions
-            //         .as_mut()
-            //         .insert_or_update(intent.bot, PositionComponent(intent.position));
-            // }
+            let candidates: ArrayVec<[_; 3]> =
+                // if this fails once it will fail always, so we'll just panic
+                iter_edge(props.center, props.radius, bridge).expect("Failed to iter the edge")
+                .filter(|pos|{
+                    let pos = WorldPosition{
+                        room: intent.target_room.0,
+                        pos: *pos
+                    };
+                    // the candidate terrain must be a Bridge and must be within 1 tiles
+                    terrain.get_by_id(&pos).map(|TerrainComponent(t)| *t == TileTerrainType::Bridge).unwrap_or(false)
+                        &&
+                    current_abs.hex_distance(pos .absolute(props.radius as i32)) <= 1
+                }).collect();
 
-            trace!("Transitioning successful");
+            if candidates.is_empty() {
+                error!("Could not find an acceptable bridge candidate");
+                continue;
+            }
+
+            // find a candidate that is not occupied
+            let new_pos = candidates.iter().cloned().find(|pos| {
+                pos_entities
+                    .get_by_id(&WorldPosition {
+                        room: intent.target_room.0,
+                        pos: *pos,
+                    })
+                    .is_none()
+            });
+            match new_pos {
+                Some(new_pos) => unsafe {
+                    positions.as_mut().insert_or_update(
+                        intent.bot,
+                        PositionComponent(WorldPosition {
+                            room: intent.target_room.0,
+                            pos: new_pos,
+                        }),
+                    );
+                },
+                None => {
+                    trace!("{:?} All candidates are occupied", intent.bot);
+                    continue;
+                }
+            }
+
+            trace!("Transitioning {:?} successful", intent.bot);
         }
     }
 }
