@@ -1,6 +1,7 @@
 use crate::components::{EntityComponent, RoomConnections, RoomProperties, TerrainComponent};
 use crate::geometry::Axial;
 use crate::map_generation::room::iter_edge;
+use crate::model::terrain::TileTerrainType;
 use crate::model::{indices::Room, terrain, EmptyKey, RoomPosition, WorldPosition};
 use crate::profile;
 use crate::storage::views::View;
@@ -321,6 +322,94 @@ pub fn find_path_in_room(
         max_steps
     );
     Ok(max_steps)
+}
+
+#[derive(Debug)]
+pub enum TransitError {
+    InternalError(anyhow::Error),
+    NotFound,
+    InvalidPos,
+    InvalidRoom,
+}
+
+/// If the result is `Ok` it will contain at least 1 item
+pub fn get_valid_transits(
+    current_pos: WorldPosition,
+    target_room: Room,
+    (terrain, entities, room_connections, room_properties): (
+        View<WorldPosition, TerrainComponent>,
+        View<WorldPosition, EntityComponent>,
+        View<Room, RoomConnections>,
+        View<EmptyKey, RoomProperties>,
+    ),
+) -> Result<ArrayVec<[WorldPosition; 3]>, TransitError> {
+    trace!("get_valid_transits {:?} {:?}", current_pos, target_room);
+    // from a bridge the bot can reach at least 1 and at most 3 tiles
+    // try to find an empty one and move the bot there, otherwise the move fails
+
+    // to obtain the edge we require the bot's current pos (room)
+    // the room_connection
+
+    // the bridge on the other side
+    let bridge = match room_connections.get_by_id(&target_room).and_then(|c| {
+        let direction = current_pos.room - target_room.0;
+        let ind = Axial::neighbour_index(direction)?;
+        c.0[ind].as_ref()
+    }) {
+        Some(conn) => conn,
+        None => {
+            let msg = format!("Room {:?} has no (valid) connections", target_room);
+            trace!("{}", msg);
+            return Err(TransitError::InternalError(anyhow::Error::msg(msg)));
+        }
+    };
+    // to obtain the pos we need an edge point that's absolute position is 1 away from
+    // current pos and is uncontested.
+    let props = room_properties.unwrap_value();
+
+    let current_abs = current_pos.absolute(props.radius as i32);
+    trace!("current_abs {:?}", current_abs);
+
+    // if this fails once it will fail always, so we'll just panic
+    let candidates: ArrayVec<[_; 3]> = iter_edge(props.center, props.radius, bridge)
+        .expect("Failed to iter the edge")
+        .filter(|pos| {
+            let pos = WorldPosition {
+                room: target_room.0,
+                pos: *pos,
+            };
+            let abs_pos = pos.absolute(props.radius as i32);
+            trace!("pos {:?} abs_pos {:?}", pos, abs_pos);
+            // the candidate terrain must be a Bridge and must be 1 tile away
+            current_abs.hex_distance(abs_pos) == 1
+                && terrain
+                    .get_by_id(&pos)
+                    .map(|t| t.0 == TileTerrainType::Bridge)
+                    .unwrap_or(false)
+        })
+        .map(|pos| WorldPosition {
+            room: target_room.0,
+            pos,
+        })
+        .collect();
+
+    if candidates.is_empty() {
+        let msg = "Could not find an acceptable bridge candidate";
+        trace!("{}", msg);
+        return Err(TransitError::InternalError(anyhow::Error::msg(msg)));
+    }
+
+    let candidates: ArrayVec<[_; 3]> = candidates
+        .into_iter()
+        .filter(|p| !entities.contains_key(p))
+        .collect();
+
+    if candidates.is_empty() {
+        return Err(TransitError::NotFound);
+    }
+
+    debug_assert!(candidates.len() >= 1);
+    Ok(candidates)
 }
 
 #[cfg(test)]

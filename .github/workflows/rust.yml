@@ -31,10 +31,13 @@ jobs:
         run: cargo test-all-features
         env:
           RUST_BACKTRACE: 1
+          RUST_LOG: caolo_sim=trace
+
       - name: Test benches
         run: cargo test --benches
         env:
           RUST_BACKTRACE: 1
+          RUST_LOG: caolo_sim=trace
 
       - name: Install grcov
         if: ${{ matrix.rust == 'nightly' }}

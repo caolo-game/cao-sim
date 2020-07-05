@@ -3,7 +3,6 @@ mod log_intent_system;
 mod mine_intent_system;
 mod move_intent_system;
 mod path_cache_intent_system;
-mod room_transit_intent_system;
 mod spawn_intent_system;
 
 use self::dropoff_intent_system::DropoffSystem;
@@ -11,7 +10,6 @@ use self::log_intent_system::LogSystem;
 use self::mine_intent_system::MineSystem;
 use self::move_intent_system::MoveSystem;
 use self::path_cache_intent_system::{PopPathCacheSystem, UpdatePathCacheSystem};
-use self::room_transit_intent_system::RoomTransitSystem;
 use self::spawn_intent_system::SpawnSystem;
 use crate::intents::{Intents, MoveIntent};
 use crate::profile;
@@ -43,14 +41,12 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
             let mine_sys = executor(MineSystem, storage);
             let dropoff_sys = executor(DropoffSystem, storage);
             let spawn_sys = executor(SpawnSystem, storage);
-            let transit_sys = executor(RoomTransitSystem, storage);
 
             s.spawn(move |_| {
                 move_sys(intents);
                 mine_sys(intents);
                 dropoff_sys(intents);
                 spawn_sys(intents);
-                transit_sys(intents);
             });
         }
 

@@ -5,7 +5,6 @@ mod log_intent;
 mod mine_intent;
 mod move_intent;
 mod pathcache_intent;
-mod room_transit_intent;
 mod spawn_intent;
 
 pub use self::dropoff_intent::*;
@@ -13,7 +12,6 @@ pub use self::log_intent::*;
 pub use self::mine_intent::*;
 pub use self::move_intent::*;
 pub use self::pathcache_intent::*;
-pub use self::room_transit_intent::*;
 pub use self::spawn_intent::*;
 
 impl Intents {
@@ -59,5 +57,4 @@ intents!(
     log_intents: LogIntent,
     update_path_cache_intents: CachePathIntent,
     pop_path_cache_intents: PopPathCacheIntent,
-    room_transit_intents: RoomTransitIntent,
 );

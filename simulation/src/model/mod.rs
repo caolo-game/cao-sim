@@ -19,6 +19,7 @@ pub enum OperationResult {
     InvalidTarget = -5,
     Empty = -6,
     Full = -7,
+    PathNotFound = -8
 }
 
 impl TryFrom<Scalar> for OperationResult {
@@ -34,6 +35,7 @@ impl TryFrom<Scalar> for OperationResult {
             Scalar::Integer(-5) => OperationResult::InvalidTarget,
             Scalar::Integer(-6) => OperationResult::Empty,
             Scalar::Integer(-7) => OperationResult::Full,
+            Scalar::Integer(-8) => OperationResult::PathNotFound,
             _ => {
                 return Err(i);
             }

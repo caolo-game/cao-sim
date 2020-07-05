@@ -4,9 +4,8 @@ use crate::model::Room;
 use crate::{
     components::{self, PathCacheComponent, Resource, TerrainComponent, PATH_CACHE_LEN},
     intents::{
-        check_dropoff_intent, check_mine_intent, check_move_intent, check_transit_intent,
-        CachePathIntent, DropoffIntent, MineIntent, MoveIntent, PopPathCacheIntent,
-        RoomTransitIntent,
+        check_dropoff_intent, check_mine_intent, check_move_intent, CachePathIntent, DropoffIntent,
+        MineIntent, MoveIntent, PopPathCacheIntent,
     },
     model::{EntityId, OperationResult, UserId, WorldPosition},
     pathfinding, profile,
@@ -111,7 +110,7 @@ pub fn approach_entity(
     };
 
     let checkresult = match move_to_pos(entity, targetpos.0, user_id, storage) {
-        Ok(MoveToPosIntent::MoveIntent(move_intent, pop_cache_intent, update_cache_intent)) => {
+        Ok((move_intent, pop_cache_intent, update_cache_intent)) => {
             let intents = &mut vm.get_aux_mut().intents;
             intents.move_intents.push(move_intent);
             if let Some(pop_cache_intent) = pop_cache_intent {
@@ -121,11 +120,6 @@ pub fn approach_entity(
                 intents.update_path_cache_intents.push(update_cache_intent);
             }
 
-            OperationResult::Ok
-        }
-        Ok(MoveToPosIntent::TransitIntent(transit_intent)) => {
-            let intents = &mut vm.get_aux_mut().intents;
-            intents.room_transit_intents.push(transit_intent);
             OperationResult::Ok
         }
         Err(e) => e,
@@ -151,7 +145,7 @@ pub fn move_bot_to_position(
     })?;
 
     let checkresult = match move_to_pos(entity, point, user_id, storage) {
-        Ok(MoveToPosIntent::MoveIntent(move_intent, pop_cache_intent, update_cache_intent)) => {
+        Ok((move_intent, pop_cache_intent, update_cache_intent)) => {
             let intents = &mut vm.get_aux_mut().intents;
             intents.move_intents.push(move_intent);
             if let Some(pop_cache_intent) = pop_cache_intent {
@@ -162,26 +156,17 @@ pub fn move_bot_to_position(
             }
             OperationResult::Ok
         }
-        Ok(MoveToPosIntent::TransitIntent(transit_intent)) => {
-            let intents = &mut vm.get_aux_mut().intents;
-            intents.room_transit_intents.push(transit_intent);
-            OperationResult::Ok
-        }
         Err(e) => e,
     };
     vm.stack_push(checkresult)?;
     Ok(())
 }
 
-#[derive(Debug, Clone)]
-enum MoveToPosIntent {
-    MoveIntent(
-        MoveIntent,
-        Option<PopPathCacheIntent>,
-        Option<CachePathIntent>,
-    ),
-    TransitIntent(RoomTransitIntent),
-}
+type MoveToPosIntent = (
+    MoveIntent,
+    Option<PopPathCacheIntent>,
+    Option<CachePathIntent>,
+);
 
 fn move_to_pos(
     bot: EntityId,
@@ -218,11 +203,7 @@ fn move_to_pos(
                     check_move_intent(&intent, user_id, FromWorld::new(storage))
                 {
                     trace!("Bot {:?} path cache hit", bot);
-                    return Ok(MoveToPosIntent::MoveIntent(
-                        intent,
-                        Some(PopPathCacheIntent { bot }),
-                        None,
-                    ));
+                    return Ok((intent, Some(PopPathCacheIntent { bot }), None));
                 }
             }
         }
@@ -272,11 +253,7 @@ fn move_to_pos(
                         },
                     };
 
-                    Ok(MoveToPosIntent::MoveIntent(
-                        intent,
-                        None,
-                        Some(cache_intent),
-                    ))
+                    Ok((intent, None, Some(cache_intent)))
                 }
                 _ => Err(checkresult),
             }
@@ -294,15 +271,25 @@ fn move_to_pos(
             if !is_bridge {
                 return Err(OperationResult::InvalidTarget);
             }
-            let intent = RoomTransitIntent {
-                bot,
-                target_room: Room(to.room),
+            let target_pos = match pathfinding::get_valid_transits(
+                botpos.0,
+                Room(to.room),
+                FromWorld::new(storage),
+            ) {
+                Ok(candidates) => candidates[0],
+                Err(pathfinding::TransitError::NotFound) => {
+                    return Err(OperationResult::PathNotFound)
+                }
+                Err(e) => {
+                    error!("Transit failed {:?}", e);
+                    return Err(OperationResult::OperationFailed);
+                }
             };
-            let checkresult = check_transit_intent(&intent, user_id, FromWorld::new(storage));
-            match checkresult {
-                OperationResult::Ok => Ok(MoveToPosIntent::TransitIntent(intent)),
-                _ => Err(checkresult),
-            }
+            let intent = MoveIntent {
+                bot,
+                position: target_pos,
+            };
+            Ok((intent, None, None))
         }
     }
 }
@@ -402,14 +389,13 @@ mod tests {
             });
         }
 
-        let res = move_to_pos(bot_id, to, user_id, &storage).expect("Expected move to succeed");
 
-        match res {
-            MoveToPosIntent::TransitIntent(RoomTransitIntent { bot, target_room }) => {
-                assert_eq!(bot, bot_id);
-                assert_eq!(target_room.0, to.room);
-            }
-            _ => panic!("Unexpected intent returned"),
-        }
+        dbg!(&*storage.view::<Room, components::RoomConnections>());
+
+        let (MoveIntent { bot, position }, ..) =
+            move_to_pos(bot_id, to, user_id, &storage).expect("Expected move to succeed");
+
+        assert_eq!(bot, bot_id);
+        assert_eq!(position.room, to.room);
     }
 }
