@@ -49,7 +49,7 @@ impl<'a> IntentExecutionSystem<'a> for PopPathCacheSystem {
             let entity_id = intent.bot;
             unsafe {
                 if let Some(cache) = path_cache_table.as_mut().get_by_id_mut(&entity_id) {
-                    cache.0.pop();
+                    cache.path.pop();
                 }
             }
         }

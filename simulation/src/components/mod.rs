@@ -147,7 +147,10 @@ impl<Id: TableId> Component<Id> for UserComponent {
 
 pub const PATH_CACHE_LEN: usize = 64;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct PathCacheComponent(pub ArrayVec<[RoomPosition; PATH_CACHE_LEN]>);
+pub struct PathCacheComponent {
+    pub target: WorldPosition,
+    pub path: ArrayVec<[RoomPosition; PATH_CACHE_LEN]>,
+}
 impl<Id: TableId> Component<Id> for PathCacheComponent {
     type Table = BTreeTable<Id, Self>;
 }

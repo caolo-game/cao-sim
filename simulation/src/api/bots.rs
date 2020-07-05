@@ -200,30 +200,33 @@ fn move_to_pos(
 
     // attempt to use the cached path
     // which requires non-empty cache with a valid next step
-    if let Some(cache) = storage
+    match storage
         .view::<EntityId, PathCacheComponent>()
         .reborrow()
         .get_by_id(&bot)
     {
-        if let Some(position) = cache.0.last().cloned() {
-            let intent = MoveIntent {
-                bot,
-                position: WorldPosition {
-                    room: botpos.0.room,
-                    pos: position.0,
-                },
-            };
-            if let OperationResult::Ok =
-                check_move_intent(&intent, user_id, FromWorld::new(storage))
-            {
-                trace!("Bot {:?} path cache hit", bot);
-                return Ok(MoveToPosIntent::MoveIntent(
-                    intent,
-                    Some(PopPathCacheIntent { bot }),
-                    None,
-                ));
+        Some(cache) if cache.target == to => {
+            if let Some(position) = cache.path.last().cloned() {
+                let intent = MoveIntent {
+                    bot,
+                    position: WorldPosition {
+                        room: botpos.0.room,
+                        pos: position.0,
+                    },
+                };
+                if let OperationResult::Ok =
+                    check_move_intent(&intent, user_id, FromWorld::new(storage))
+                {
+                    trace!("Bot {:?} path cache hit", bot);
+                    return Ok(MoveToPosIntent::MoveIntent(
+                        intent,
+                        Some(PopPathCacheIntent { bot }),
+                        None,
+                    ));
+                }
             }
         }
+        _ => {}
     }
     trace!("Bot {:?} path cache miss", bot);
 
@@ -263,9 +266,10 @@ fn move_to_pos(
 
                     let cache_intent = CachePathIntent {
                         bot,
-                        cache: PathCacheComponent(
-                            path.into_iter().skip(skip).take(PATH_CACHE_LEN).collect(),
-                        ),
+                        cache: PathCacheComponent {
+                            target: to,
+                            path: path.into_iter().skip(skip).take(PATH_CACHE_LEN).collect(),
+                        },
                     };
 
                     Ok(MoveToPosIntent::MoveIntent(
