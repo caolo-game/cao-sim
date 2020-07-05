@@ -84,9 +84,8 @@ impl<'a> IntentExecutionSystem<'a> for RoomTransitSystem {
                         pos: *pos
                     };
                     // the candidate terrain must be a Bridge and must be within 1 tiles
-                    terrain.get_by_id(&pos).map(|TerrainComponent(t)| *t == TileTerrainType::Bridge).unwrap_or(false)
-                        &&
-                    current_abs.hex_distance(pos .absolute(props.radius as i32)) <= 1
+                    current_abs.hex_distance(pos.absolute(props.radius as i32)) <= 1 &&
+                    terrain.get_by_id(&pos).map(|t| t.0 == TileTerrainType::Bridge).unwrap_or(false)
                 }).collect();
 
             if candidates.is_empty() {
@@ -94,34 +93,113 @@ impl<'a> IntentExecutionSystem<'a> for RoomTransitSystem {
                 continue;
             }
 
-            // find a candidate that is not occupied
-            let new_pos = candidates.iter().cloned().find(|pos| {
-                pos_entities
-                    .get_by_id(&WorldPosition {
-                        room: intent.target_room.0,
-                        pos: *pos,
-                    })
-                    .is_none()
-            });
-            match new_pos {
-                Some(new_pos) => unsafe {
-                    positions.as_mut().insert_or_update(
-                        intent.bot,
-                        PositionComponent(WorldPosition {
-                            room: intent.target_room.0,
-                            pos: new_pos,
-                        }),
-                    );
-                },
-                None => {
+            let new_pos = match get_valid_transits(
+                current_pos.0,
+                intent.target_room,
+                (terrain, pos_entities, room_connections, room_properties),
+            ) {
+                Ok(candidates) => candidates[0],
+                Err(TransitError::InternalError(e)) => {
+                    error!("Failed to find transit {:?}", e);
+                    continue;
+                }
+                Err(TransitError::NotFound) => {
                     trace!("{:?} All candidates are occupied", intent.bot);
                     continue;
                 }
+            };
+
+            unsafe {
+                positions
+                    .as_mut()
+                    .insert_or_update(intent.bot, PositionComponent(new_pos));
             }
 
             trace!("Transitioning {:?} successful", intent.bot);
         }
     }
+}
+
+pub enum TransitError {
+    InternalError(anyhow::Error),
+    NotFound,
+}
+
+/// If the result is `Ok` it will contain at least 1 item
+pub fn get_valid_transits(
+    current_pos: WorldPosition,
+    target_room: Room,
+    (terrain, entities, room_connections, room_properties): (
+        View<WorldPosition, TerrainComponent>,
+        View<WorldPosition, EntityComponent>,
+        View<Room, RoomConnections>,
+        View<EmptyKey, RoomProperties>,
+    ),
+) -> Result<ArrayVec<[WorldPosition; 3]>, TransitError> {
+    // from a bridge the bot can reach at least 1 and at most 3 tiles
+    // try to find an empty one and move the bot there, otherwise the move fails
+
+    // to obtain the edge we require the bot's current pos (room)
+    // the room_connection
+
+    // the bridge on the other side
+    let bridge = match room_connections.get_by_id(&target_room).and_then(|c| {
+        let direction = current_pos.room - target_room.0;
+        let ind = Axial::neighbour_index(direction)?;
+        c.0[ind].as_ref()
+    }) {
+        Some(conn) => conn,
+        None => {
+            return Err(TransitError::InternalError(anyhow::Error::msg(format!(
+                "Room {:?} has no (valid) connections",
+                target_room
+            ))));
+        }
+    };
+    // to obtain the pos we need an edge point that's absolute position is 1 away from
+    // current pos and is uncontested.
+    let props = room_properties.unwrap_value();
+
+    let current_abs = current_pos.absolute(props.radius as i32);
+
+    // if this fails once it will fail always, so we'll just panic
+    let candidates: ArrayVec<[_; 3]> = iter_edge(props.center, props.radius, bridge)
+        .expect("Failed to iter the edge")
+        .filter(|pos| {
+            let pos = WorldPosition {
+                room: target_room.0,
+                pos: *pos,
+            };
+            // the candidate terrain must be a Bridge and must be 1 tile away
+            current_abs.hex_distance(pos.absolute(props.radius as i32)) == 1
+                && terrain
+                    .get_by_id(&pos)
+                    .map(|t| t.0 == TileTerrainType::Bridge)
+                    .unwrap_or(false)
+        })
+        .map(|pos| WorldPosition {
+            room: target_room.0,
+            pos,
+        })
+        .collect();
+
+    if candidates.is_empty() {
+        return Err(TransitError::InternalError(anyhow::Error::msg(format!(
+            "Could not find an acceptable bridge candidate"
+        ))));
+    }
+
+    let candidates: ArrayVec<[_; 3]> = candidates
+        .into_iter()
+        .filter(|p| !entities.contains_key(p))
+        .collect();
+
+    if candidates.is_empty() {
+        return Err(TransitError::NotFound);
+    }
+
+    debug_assert!(candidates.len() >= 1);
+    Ok(candidates)
 }
 
 #[cfg(test)]

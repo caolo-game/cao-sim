@@ -4,8 +4,15 @@ use std::ops::Deref;
 
 /// Fetch read-only tables from a Storage
 ///
-#[derive(Clone, Copy)]
 pub struct View<'a, Id: TableId, C: Component<Id>>(&'a C::Table);
+
+impl<'a, Id: TableId, C: Component<Id>> Clone for View<'a, Id, C> {
+    fn clone(&self) -> Self {
+        View(self.0)
+    }
+}
+
+impl<'a, Id: TableId, C: Component<Id>> Copy for View<'a, Id, C> {}
 
 unsafe impl<'a, Id: TableId, C: Component<Id>> Send for View<'a, Id, C> {}
 unsafe impl<'a, Id: TableId, C: Component<Id>> Sync for View<'a, Id, C> {}
