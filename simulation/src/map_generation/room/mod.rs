@@ -560,14 +560,13 @@ fn fill_edge(
 pub fn iter_edge(
     center: Axial,
     radius: u32,
-    edge: &RoomConnection,
-) -> Result<impl Iterator<Item = Axial>, RoomGenerationError> {
-    let radius = radius as i32;
-    let RoomConnection {
+    RoomConnection {
         offset_start,
         offset_end,
         direction: edge,
-    } = edge;
+    }: &RoomConnection,
+) -> Result<impl Iterator<Item = Axial>, RoomGenerationError> {
+    let radius = radius as i32;
     if edge.q.abs() > 1 || edge.r.abs() > 1 || edge.r == edge.q {
         return Err(RoomGenerationError::InvalidNeighbour(*edge));
     }

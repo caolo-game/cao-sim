@@ -9,21 +9,28 @@ use arrayvec::ArrayVec;
 use std::collections::{HashMap, HashSet};
 use thiserror::Error;
 
+const MAX_BRIDGE_LEN: usize = 64;
+
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 struct Node {
     pub pos: Axial,
     pub parent: Axial,
-    pub h: i32,
-    pub g: i32,
+    pub h_cost: i32,
+    pub g_cost: i32,
 }
 
 impl Node {
-    pub fn new(pos: Axial, parent: Axial, h: i32, g: i32) -> Self {
-        Self { parent, h, g, pos }
+    pub fn new(pos: Axial, parent: Axial, h_cost: i32, g_cost: i32) -> Self {
+        Self {
+            parent,
+            h_cost,
+            g_cost,
+            pos,
+        }
     }
 
-    pub fn f(&self) -> i32 {
-        self.h + self.g
+    pub fn f_cost(&self) -> i32 {
+        self.h_cost + self.g_cost
     }
 }
 
@@ -107,11 +114,11 @@ fn find_path_multiroom(
         max_steps,
         &mut rooms,
     )?;
-    let next_room = rooms
+    let Room(next_room) = rooms
         .pop()
         .expect("find_path_overworld returned OK, but the room list is empty");
 
-    let edge = next_room.0 - from_room;
+    let edge = next_room - from_room;
     let bridge = connections.get_by_id(&Room(from_room)).ok_or_else(|| {
         trace!("Room of bridge not found");
         PathFindingError::RoomDoesNotExists(from_room)
@@ -123,21 +130,31 @@ fn find_path_multiroom(
         .as_ref()
         .expect("expected a connection to the next room!");
 
-    let RoomProperties { radius, .. } = room_properties
+    let RoomProperties { radius, center } = room_properties
         .value
         .as_ref()
         .expect("expected RoomProperties to be set");
-    let center = from_room;
 
-    let mut bridge = iter_edge(center, *radius, bridge)
-        .map_err(|e| {
-            error!("Failed to obtain edge iterator {:?}", e);
-            PathFindingError::EdgeNotExists(edge)
-        })?
-        .take(128)
-        .collect::<ArrayVec<[_; 128]>>();
+    let bridge = iter_edge(*center, *radius, bridge).map_err(|e| {
+        error!("Failed to obtain edge iterator {:?}", e);
+        PathFindingError::EdgeNotExists(edge)
+    })?;
+    // If running in debug mode just use `collect` which panics if the length of the bridge is
+    // larger than MAX_BRIDGE_LEN
+    //
+    // in release mode take only MAX_BRIDGE_LEN candidates and avoid panic
+    #[cfg(debug_assertions)]
+    let mut bridge = { bridge.collect::<ArrayVec<[_; MAX_BRIDGE_LEN]>>() };
+    #[cfg(not(debug_assertions))]
+    let mut bridge = {
+        bridge
+            .take(MAX_BRIDGE_LEN)
+            .collect::<ArrayVec<[_; MAX_BRIDGE_LEN]>>()
+    };
 
     bridge.sort_unstable_by_key(|p| p.hex_distance(from.pos));
+
+    dbg!(&bridge);
 
     'a: for p in bridge {
         match find_path_in_room(
@@ -156,6 +173,10 @@ fn find_path_multiroom(
             Err(e) => return Err(e),
         }
     }
+    trace!(
+        "find_path_in_room succeeded with {} steps remaining",
+        max_steps
+    );
     Ok(max_steps)
 }
 
@@ -182,7 +203,11 @@ pub fn find_path_overworld(
     closed_set.insert(current.pos, current.clone());
     open_set.insert(current.clone());
     while current.pos != end && !open_set.is_empty() && max_steps > 0 {
-        current = open_set.iter().min_by_key(|node| node.f()).unwrap().clone();
+        current = open_set
+            .iter()
+            .min_by_key(|node| node.f_cost())
+            .unwrap()
+            .clone();
         open_set.remove(&current);
         closed_set.insert(current.pos, current.clone());
         for point in connections
@@ -200,14 +225,14 @@ pub fn find_path_overworld(
                     point,
                     current.pos,
                     point.hex_distance(end) as i32,
-                    current.g + 1,
+                    current.g_cost + 1,
                 );
                 open_set.insert(node);
             }
             if let Some(node) = closed_set.get_mut(&point) {
-                let g = current.g + 1;
-                if g < node.g {
-                    node.g = g;
+                let g_cost = current.g_cost + 1;
+                if g_cost < node.g_cost {
+                    node.g_cost = g_cost;
                     node.parent = current.pos;
                 }
             }
@@ -231,6 +256,11 @@ pub fn find_path_overworld(
         path.push(Room(current));
         current = closed_set[&current].parent;
     }
+    trace!(
+        "find_path_overworld returning with {} steps remaining\n{:?}",
+        max_steps,
+        path
+    );
     Ok(max_steps)
 }
 
@@ -264,34 +294,46 @@ pub fn find_path_in_room(
     open_set.insert(current.clone());
 
     while current.pos != end && !open_set.is_empty() && max_steps > 0 {
-        current = open_set.iter().min_by_key(|node| node.f()).unwrap().clone();
+        current = open_set
+            .iter()
+            .min_by_key(|node| node.f_cost())
+            .unwrap()
+            .clone();
         open_set.remove(&current);
         closed_set.insert(current.pos, current.clone());
-        for point in current.pos.hex_neighbours().iter().filter(|p| {
-            let res = positions.intersects(&p);
-            debug_assert!(
-                terrain.clone().intersects(&p) == res,
-                "if p intersects positions it must also intersect terrain!"
-            );
-            res && (
-                // Filter only the free neighbours
-                // End may be in the either tables!
-                *p == &end || (!positions.contains_key(p) && is_walkable(**p, terrain.clone()))
-            )
-        }) {
+        for point in current
+            .pos
+            .hex_neighbours()
+            .iter()
+            .cloned()
+            .filter(|neighbour_pos| {
+                let res = positions.intersects(&neighbour_pos);
+                debug_assert!(
+                    terrain.clone().intersects(&neighbour_pos) == res,
+                    "if neighbour_pos intersects positions it must also intersect terrain!"
+                );
+                res && (
+                    // Filter only the free neighbours
+                    // End may be in the either tables!
+                    *neighbour_pos == end
+                        || (!positions.contains_key(neighbour_pos)
+                            && is_walkable(*neighbour_pos, terrain.clone()))
+                )
+            })
+        {
             if !closed_set.contains_key(&point) {
                 let node = Node::new(
-                    *point,
+                    point,
                     current.pos,
                     point.hex_distance(end) as i32,
-                    current.g + 1,
+                    current.g_cost + 1,
                 );
                 open_set.insert(node);
             }
             if let Some(node) = closed_set.get_mut(&point) {
-                let g = current.g + 1;
-                if g < node.g {
-                    node.g = g;
+                let g_cost = current.g_cost + 1;
+                if g_cost < node.g_cost {
+                    node.g_cost = g_cost;
                     node.parent = current.pos;
                 }
             }
