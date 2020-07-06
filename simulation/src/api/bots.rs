@@ -300,6 +300,7 @@ mod tests {
     use crate::components;
     use crate::geometry::Axial;
     use crate::init_inmemory_storage;
+    use crate::map_generation::room::iter_edge;
     use crate::model::terrain::TileTerrainType;
     use crate::model::*;
     use crate::query;
@@ -314,43 +315,58 @@ mod tests {
         let room_radius = 2;
         let room_center = Axial::new(room_radius, room_radius);
 
-        let from = WorldPosition {
+        let mut from = WorldPosition {
             room: Axial::new(0, 0),
-            pos: Axial::new(0, 2),
+            pos: Axial::default(),
         };
         let to = WorldPosition {
             room: Axial::new(0, 1),
             pos: Axial::new(2, 1),
         };
 
+        from.pos = iter_edge(
+            room_center,
+            room_radius as u32,
+            &components::RoomConnection {
+                direction: to.room - from.room,
+                offset_end: 0,
+                offset_start: 0,
+            },
+        )
+        .unwrap()
+        .next()
+        .unwrap();
+
         let user_id = UserId::default();
 
         query!(
-        mutate
-        storage
-        {
-            EntityId, components::Bot,
-                .insert_or_update(bot_id, components::Bot);
-            EntityId, components::PositionComponent,
-                .insert_or_update(bot_id, components::PositionComponent(from));
-            EntityId, components::OwnedEntity,
-                .insert_or_update(bot_id, components::OwnedEntity{owner_id:user_id});
-            EmptyKey, components::RoomProperties,
-                .update(Some(components::RoomProperties{radius:room_radius as u32, center: room_center}));
+            mutate
+            storage
+            {
+                EntityId, components::Bot,
+                    .insert_or_update(bot_id, components::Bot);
+                EntityId, components::PositionComponent,
+                    .insert_or_update(bot_id, components::PositionComponent(from));
+                EntityId, components::OwnedEntity,
+                    .insert_or_update(bot_id, components::OwnedEntity{owner_id:user_id});
+                EmptyKey, components::RoomProperties,
+                    .update(Some(components::RoomProperties{radius:room_radius as u32, center: room_center}));
 
-            WorldPosition, components::EntityComponent,
-                .extend_rooms([Room(from.room), Room(to.room)].iter().cloned())
-                .expect("Failed to add rooms");
-            WorldPosition, components::TerrainComponent,
-                .extend_rooms([Room(from.room), Room(to.room)].iter().cloned())
-                .expect("Failed to add rooms");
-            WorldPosition, components::TerrainComponent,
-                .extend_from_slice(&mut [
-                    ( from, components::TerrainComponent(TileTerrainType::Bridge) ),
-                    ( to, components::TerrainComponent(TileTerrainType::Plain) ),
+                WorldPosition, components::EntityComponent,
+                    .extend_rooms([Room(from.room), Room(to.room)].iter().cloned())
+                    .expect("Failed to add rooms");
+                WorldPosition, components::TerrainComponent,
+                    .extend_rooms([Room(from.room), Room(to.room)].iter().cloned())
+                    .expect("Failed to add rooms");
+                WorldPosition, components::TerrainComponent,
+                    .extend_from_slice(&mut [
+                        ( from, components::TerrainComponent(TileTerrainType::Bridge) ),
+                        ( WorldPosition{room: Axial::new(0,1), pos: Axial::new(3,0)}
+                          , components::TerrainComponent(TileTerrainType::Bridge) ),
+                        ( to, components::TerrainComponent(TileTerrainType::Plain) ),
 
-                ])
-                .expect("Failed to insert terrain");
+                    ])
+                    .expect("Failed to insert terrain");
         });
 
         {
@@ -364,13 +380,14 @@ mod tests {
                     offset_start: 0,
                 });
             query!(
-            mutate
-            storage
-            {
-            Room, components::RoomConnections,
-                .insert( Room(from.room), connections )
-                .expect("Failed to add room connections");
-            });
+                mutate
+                storage
+                {
+                    Room, components::RoomConnections,
+                        .insert( Room(from.room), connections )
+                        .expect("Failed to add room connections");
+                }
+            );
             let mut connections = components::RoomConnections::default();
             let neighbour = from.room - to.room;
             connections.0[Axial::neighbour_index(neighbour).expect("Bad neighbour")] =
@@ -380,17 +397,15 @@ mod tests {
                     offset_start: 0,
                 });
             query!(
-            mutate
-            storage
-            {
-            Room, components::RoomConnections,
-                .insert( Room(to.room), connections )
-                .expect("Failed to add room connections");
-            });
+                mutate
+                storage
+                {
+                Room, components::RoomConnections,
+                    .insert( Room(to.room), connections )
+                    .expect("Failed to add room connections");
+                }
+            );
         }
-
-
-        dbg!(&*storage.view::<Room, components::RoomConnections>());
 
         let (MoveIntent { bot, position }, ..) =
             move_to_pos(bot_id, to, user_id, &storage).expect("Expected move to succeed");

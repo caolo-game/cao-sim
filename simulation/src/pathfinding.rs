@@ -423,7 +423,7 @@ pub fn get_valid_transits(
             let abs_pos = pos.absolute(props.radius as i32);
             trace!("pos {:?} abs_pos {:?}", pos, abs_pos);
             // the candidate terrain must be a Bridge and must be 1 tile away
-            current_abs.hex_distance(abs_pos) == 1
+            current_abs.hex_distance(abs_pos) <= 1
                 && terrain
                     .get_by_id(&pos)
                     .map(|t| t.0 == TileTerrainType::Bridge)
