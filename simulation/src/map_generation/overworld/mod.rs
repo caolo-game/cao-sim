@@ -43,13 +43,14 @@ pub fn generate_room_layout(
     ),
 ) -> Result<(), OverworldGenerationError> {
     let radius = *radius as i32;
+    let room_radius = *room_radius as i32;
     let center = Axial::new(room_radius, room_radius);
     let bounds = Hexagon { center, radius };
 
     // Init the grid
     unsafe {
         room_props.as_mut().value = Some(RoomProperties {
-            radius: *room_radius as u32,
+            radius: room_radius as u32,
             center,
         });
         let rooms = rooms.as_mut();
@@ -77,7 +78,7 @@ pub fn generate_room_layout(
 
     for point in bounds.iter_points() {
         update_room_connections(
-            *room_radius,
+            room_radius as u32,
             *min_bridge_len,
             *max_bridge_len,
             point,
