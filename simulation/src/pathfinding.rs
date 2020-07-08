@@ -243,6 +243,12 @@ pub fn find_path_overworld(
     }
     if current.pos != end {
         if max_steps > 0 {
+            trace!(
+                "{:?} is unreachable from {:?}, remaining steps: {}",
+                to,
+                from,
+                max_steps
+            );
             // we ran out of possible paths
             return Err(PathFindingError::Unreachable);
         }
