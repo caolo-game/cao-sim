@@ -158,8 +158,6 @@ fn find_path_multiroom(
 
     bridge.sort_unstable_by_key(|p| p.hex_distance(from.pos));
 
-    dbg!(&bridge);
-
     'a: for p in bridge {
         match find_path_in_room(
             from.pos,
