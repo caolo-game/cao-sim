@@ -192,7 +192,8 @@ pub fn find_path_overworld(
     mut max_steps: u32,
     path: &mut Vec<Room>,
 ) -> Result<u32, PathFindingError> {
-    profile!(trace "find_path_overworld");
+    profile!("find_path_overworld");
+    trace!("find_path_overworld from {:?} to {:?}", from, to);
     let from = from.0;
     let to = to.0;
 
@@ -222,6 +223,7 @@ pub fn find_path_overworld(
             .iter()
             .filter_map(|e| e.as_ref().map(|e| e.direction + current.pos))
         {
+            trace!("Handling neighbour {:?} of point {:?}", point, current);
             if !closed_set.contains_key(&point) {
                 let node = Node::new(
                     point,
