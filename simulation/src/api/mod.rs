@@ -8,6 +8,7 @@ pub mod structures;
 use crate::components;
 use crate::geometry::point::Axial;
 use crate::model::{EntityId, OperationResult};
+use crate::prelude::WorldPosition;
 use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;
 use cao_lang::scalar::Scalar;
@@ -20,6 +21,18 @@ pub fn make_point(
 ) -> Result<(), ExecutionError> {
     let point = Axial::new(x, y);
     vm.set_value(point)?;
+    Ok(())
+}
+
+pub fn world_position(
+    vm: &mut VM<ScriptExecutionData>,
+    [rx, ry, x, y]: [i32; 4],
+) -> Result<(), ExecutionError> {
+    let room = Axial::new(rx, ry);
+    let pos = Axial::new(x, y);
+    let wp = WorldPosition { room, pos };
+
+    vm.set_value(wp)?;
     Ok(())
 }
 
@@ -148,6 +161,16 @@ pub fn make_import() -> Schema {
                     []
                 ),
                 fo: Procedure::new(FunctionWrapper::new(make_point)),
+            },
+            FunctionRow {
+                desc: subprogram_description!(
+                    world_position,
+                    "Create a WorldPosition from coordinates: [room.x, room.y, x, y]",
+                    [i32, i32, i32, i32],
+                    [Axial],
+                    []
+                ),
+                fo: Procedure::new(FunctionWrapper::new(world_position)),
             },
             FunctionRow {
                 desc: subprogram_description!(
