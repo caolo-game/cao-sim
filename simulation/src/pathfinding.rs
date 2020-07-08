@@ -186,26 +186,24 @@ fn find_path_multiroom(
 /// uses the A* algorithm
 /// return the remaning iterations
 pub fn find_path_overworld(
-    from: Room,
-    to: Room,
+    Room(from): Room,
+    Room(to): Room,
     connections: View<Room, RoomConnections>,
     mut max_steps: u32,
     path: &mut Vec<Room>,
 ) -> Result<u32, PathFindingError> {
     profile!("find_path_overworld");
     trace!("find_path_overworld from {:?} to {:?}", from, to);
-    let from = from.0;
-    let to = to.0;
 
-    let current = from;
     let end = to;
 
     let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_steps as usize);
     let mut open_set = HashSet::with_capacity(max_steps as usize);
-    let mut current = Node::new(current, current, current.hex_distance(end) as i32, 0);
+    let mut current = Node::new(from, from, from.hex_distance(end) as i32, 0);
     closed_set.insert(current.pos, current.clone());
     open_set.insert(current.clone());
     while current.pos != end && !open_set.is_empty() && max_steps > 0 {
+        max_steps -= 1;
         current = open_set
             .iter()
             .min_by_key(|node| node.f_cost())
@@ -213,27 +211,28 @@ pub fn find_path_overworld(
             .clone();
         open_set.remove(&current);
         closed_set.insert(current.pos, current.clone());
-        for point in connections
-            .get_by_id(&Room(current.pos))
+        let current_pos = current.pos;
+        // [0, 6] items
+        for neighbour in connections
+            .get_by_id(&Room(current_pos))
             .ok_or_else(|| {
-                trace!("Room {:?} not found in RoomConnections table", current.pos);
-                PathFindingError::RoomDoesNotExists(current.pos)
+                trace!("Room {:?} not found in RoomConnections table", current_pos);
+                PathFindingError::RoomDoesNotExists(current_pos)
             })?
             .0
             .iter()
-            .filter_map(|e| e.as_ref().map(|e| e.direction + current.pos))
+            .filter_map(|edge| edge.as_ref().map(|edge| edge.direction + current_pos))
         {
-            trace!("Handling neighbour {:?} of point {:?}", point, current);
-            if !closed_set.contains_key(&point) {
+            if !closed_set.contains_key(&neighbour) {
                 let node = Node::new(
-                    point,
+                    neighbour,
                     current.pos,
-                    point.hex_distance(end) as i32,
+                    neighbour.hex_distance(end) as i32,
                     current.g_cost + 1,
                 );
                 open_set.insert(node);
             }
-            if let Some(node) = closed_set.get_mut(&point) {
+            if let Some(node) = closed_set.get_mut(&neighbour) {
                 let g_cost = current.g_cost + 1;
                 if g_cost < node.g_cost {
                     node.g_cost = g_cost;
@@ -241,15 +240,15 @@ pub fn find_path_overworld(
                 }
             }
         }
-        max_steps -= 1;
     }
     if current.pos != end {
         if max_steps > 0 {
             trace!(
-                "{:?} is unreachable from {:?}, remaining steps: {}",
+                "{:?} is unreachable from {:?}, remaining steps: {}, closed_set contains: {}",
                 to,
                 from,
-                max_steps
+                max_steps,
+                closed_set.len()
             );
             // we ran out of possible paths
             return Err(PathFindingError::Unreachable);
