@@ -43,7 +43,7 @@ pub fn generate_room_layout(
     ),
 ) -> Result<(), OverworldGenerationError> {
     let radius = *radius as i32;
-    let center = Axial::new(radius, radius);
+    let center = Axial::new(room_radius, room_radius);
     let bounds = Hexagon { center, radius };
 
     // Init the grid
