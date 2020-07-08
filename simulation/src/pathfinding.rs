@@ -110,10 +110,14 @@ fn find_path_multiroom(
     max_steps = find_path_overworld(
         Room(from_room),
         Room(to.room),
-        connections.clone(),
+        connections,
         max_steps,
         &mut rooms,
-    )?;
+    )
+    .map_err(|err| {
+        trace!("find_path_overworld failed {:?}", err);
+        err
+    })?;
     let Room(next_room) = rooms
         .pop()
         .expect("find_path_overworld returned OK, but the room list is empty");
@@ -213,7 +217,7 @@ pub fn find_path_overworld(
         for point in connections
             .get_by_id(&Room(current.pos))
             .ok_or_else(|| {
-                trace!("Room not found in RoomConnections table");
+                trace!("Room {:?} not found in RoomConnections table", current.pos);
                 PathFindingError::RoomDoesNotExists(current.pos)
             })?
             .0
