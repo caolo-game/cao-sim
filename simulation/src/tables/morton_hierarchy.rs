@@ -195,7 +195,15 @@ impl<'a, Row> GroupByRooms<'a, Row> {
                 let mut it = items.iter();
                 let mut current = it.next().unwrap();
                 for item in it {
-                    assert!(current.0.room <= item.0.room);
+                    assert!(
+                        MortonKey::new(
+                            u16::try_from(current.0.room.q).unwrap(),
+                            u16::try_from(current.0.room.r).unwrap(),
+                        ) <= MortonKey::new(
+                            u16::try_from(item.0.room.q).unwrap(),
+                            u16::try_from(item.0.room.r).unwrap(),
+                        )
+                    );
                     current = item;
                 }
             }
