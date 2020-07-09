@@ -418,23 +418,24 @@ pub fn get_valid_transits(
     // current pos and is uncontested.
     let props = room_properties.unwrap_value();
 
-    let current_abs = current_pos.absolute(props.radius as i32);
-    trace!("current_abs {:?}", current_abs);
+    // vector from the center to the current position
+    let current_delta = current_pos.pos - props.center;
+    let inverse_delta = current_delta * -1;
+    // mirror of the current position, this should be the immediate bridge in the next room
+    let mirror_pos = props.center + inverse_delta;
 
     // if this fails once it will fail always, so we'll just panic
     let candidates: ArrayVec<[_; 3]> = iter_edge(props.center, props.radius, bridge)
         .expect("Failed to iter the edge")
         .filter(|pos| {
-            let pos = WorldPosition {
+            let wp = WorldPosition {
                 room: target_room.0,
                 pos: *pos,
             };
-            let abs_pos = pos.absolute(props.radius as i32);
-            trace!("pos {:?} abs_pos {:?}", pos, abs_pos);
             // the candidate terrain must be a Bridge and must be 1 tile away
-            current_abs.hex_distance(abs_pos) <= 1
+            pos.hex_distance(mirror_pos) <= 1
                 && terrain
-                    .get_by_id(&pos)
+                    .get_by_id(&wp)
                     .map(|t| t.0 == TileTerrainType::Bridge)
                     .unwrap_or(false)
         })

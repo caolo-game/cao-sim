@@ -60,13 +60,6 @@ pub struct WorldPosition {
 }
 impl AutoByteEncodeProperties for WorldPosition {}
 
-impl WorldPosition {
-    pub fn absolute(&self, room_radius: i32) -> Axial {
-        let offset = self.room * room_radius * 2;
-        offset + self.pos
-    }
-}
-
 /// Newtype wrapper around Axial point for positions that are inside a room.
 #[derive(
     Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
