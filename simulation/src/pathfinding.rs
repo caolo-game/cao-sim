@@ -402,18 +402,30 @@ pub fn get_valid_transits(
     // the room_connection
 
     // the bridge on the other side
-    let bridge = match room_connections.get_by_id(&target_room).and_then(|c| {
-        let direction = current_pos.room - target_room.0;
-        let ind = Axial::neighbour_index(direction)?;
-        c.0[ind].as_ref()
-    }) {
-        Some(conn) => conn,
-        None => {
-            let msg = format!("Room {:?} has no (valid) connections", target_room);
-            trace!("{}", msg);
-            return Err(TransitError::InternalError(anyhow::Error::msg(msg)));
-        }
-    };
+    let bridge = room_connections
+        .get_by_id(&target_room)
+        .ok_or_else(|| {
+            let msg = format!("Room {:?} has no connections", target_room);
+            TransitError::InternalError(anyhow::Error::msg(msg))
+        })
+        .and_then(|RoomConnections(conn)| {
+            let direction = current_pos.room - target_room.0;
+            let ind = Axial::neighbour_index(direction).ok_or_else(|| {
+                let msg = format!(
+                    "Room {:?} bridge direction {:?} is not a valid index",
+                    target_room, direction
+                );
+                TransitError::InternalError(anyhow::Error::msg(msg))
+            })?;
+            conn[ind].as_ref().ok_or_else(|| {
+                let msg = format!("Room {:?} has no (valid) connections", target_room);
+                TransitError::InternalError(anyhow::Error::msg(msg))
+            })
+        })
+        .map_err(|e| {
+            warn!("getting bridge failed {:?}", e);
+            e
+        })?;
     // to obtain the pos we need an edge point that's absolute position is 1 away from
     // current pos and is uncontested.
     let props = room_properties.unwrap_value();
