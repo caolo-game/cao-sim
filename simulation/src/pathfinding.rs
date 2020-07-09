@@ -426,7 +426,7 @@ pub fn get_valid_transits(
     };
 
     // if this fails once it will fail always, so we'll just panic
-    let mut candidates: ArrayVec<[_; 3]> = ArrayVec::default();
+    let mut candidates: ArrayVec<[_; 16]> = ArrayVec::default();
     terrain
         .table
         .get_by_id(&target_room.0)
@@ -436,7 +436,7 @@ pub fn get_valid_transits(
             TransitError::InternalError(anyhow::Error::msg(err))
         })?
         .query_range(&mirror_pos, 3, &mut |pos, TerrainComponent(tile)| {
-            if *tile == TileTerrainType::Bridge {
+            if *tile == TileTerrainType::Bridge && pos.hex_distance(mirror_pos) <= 1 {
                 candidates.push(WorldPosition {
                     room: target_room.0,
                     pos,
@@ -453,6 +453,7 @@ pub fn get_valid_transits(
     let candidates: ArrayVec<[_; 3]> = candidates
         .into_iter()
         .filter(|p| !entities.contains_key(p))
+        .take(3)
         .collect();
 
     if candidates.is_empty() {
