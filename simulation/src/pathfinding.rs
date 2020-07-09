@@ -417,8 +417,9 @@ pub fn get_valid_transits(
                 );
                 TransitError::InternalError(anyhow::Error::msg(msg))
             })?;
+            trace!("Room {:?} connections: {:?}", target_room, conn);
             conn[ind].as_ref().ok_or_else(|| {
-                let msg = format!("Room {:?} has no (valid) connections", target_room);
+                let msg = format!("Room {:?} has no valid connections", target_room);
                 TransitError::InternalError(anyhow::Error::msg(msg))
             })
         })
