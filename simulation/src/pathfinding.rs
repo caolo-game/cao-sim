@@ -418,11 +418,11 @@ pub fn get_valid_transits(
     // current pos and is uncontested.
     let props = room_properties.unwrap_value();
 
-    // vector from the center to the current position
-    let current_delta = current_pos.pos - props.center;
-    let inverse_delta = current_delta * -1;
     // mirror of the current position, this should be the immediate bridge in the next room
-    let mirror_pos = props.center + inverse_delta;
+    let mirror_pos = current_pos
+        .pos
+        .rotate_left_around(props.center)
+        .rotate_left_around(props.center);
 
     // if this fails once it will fail always, so we'll just panic
     let candidates: ArrayVec<[_; 3]> = iter_edge(props.center, props.radius, bridge)

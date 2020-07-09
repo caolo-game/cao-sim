@@ -78,6 +78,18 @@ impl Axial {
         Some(i)
     }
 
+    pub fn rotate_right_around(self, center: Axial) -> Axial {
+        let p = self - center;
+        let p = p.rotate_right();
+        p + center
+    }
+
+    pub fn rotate_left_around(self, center: Axial) -> Axial {
+        let p = self - center;
+        let p = p.rotate_left();
+        p + center
+    }
+
     pub fn rotate_right(self) -> Axial {
         let [x, y, z] = self.hex_axial_to_cube();
         Self::hex_cube_to_axial([-z, -x, -y])
