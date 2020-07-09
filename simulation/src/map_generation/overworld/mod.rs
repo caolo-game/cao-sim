@@ -24,6 +24,7 @@ pub enum OverworldGenerationError {
 }
 
 /// Insert the given number of rooms in the given radius (where the unit is a room).
+///
 /// [ ] TODO: remove some nodes to produce less dense maps?
 /// [ ] TODO: resource map?
 /// [ ] TODO: political map?

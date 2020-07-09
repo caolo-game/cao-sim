@@ -410,6 +410,12 @@ pub fn get_valid_transits(
         })
         .and_then(|RoomConnections(conn)| {
             let direction = current_pos.room - target_room.0;
+            trace!(
+                "Room {:?} connections: {:?} direction: {:?}",
+                target_room,
+                conn,
+                direction
+            );
             let ind = Axial::neighbour_index(direction).ok_or_else(|| {
                 let msg = format!(
                     "Room {:?} bridge direction {:?} is not a valid index",
@@ -417,7 +423,6 @@ pub fn get_valid_transits(
                 );
                 TransitError::InternalError(anyhow::Error::msg(msg))
             })?;
-            trace!("Room {:?} connections: {:?}", target_room, conn);
             conn[ind].as_ref().ok_or_else(|| {
                 let msg = format!("Room {:?} has no valid connections", target_room);
                 TransitError::InternalError(anyhow::Error::msg(msg))
