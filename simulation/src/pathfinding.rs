@@ -419,10 +419,28 @@ pub fn get_valid_transits(
     let props = room_properties.unwrap_value();
 
     // mirror of the current position, this should be the immediate bridge in the next room
-    let mirror_pos = current_pos
-        .pos
-        .rotate_left_around(props.center)
-        .rotate_left_around(props.center);
+    // mirror is determined by taking the cubic representation. then fixing the largest abs value
+    // and swapping the other two.
+    // then rotating it 180 degs
+    let mirror_pos = {
+        let cube = current_pos.pos.hex_axial_to_cube();
+        let maxind = cube
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, x)| x.abs())
+            .unwrap()
+            .0;
+        let [x, y, z] = cube;
+        let mirror_cube = match maxind {
+            0 => [x, z, y],
+            1 => [z, y, x],
+            2 => [y, x, z],
+            _ => unreachable!(),
+        };
+        Axial::hex_cube_to_axial(mirror_cube)
+            .rotate_left_around(props.center)
+            .rotate_left_around(props.center)
+    };
 
     // if this fails once it will fail always, so we'll just panic
     let candidates: ArrayVec<[_; 3]> = iter_edge(props.center, props.radius, bridge)
