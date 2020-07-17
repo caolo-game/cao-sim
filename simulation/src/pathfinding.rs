@@ -409,60 +409,7 @@ pub fn get_valid_transits(
 
     let props = room_properties.unwrap_value();
 
-    let mirror_pos = {
-        // Mirror of the current position, this should be the immediate bridge in the next room.
-        //
-        // Example:
-        //
-        // Transform X to Y
-        //
-        //    ++
-        //  +    +
-        //  +    +
-        //    Y+
-        //    X+
-        //  +    +
-        //  +    +
-        //    ++
-        //
-        // Mirror is determined by:
-        // - Translating the position to 0
-        // - Taking the cubic representation.
-        // - Fixing the largest abs value and swapping the other two.
-        // - Rotating it twice ( to end up on the opposite side )
-        // - Translating it back to center
-
-        // translate pos to the origin
-        let offset = props.center;
-        let pos = current_pos.pos - offset;
-
-        let cube = pos.hex_axial_to_cube();
-        let mut zero_ind = None;
-        let (maxind, _) = cube
-            .iter()
-            .enumerate()
-            .max_by_key(|(i, x)| {
-                let x = x.abs();
-                if x == 0 {
-                    zero_ind = Some(*i);
-                }
-                x
-            })
-            .unwrap();
-        if let Some(_) = zero_ind {
-            error!("Room corners are not supported {:?}", current_pos);
-            return Err(TransitError::InvalidPos);
-        }
-        let [x, y, z] = cube;
-        let mirror_cube = match maxind {
-            0 => [-x, -z, -y],
-            1 => [-z, -y, -x],
-            2 => [-y, -x, -z],
-            _ => unreachable!(),
-        };
-        let pos = Axial::hex_cube_to_axial(mirror_cube);
-        pos + offset
-    };
+    let mirror_pos = mirrored_room_position(current_pos.pos, props)?;
 
     debug_assert_eq!(
         mirror_pos.hex_distance(props.center),
@@ -482,8 +429,8 @@ pub fn get_valid_transits(
             warn!("{}", err);
             TransitError::InternalError(anyhow::Error::msg(err))
         })?
-        .query_range(&mirror_pos, 3, &mut |pos, TerrainComponent(tile)| {
-            if *tile == TileTerrainType::Bridge && pos.hex_distance(mirror_pos) <= 1 {
+        .query_range(&mirror_pos, 2, &mut |pos, TerrainComponent(tile)| {
+            if *tile == TileTerrainType::Bridge {
                 candidates.push(WorldPosition {
                     room: target_room.0,
                     pos,
@@ -512,6 +459,75 @@ pub fn get_valid_transits(
 
     debug_assert!(candidates.len() >= 1);
     Ok(candidates)
+}
+
+/// Mirror of the current position, this should be the immediate bridge in the next room.
+///
+/// Example:
+///
+/// Transform X to Y
+///
+/// ```txt
+///    ++
+///  +    +
+///  +    +
+///    Y+
+///    X+
+///  +    +
+///  +    +
+///    ++
+///  ```
+///
+/// Mirror is determined by:
+/// - Translating the position to 0
+/// - Taking the cubic representation.
+/// - Fixing the largest abs value and swapping the other two.
+/// - Inverting the position ( pos * -1 )
+/// - Translating it back to center
+pub fn mirrored_room_position(
+    current_pos: Axial,
+    props: &RoomProperties,
+) -> Result<Axial, TransitError> {
+    let offset = props.center;
+    let pos = current_pos - offset;
+
+    let cube = pos.hex_axial_to_cube();
+
+    #[cfg(debug_assertions)]
+    let mut zero_ind = None;
+
+    let (maxind, _) = cube
+        .iter()
+        .enumerate()
+        .max_by_key(|(_i, x)| {
+            let x = x.abs();
+            #[cfg(debug_assertions)]
+            {
+                if x == 0 {
+                    zero_ind = Some(*_i);
+                }
+            }
+            x
+        })
+        .unwrap();
+
+    #[cfg(debug_assertions)]
+    {
+        if zero_ind.is_some() {
+            error!("Room corners are not supported {:?}", current_pos);
+            return Err(TransitError::InvalidPos);
+        }
+    }
+
+    let [x, y, z] = cube;
+    let mirror_cube = match maxind {
+        0 => [-x, -z, -y],
+        1 => [-z, -y, -x],
+        2 => [-y, -x, -z],
+        _ => unreachable!(),
+    };
+    let pos = Axial::hex_cube_to_axial(mirror_cube);
+    Ok(pos + offset)
 }
 
 #[cfg(test)]
