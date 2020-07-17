@@ -244,8 +244,6 @@ mod tests {
                     .expect("The pair connection was not found");
 
                 assert_eq!(conn_pair.direction, conn.direction * -1);
-                assert_eq!(conn_pair.offset_end, conn.offset_start);
-                assert_eq!(conn_pair.offset_start, conn.offset_end);
             }
         }
     }

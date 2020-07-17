@@ -52,14 +52,14 @@ pub mod profiler {
             )
         };
         static ref PROF_FILE: Mutex<std::fs::File> = {
-            let f = std::fs::OpenOptions::new()
+            let file = std::fs::OpenOptions::new()
                 .read(true)
                 .write(true)
                 .create(true)
                 .append(true)
                 .open("profile.csv")
                 .expect("profiler file");
-            Mutex::new(f)
+            Mutex::new(file)
         };
     }
 
@@ -85,11 +85,11 @@ pub mod profiler {
             use std::fs::File;
             use std::io::Write;
 
-            let mut f = PROF_FILE.lock().unwrap();
+            let mut file = PROF_FILE.lock().unwrap();
 
             for row in v.iter() {
                 writeln!(
-                    f,
+                    file,
                     "[{}::{}::{}],{},ns",
                     row.file,
                     row.line,
