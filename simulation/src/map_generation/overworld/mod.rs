@@ -180,7 +180,9 @@ fn update_room_connections(
                 .expect("expected neighbour inverse to be a valid neighbour posision");
             // this one's offsets are the current room's inverse
             let offset_end = neighbour.offset_start;
-            let offset_start = neighbour.offset_end;
+            let offset_end = offset_end.max(1) - 1; // offset_end - 1 or 0
+            let offset_start = neighbour.offset_end + 1;
+
             conn.0[i] = Some(RoomConnection {
                 direction: inverse,
                 offset_start,
