@@ -455,13 +455,12 @@ pub fn get_valid_transits(
         }
         let [x, y, z] = cube;
         let mirror_cube = match maxind {
-            0 => [x, z, y],
-            1 => [z, y, x],
-            2 => [y, x, z],
+            0 => [-x, -z, -y],
+            1 => [-z, -y, -x],
+            2 => [-y, -x, -z],
             _ => unreachable!(),
         };
-        let Axial { q, r } = Axial::hex_cube_to_axial(mirror_cube);
-        let pos = Axial::new(r * -1, q * -1);
+        let pos = Axial::hex_cube_to_axial(mirror_cube);
         pos + offset
     };
 

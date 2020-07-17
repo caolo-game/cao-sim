@@ -381,7 +381,7 @@ mod tests {
                 WorldPosition, components::TerrainComponent,
                     .extend_from_slice(&mut [
                         ( from, components::TerrainComponent(TileTerrainType::Bridge) ),
-                        ( WorldPosition{room: Axial::new(0,1), pos: Axial::new(0,5)}
+                        ( WorldPosition{room: Axial::new(0,1), pos: Axial::new(5,0)}
                           , components::TerrainComponent(TileTerrainType::Bridge) ),
                     ])
                     .expect("Failed to insert terrain");
