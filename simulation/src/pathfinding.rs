@@ -407,12 +407,30 @@ pub fn get_valid_transits(
 
     let props = room_properties.unwrap_value();
 
-    // mirror of the current position, this should be the immediate bridge in the next room
-    // mirror is determined by taking the cubic representation. then fixing the largest abs value
-    // and swapping the other two.
-    // then rotating it 180 degs
     let mirror_pos = {
-        let cube = current_pos.pos.hex_axial_to_cube();
+        // Mirror of the current position, this should be the immediate bridge in the next room.
+        //
+        // Example:
+        //
+        // Transform X to Y
+        //
+        //    X+
+        //  +    +
+        //  +    +
+        //    Y+
+        //
+        // Mirror is determined by:
+        // - Translating the position to 0
+        // - Taking the cubic representation.
+        // - Fixing the largest abs value and swapping the other two.
+        // - Rotating it twice ( to end up on the opposite side )
+        // - Translating it back to center
+
+        // translate pos to the origin
+        let offset = props.center;
+        let pos = current_pos.pos - offset;
+
+        let cube = pos.hex_axial_to_cube();
         let maxind = cube
             .iter()
             .enumerate()
@@ -426,9 +444,11 @@ pub fn get_valid_transits(
             2 => [y, x, z],
             _ => unreachable!(),
         };
-        Axial::hex_cube_to_axial(mirror_cube)
+        let pos = Axial::hex_cube_to_axial(mirror_cube)
             .rotate_left_around(props.center)
-            .rotate_left_around(props.center)
+            .rotate_left_around(props.center);
+        // translate back
+        pos + offset
     };
 
     // if this fails once it will fail always, so we'll just panic
