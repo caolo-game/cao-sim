@@ -36,7 +36,6 @@ pub fn forward(storage: &mut World) -> anyhow::Result<()> {
     execute_world_update(storage);
     info!("Executing systems update - done");
 
-    crate::utils::profiler::save_global();
     info!("-----------Tick {} done-----------", storage.time());
     Ok(())
 }
