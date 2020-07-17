@@ -397,8 +397,14 @@ pub fn get_valid_transits(
     // from a bridge the bot can reach at least 1 and at most 3 tiles
     // try to find an empty one and move the bot there, otherwise the move fails
 
-    // to obtain the pos we need an edge point that's absolute position is 1 away from the
-    // current pos and is uncontested.
+    if current_pos.room.hex_distance(target_room.0) != 1 {
+        debug!(
+            "Trying to find valid transit from {:?} to {:?} which are not neighbours",
+            current_pos, target_room
+        );
+        return Err(TransitError::InvalidRoom);
+    }
+
     let props = room_properties.unwrap_value();
 
     // mirror of the current position, this should be the immediate bridge in the next room
