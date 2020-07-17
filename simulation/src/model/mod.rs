@@ -19,7 +19,7 @@ pub enum OperationResult {
     InvalidTarget = -5,
     Empty = -6,
     Full = -7,
-    PathNotFound = -8
+    PathNotFound = -8,
 }
 
 impl TryFrom<Scalar> for OperationResult {

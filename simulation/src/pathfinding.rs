@@ -65,6 +65,7 @@ pub fn find_path(
     (positions, terrain, connections, room_properties): FindPathTables,
     max_steps: u32,
     path: &mut Vec<RoomPosition>,
+    rooms_to_visit: &mut Vec<Room>,
 ) -> Result<u32, PathFindingError> {
     profile!("find_path");
     trace!("find_path from {:?} to {:?}", from, to);
@@ -85,6 +86,7 @@ pub fn find_path(
             (positions, terrain, connections, room_properties),
             max_steps,
             path,
+            rooms_to_visit,
         )
     }
 }
@@ -102,27 +104,27 @@ fn find_path_multiroom(
     (positions, terrain, connections, room_properties): FindPathMultiRoomTables,
     mut max_steps: u32,
     path: &mut Vec<RoomPosition>,
+    rooms: &mut Vec<Room>,
 ) -> Result<u32, PathFindingError> {
     trace!("find_path_multiroom from {:?} to {:?}", from, to);
 
-    let mut rooms = Vec::with_capacity(4);
     let from_room = from.room;
     max_steps = find_path_overworld(
         Room(from_room),
         Room(to.room),
         connections,
         max_steps,
-        &mut rooms,
+        rooms,
     )
     .map_err(|err| {
         trace!("find_path_overworld failed {:?}", err);
         err
     })?;
     let Room(next_room) = rooms
-        .pop()
+        .last()
         .expect("find_path_overworld returned OK, but the room list is empty");
 
-    let edge = next_room - from_room;
+    let edge = *next_room - from_room;
     let bridge = connections.get_by_id(&Room(from_room)).ok_or_else(|| {
         trace!("Room of bridge not found");
         PathFindingError::RoomDoesNotExists(from_room)
@@ -431,12 +433,23 @@ pub fn get_valid_transits(
         let pos = current_pos.pos - offset;
 
         let cube = pos.hex_axial_to_cube();
+        let mut zero_ind = None;
         let maxind = cube
             .iter()
             .enumerate()
-            .max_by_key(|(_, x)| x.abs())
+            .max_by_key(|(i, x)| {
+                let x = x.abs();
+                if x == 0 {
+                    zero_ind = Some(*i);
+                }
+                x
+            })
             .unwrap()
             .0;
+        if let Some(_) = zero_ind {
+            error!("Room corners are not supported {:?}", current_pos);
+            return Err(TransitError::InvalidPos);
+        }
         let [x, y, z] = cube;
         let mirror_cube = match maxind {
             0 => [x, z, y],
@@ -448,17 +461,27 @@ pub fn get_valid_transits(
             .rotate_left_around(props.center)
             .rotate_left_around(props.center);
         // translate back
-        pos + offset
+        // this might be counter-intuitive, it seems like we would add offset, but this is in fact,
+        // correct
+        pos - offset
     };
 
-    // if this fails once it will fail always, so we'll just panic
+    debug_assert_eq!(
+        mirror_pos.hex_distance(props.center),
+        props.radius,
+        "expected {:?} to be {} steps from center: {:?}",
+        mirror_pos,
+        props.radius,
+        props.center
+    );
+
     let mut candidates: ArrayVec<[_; 16]> = ArrayVec::default();
     terrain
         .table
         .get_by_id(&target_room.0)
         .ok_or_else(|| {
             let err = format!("target room {:?} does not exist in terrain", target_room);
-            error!("{}", err);
+            warn!("{}", err);
             TransitError::InternalError(anyhow::Error::msg(err))
         })?
         .query_range(&mirror_pos, 3, &mut |pos, TerrainComponent(tile)| {
@@ -471,7 +494,10 @@ pub fn get_valid_transits(
         });
 
     if candidates.is_empty() {
-        let msg = "Could not find an acceptable bridge candidate";
+        let msg = format!(
+            "Could not find an acceptable bridge candidate around pos {:?}",
+            mirror_pos
+        );
         trace!("{}", msg);
         return Err(TransitError::InternalError(anyhow::Error::msg(msg)));
     }

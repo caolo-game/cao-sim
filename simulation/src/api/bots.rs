@@ -1,6 +1,5 @@
 use super::*;
 use crate::model::terrain::TileTerrainType;
-use crate::model::Room;
 use crate::{
     components::{self, PathCacheComponent, Resource, TerrainComponent, PATH_CACHE_LEN},
     intents::{
@@ -110,7 +109,7 @@ pub fn approach_entity(
     };
 
     let checkresult = match move_to_pos(entity, targetpos.0, user_id, storage) {
-        Ok((move_intent, pop_cache_intent, update_cache_intent)) => {
+        Ok(Some((move_intent, pop_cache_intent, update_cache_intent))) => {
             let intents = &mut vm.get_aux_mut().intents;
             intents.move_intents.push(move_intent);
             if let Some(pop_cache_intent) = pop_cache_intent {
@@ -120,6 +119,10 @@ pub fn approach_entity(
                 intents.update_path_cache_intents.push(update_cache_intent);
             }
 
+            OperationResult::Ok
+        }
+        Ok(None) => {
+            trace!("Bot {:?} approach_entity: nothing to do", entity);
             OperationResult::Ok
         }
         Err(e) => e,
@@ -145,7 +148,7 @@ pub fn move_bot_to_position(
     })?;
 
     let checkresult = match move_to_pos(entity, point, user_id, storage) {
-        Ok((move_intent, pop_cache_intent, update_cache_intent)) => {
+        Ok(Some((move_intent, pop_cache_intent, update_cache_intent))) => {
             let intents = &mut vm.get_aux_mut().intents;
             intents.move_intents.push(move_intent);
             if let Some(pop_cache_intent) = pop_cache_intent {
@@ -154,6 +157,10 @@ pub fn move_bot_to_position(
             if let Some(update_cache_intent) = update_cache_intent {
                 intents.update_path_cache_intents.push(update_cache_intent);
             }
+            OperationResult::Ok
+        }
+        Ok(None) => {
+            trace!("{:?} move_to_pos nothing to do", entity);
             OperationResult::Ok
         }
         Err(e) => e,
@@ -173,7 +180,7 @@ fn move_to_pos(
     to: WorldPosition,
     user_id: UserId,
     storage: &World,
-) -> Result<MoveToPosIntent, OperationResult> {
+) -> Result<Option<MoveToPosIntent>, OperationResult> {
     let botpos = storage
         .view::<EntityId, components::PositionComponent>()
         .reborrow()
@@ -203,7 +210,7 @@ fn move_to_pos(
                     check_move_intent(&intent, user_id, FromWorld::new(storage))
                 {
                     trace!("Bot {:?} path cache hit", bot);
-                    return Ok((intent, Some(PopPathCacheIntent { bot }), None));
+                    return Ok(Some((intent, Some(PopPathCacheIntent { bot }), None)));
                 }
             }
         }
@@ -218,12 +225,14 @@ fn move_to_pos(
         .unwrap_or(2000);
 
     let mut path = Vec::with_capacity(max_pathfinding_iter as usize);
+    let mut rooms_path = Vec::with_capacity(to.room.hex_distance(botpos.0.room) as usize);
     if let Err(e) = pathfinding::find_path(
         botpos.0,
         to,
         FromWorld::new(storage),
         max_pathfinding_iter,
         &mut path,
+        &mut rooms_path,
     ) {
         trace!("pathfinding failed {:?}", e);
         return Err(OperationResult::InvalidTarget);
@@ -253,43 +262,52 @@ fn move_to_pos(
                         },
                     };
 
-                    Ok((intent, None, Some(cache_intent)))
+                    Ok(Some((intent, None, Some(cache_intent))))
                 }
                 _ => Err(checkresult),
             }
         }
         None => {
             trace!("Entity {:?} is trying to move to its own position", bot);
-            let is_bridge = storage
-                .view::<WorldPosition, TerrainComponent>()
-                .get_by_id(&botpos.0)
-                .map(|TerrainComponent(t)| *t == TileTerrainType::Bridge)
-                .unwrap_or_else(|| {
-                    error!("Bot {:?} is not standing on terrain {:?}", bot, botpos);
-                    false
-                });
-            if !is_bridge {
-                return Err(OperationResult::InvalidTarget);
+            match rooms_path.pop() {
+                Some(to_room) => {
+                    let is_bridge = storage
+                        .view::<WorldPosition, TerrainComponent>()
+                        .get_by_id(&botpos.0)
+                        .map(|TerrainComponent(t)| *t == TileTerrainType::Bridge)
+                        .unwrap_or_else(|| {
+                            error!("Bot {:?} is not standing on terrain {:?}", bot, botpos);
+                            false
+                        });
+                    if !is_bridge {
+                        return Err(OperationResult::InvalidTarget);
+                    }
+                    let target_pos = match pathfinding::get_valid_transits(
+                        botpos.0,
+                        to_room,
+                        FromWorld::new(storage),
+                    ) {
+                        Ok(candidates) => candidates[0],
+                        Err(pathfinding::TransitError::NotFound) => {
+                            return Err(OperationResult::PathNotFound)
+                        }
+                        Err(e) => {
+                            error!("Transit failed {:?}", e);
+                            return Err(OperationResult::OperationFailed);
+                        }
+                    };
+                    let intent = MoveIntent {
+                        bot,
+                        position: target_pos,
+                    };
+                    Ok(Some((intent, None, None)))
+                }
+                None => {
+                    debug!("Entity {:?} is trying to move to its own position, but no next room was returned", bot);
+
+                    Ok(None)
+                }
             }
-            let target_pos = match pathfinding::get_valid_transits(
-                botpos.0,
-                Room(to.room),
-                FromWorld::new(storage),
-            ) {
-                Ok(candidates) => candidates[0],
-                Err(pathfinding::TransitError::NotFound) => {
-                    return Err(OperationResult::PathNotFound)
-                }
-                Err(e) => {
-                    error!("Transit failed {:?}", e);
-                    return Err(OperationResult::OperationFailed);
-                }
-            };
-            let intent = MoveIntent {
-                bot,
-                position: target_pos,
-            };
-            Ok((intent, None, None))
         }
     }
 }
@@ -312,7 +330,7 @@ mod tests {
         let mut storage = init_inmemory_storage();
 
         let bot_id = storage.insert_entity();
-        let room_radius = 2;
+        let room_radius = 3;
         let room_center = Axial::new(room_radius, room_radius);
 
         let mut from = WorldPosition {
@@ -320,17 +338,19 @@ mod tests {
             pos: Axial::default(),
         };
         let to = WorldPosition {
-            room: Axial::new(0, 1),
+            room: Axial::new(0, 2),
             pos: Axial::new(2, 1),
         };
+
+        let next_room = Axial::new(0, 1);
 
         from.pos = iter_edge(
             room_center,
             room_radius as u32,
             &components::RoomConnection {
-                direction: to.room - from.room,
-                offset_end: 0,
-                offset_start: 0,
+                direction: next_room,
+                offset_end: 1,
+                offset_start: 1,
             },
         )
         .unwrap()
@@ -353,26 +373,24 @@ mod tests {
                     .update(Some(components::RoomProperties{radius:room_radius as u32, center: room_center}));
 
                 WorldPosition, components::EntityComponent,
-                    .extend_rooms([Room(from.room), Room(to.room)].iter().cloned())
+                    .extend_rooms([Room(from.room),Room(Axial::new(0,1)), Room(to.room)].iter().cloned())
                     .expect("Failed to add rooms");
                 WorldPosition, components::TerrainComponent,
-                    .extend_rooms([Room(from.room), Room(to.room)].iter().cloned())
+                    .extend_rooms([Room(from.room),Room(Axial::new(0,1)), Room(to.room)].iter().cloned())
                     .expect("Failed to add rooms");
                 WorldPosition, components::TerrainComponent,
                     .extend_from_slice(&mut [
                         ( from, components::TerrainComponent(TileTerrainType::Bridge) ),
-                        ( WorldPosition{room: Axial::new(0,1), pos: Axial::new(3,0)}
+                        ( WorldPosition{room: Axial::new(0,1), pos: Axial::new(0,5)}
                           , components::TerrainComponent(TileTerrainType::Bridge) ),
-                        ( to, components::TerrainComponent(TileTerrainType::Plain) ),
-
                     ])
                     .expect("Failed to insert terrain");
         });
 
-        {
+        let mut init_connections = |room| {
             // init connections...
             let mut connections = components::RoomConnections::default();
-            let neighbour = to.room - from.room;
+            let neighbour = next_room;
             connections.0[Axial::neighbour_index(neighbour).expect("Bad neighbour")] =
                 Some(components::RoomConnection {
                     direction: neighbour,
@@ -389,7 +407,7 @@ mod tests {
                 }
             );
             let mut connections = components::RoomConnections::default();
-            let neighbour = from.room - to.room;
+            let neighbour = next_room;
             connections.0[Axial::neighbour_index(neighbour).expect("Bad neighbour")] =
                 Some(components::RoomConnection {
                     direction: neighbour,
@@ -401,16 +419,19 @@ mod tests {
                 storage
                 {
                 Room, components::RoomConnections,
-                    .insert( Room(to.room), connections )
+                    .insert( Room(room), connections )
                     .expect("Failed to add room connections");
                 }
             );
-        }
+        };
+        init_connections(next_room);
+        init_connections(to.room);
 
-        let (MoveIntent { bot, position }, ..) =
-            move_to_pos(bot_id, to, user_id, &storage).expect("Expected move to succeed");
+        let (MoveIntent { bot, position }, ..) = move_to_pos(bot_id, to, user_id, &storage)
+            .expect("Expected move to succeed")
+            .expect("Expected a move intent");
 
         assert_eq!(bot, bot_id);
-        assert_eq!(position.room, to.room);
+        assert_eq!(position.room, next_room);
     }
 }
