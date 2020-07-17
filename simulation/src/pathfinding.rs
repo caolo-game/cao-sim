@@ -416,10 +416,14 @@ pub fn get_valid_transits(
         //
         // Transform X to Y
         //
-        //    X+
+        //    ++
         //  +    +
         //  +    +
         //    Y+
+        //    X+
+        //  +    +
+        //  +    +
+        //    ++
         //
         // Mirror is determined by:
         // - Translating the position to 0
@@ -434,7 +438,7 @@ pub fn get_valid_transits(
 
         let cube = pos.hex_axial_to_cube();
         let mut zero_ind = None;
-        let maxind = cube
+        let (maxind, _) = cube
             .iter()
             .enumerate()
             .max_by_key(|(i, x)| {
@@ -444,8 +448,7 @@ pub fn get_valid_transits(
                 }
                 x
             })
-            .unwrap()
-            .0;
+            .unwrap();
         if let Some(_) = zero_ind {
             error!("Room corners are not supported {:?}", current_pos);
             return Err(TransitError::InvalidPos);
@@ -457,13 +460,9 @@ pub fn get_valid_transits(
             2 => [y, x, z],
             _ => unreachable!(),
         };
-        let pos = Axial::hex_cube_to_axial(mirror_cube)
-            .rotate_left_around(props.center)
-            .rotate_left_around(props.center);
-        // translate back
-        // this might be counter-intuitive, it seems like we would add offset, but this is in fact,
-        // correct
-        pos - offset
+        let Axial { q, r } = Axial::hex_cube_to_axial(mirror_cube);
+        let pos = Axial::new(r * -1, q * -1);
+        pos + offset
     };
 
     debug_assert_eq!(
