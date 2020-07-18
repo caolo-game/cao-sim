@@ -46,7 +46,7 @@ jobs:
       - name: Generate coverage report
         if: ${{ matrix.rust == 'nightly' }}
         run: |
-          cargo +nightly test
+          cargo +nightly test --all-features
           mkdir ./coverage
           ./grcov ./target/debug -s . --token ${{ secrets.COVERALLS_TOKEN }} --ignore="/*" > ./coverage/lcov.info
 
