@@ -16,7 +16,7 @@ disable-parallelism = []
 [dependencies]
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
 cao_storage_derive = { path = "../cao-storage-derive" }
-cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true }
+cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, default-features=false, features=["http", "log"] }
 
 log = "0.4"
 rand = { version= "0.7", features=["small_rng"] }
