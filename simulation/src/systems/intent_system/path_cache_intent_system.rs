@@ -2,6 +2,7 @@ use super::IntentExecutionSystem;
 use crate::components::{Bot, PathCacheComponent};
 use crate::intents::{CachePathIntent, PopPathCacheIntent};
 use crate::model::EntityId;
+use crate::profile;
 use crate::storage::views::{UnsafeView, View};
 
 pub struct UpdatePathCacheSystem;
@@ -17,6 +18,7 @@ impl<'a> IntentExecutionSystem<'a> for UpdatePathCacheSystem {
         (bot_table,): Self::Const,
         intents: &[Self::Intent],
     ) {
+        profile!(" UpdatePathCacheSystem update");
         for intent in intents {
             let entity_id = intent.bot;
             // check if bot is still alive
@@ -45,6 +47,7 @@ impl<'a> IntentExecutionSystem<'a> for PopPathCacheSystem {
         (): Self::Const,
         intents: &[Self::Intent],
     ) {
+        profile!(" PopPathCacheSystem update");
         for intent in intents {
             let entity_id = intent.bot;
             unsafe {

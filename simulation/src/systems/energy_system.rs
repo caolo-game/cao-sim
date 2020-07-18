@@ -1,6 +1,7 @@
 use super::System;
 use crate::components::{EnergyComponent, EnergyRegenComponent};
 use crate::model::EntityId;
+use crate::profile;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::JoinIterator;
 
@@ -15,6 +16,7 @@ impl<'a> System<'a> for EnergySystem {
         mut energy: UnsafeView<EntityId, EnergyComponent>,
         energy_regen: View<EntityId, EnergyRegenComponent>,
     ) {
+        profile!("EnergySystem update");
         let energy_it = unsafe { energy.as_mut().iter_mut() };
         let join = JoinIterator::new(energy_it, energy_regen.iter());
         join.for_each(|(_id, (e, er))| {

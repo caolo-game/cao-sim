@@ -1,6 +1,7 @@
 use super::System;
 use crate::components::{DecayComponent, HpComponent};
 use crate::model::EntityId;
+use crate::profile;
 use crate::storage::views::{DeleteEntityView, UnsafeView};
 use crate::tables::JoinIterator;
 
@@ -15,6 +16,7 @@ impl<'a> System<'a> for DecaySystem {
     type Const = ();
 
     fn update(&mut self, (mut hps, mut decays, mut delete): Self::Mut, _: Self::Const) {
+        profile!("DecaySystem update");
         debug!("update decay system called");
 
         let iter =

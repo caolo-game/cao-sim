@@ -2,6 +2,7 @@ use super::System;
 use crate::components;
 use crate::geometry::Axial;
 use crate::model::{EntityId, WorldPosition};
+use crate::profile;
 use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View};
 use crate::tables::JoinIterator;
 use rand::Rng;
@@ -25,6 +26,7 @@ impl<'a> System<'a> for MineralSystem {
         (mut entity_positions, mut energy, mut delete_entity_deferred): Self::Mut,
         (position_entities, terrain_table, resources): Self::Const,
     ) {
+        profile!("Mineral System update");
         debug!("update minerals system called");
 
         let mut rng = rand::thread_rng();

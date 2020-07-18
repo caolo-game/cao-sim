@@ -1,6 +1,7 @@
 use super::System;
 use crate::components::LogEntry;
 use crate::model::{indices::EntityTime, Time};
+use crate::profile;
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;
 
@@ -11,6 +12,7 @@ impl<'a> System<'a> for LogSystem {
     type Const = Time;
 
     fn update(&mut self, mut logs: Self::Mut, time: Self::Const) {
+        profile!("LogSystem update");
         // clear the old logs
         let changeset = logs
             .iter()

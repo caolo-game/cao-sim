@@ -2,6 +2,7 @@ use super::IntentExecutionSystem;
 use crate::components::{CarryComponent, EnergyComponent};
 use crate::intents::DropoffIntent;
 use crate::model::EntityId;
+use crate::profile;
 use crate::storage::views::UnsafeView;
 
 pub struct DropoffSystem;
@@ -20,6 +21,7 @@ impl<'a> IntentExecutionSystem<'a> for DropoffSystem {
         _: Self::Const,
         intents: &[Self::Intent],
     ) {
+        profile!(" DropoffSystem update");
         for intent in intents {
             trace!("Executing dropoff intent {:?}", intent);
             // dropoff amount = min(bot carry , amount , structure capacity)

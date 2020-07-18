@@ -1,6 +1,7 @@
 use super::System;
 use crate::components;
 use crate::model::EntityId;
+use crate::profile;
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;
 
@@ -26,6 +27,7 @@ impl<'a> System<'a> for SpawnSystem {
         (mut spawns, spawn_bots, bots, hps, decay, carry, positions, owned): Self::Mut,
         _: Self::Const,
     ) {
+        profile!("SpawnSystem update");
         let spawn_views = (spawn_bots, bots, hps, decay, carry, positions, owned);
         unsafe { spawns.as_mut().iter_mut() }
             .filter(|(_spawn_id, spawn_component)| spawn_component.spawning.is_some())

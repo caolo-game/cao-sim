@@ -2,6 +2,7 @@ use super::IntentExecutionSystem;
 use crate::components::LogEntry;
 use crate::intents::LogIntent;
 use crate::model::EntityTime;
+use crate::profile;
 use crate::storage::views::UnsafeView;
 
 pub struct LogSystem;
@@ -12,6 +13,7 @@ impl<'a> IntentExecutionSystem<'a> for LogSystem {
     type Intent = LogIntent;
 
     fn execute(&mut self, (mut log_table,): Self::Mut, _: Self::Const, intents: &[Self::Intent]) {
+        profile!(" LogSystem update");
         for intent in intents {
             trace!("inserting log entry {:?}", intent);
             let id = EntityTime(intent.entity, intent.time);

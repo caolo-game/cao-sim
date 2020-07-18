@@ -2,6 +2,7 @@ use super::IntentExecutionSystem;
 use crate::components::{Bot, EntityComponent, PositionComponent};
 use crate::intents::MoveIntent;
 use crate::model::{EntityId, WorldPosition};
+use crate::profile;
 use crate::storage::views::{UnsafeView, View};
 
 pub struct MoveSystem;
@@ -20,6 +21,7 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
         (bots, pos_entities): Self::Const,
         intents: &[Self::Intent],
     ) {
+        profile!(" MoveSystem update");
         for intent in intents {
             trace!("Moving bot[{:?}] to {:?}", intent.bot, intent.position);
 

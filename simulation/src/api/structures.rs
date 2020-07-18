@@ -1,5 +1,6 @@
 use crate::intents::{check_spawn_intent, SpawnIntent as InnerSpawnIntent};
 use crate::model::{EntityId, OperationResult};
+use crate::profile;
 use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;
 use log::error;
@@ -12,6 +13,7 @@ impl AutoByteEncodeProperties for SpawnIntent {}
 
 /// Given a SpawnIntent as input instructs the current spawn to spawn a new Bot
 pub fn spawn(vm: &mut VM<ScriptExecutionData>, intent: TPointer) -> Result<(), ExecutionError> {
+    profile!(trace "spawn");
     let intent = vm.get_value::<SpawnIntent>(intent).ok_or_else(|| {
         error!("spawn intent not set");
         ExecutionError::MissingArgument

@@ -2,7 +2,6 @@ use super::morton::{MortonKey, MortonTable};
 use super::*;
 use crate::geometry::Axial;
 use crate::model::{Room, WorldPosition};
-use crate::profile;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use thiserror::Error;
@@ -224,7 +223,6 @@ where
 
     /// delete all values at id and return the first one, if any
     fn delete(&mut self, id: &Self::Id) -> Option<Row> {
-        profile!("delete");
         let WorldPosition { room, pos } = id;
         let room = self.table.get_by_id_mut(&room)?;
         room.delete(&pos)

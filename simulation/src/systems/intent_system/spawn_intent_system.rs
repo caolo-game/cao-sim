@@ -2,6 +2,7 @@ use super::IntentExecutionSystem;
 use crate::components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, SpawnComponent};
 use crate::intents::SpawnIntent;
 use crate::model::EntityId;
+use crate::profile;
 use crate::storage::views::{InsertEntityView, UnsafeView, View};
 
 pub struct SpawnSystem;
@@ -24,6 +25,7 @@ impl<'a> IntentExecutionSystem<'a> for SpawnSystem {
         (entity_table,): Self::Const,
         intents: &[Self::Intent],
     ) {
+        profile!(" SpawnSystem update");
         for intent in intents {
             trace!("Spawning bot from structure {:?}", intent.spawn_id);
 

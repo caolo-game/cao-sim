@@ -9,6 +9,7 @@ use crate::components;
 use crate::geometry::point::Axial;
 use crate::model::{EntityId, OperationResult};
 use crate::prelude::WorldPosition;
+use crate::profile;
 use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;
 use cao_lang::scalar::Scalar;
@@ -40,6 +41,7 @@ pub fn console_log(
     vm: &mut VM<ScriptExecutionData>,
     message: TPointer,
 ) -> Result<(), ExecutionError> {
+    profile!(trace "console_log");
     let message: String = vm.get_value(message).ok_or_else(|| {
         trace!("console_log called with invalid message");
         ExecutionError::InvalidArgument
@@ -62,6 +64,7 @@ pub fn console_log(
 }
 
 pub fn log_scalar(vm: &mut VM<ScriptExecutionData>, value: Scalar) -> Result<(), ExecutionError> {
+    profile!(trace "log_scalar");
     let entity_id = vm.get_aux().entity_id;
     let time = vm.get_aux().storage().time();
     let payload = format!("{:?} says {:?}", entity_id, value);

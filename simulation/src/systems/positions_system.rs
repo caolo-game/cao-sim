@@ -1,6 +1,7 @@
 use super::System;
 use crate::components::{EntityComponent, PositionComponent};
 use crate::model::{EntityId, WorldPosition};
+use crate::profile;
 use crate::storage::views::{UnsafeView, View};
 
 pub struct PositionSystem;
@@ -11,6 +12,7 @@ impl<'a> System<'a> for PositionSystem {
 
     /// Reset the entity positions table
     fn update(&mut self, mut position_entities: Self::Mut, positions: Self::Const) {
+        profile!("PositionSystem update");
         debug!("update positions system called");
 
         let mut positions = positions

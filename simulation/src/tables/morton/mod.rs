@@ -22,8 +22,6 @@ use litmax_bigmin::litmax_bigmin;
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
-use crate::profile;
-
 // at most 15 bits long non-negative integers
 // having the 16th bit set might create problems in find_key
 pub const MORTON_POS_MAX: i32 = 0b0111_1111_1111_1111;
@@ -246,7 +244,6 @@ where
 
     /// Return false if id is not in the map, otherwise override the first instance found
     pub fn update<'a>(&'a mut self, id: &Pos, row: Row) -> Option<&'a Row> {
-        profile!("update");
         self.find_key(id)
             .map(move |ind| {
                 self.values[ind].1 = row;
@@ -260,7 +257,6 @@ where
     where
         F: FnOnce(&mut Row) -> (),
     {
-        profile!("update_with");
         self.find_key(id)
             .map(move |ind| {
                 f(&mut self.values[ind].1);
@@ -271,7 +267,6 @@ where
 
     /// Return a reference to the new Row if it's in the map or None otherwise
     pub fn insert_or_update(&mut self, id: Pos, row: Row) -> Result<(), ExtendFailure<Pos>> {
-        profile!("insert_or_update");
         if !self.intersects(&id) {
             return Err(ExtendFailure::OutOfBounds(id));
         }
@@ -292,8 +287,6 @@ where
 
     /// Returns the first item with given id, if any
     pub fn get_by_id<'a>(&'a self, id: &Pos) -> Option<&'a Row> {
-        profile!("get_by_id");
-
         if !self.intersects(&id) {
             return None;
         }
@@ -303,8 +296,6 @@ where
 
     /// Returns the first item with given id, if any
     pub fn get_by_id_mut<'a>(&'a mut self, id: &Pos) -> Option<&'a mut Row> {
-        profile!("get_by_id_mut");
-
         if !self.intersects(&id) {
             return None;
         }
@@ -315,8 +306,6 @@ where
     }
 
     pub fn contains_key(&self, id: &Pos) -> bool {
-        profile!("contains_key");
-
         if !self.intersects(&id) {
             return false;
         }
@@ -326,8 +315,6 @@ where
     /// Find the position of `id` or the position where it needs to be inserted to keep the
     /// container sorted
     fn find_key(&self, id: &Pos) -> Result<usize, usize> {
-        profile!("find_key");
-
         let [x, y] = id.as_array();
         let key = MortonKey::new(x as u16, y as u16);
 
@@ -337,8 +324,6 @@ where
     /// Find the position of `key` or the position where it needs to be inserted to keep the
     /// container sorted
     fn find_key_morton(&self, key: MortonKey) -> Result<usize, usize> {
-        profile!("find_key_morton");
-
         use find_key_partition::find_key_partition;
 
         let step = self.skipstep as usize;
@@ -368,8 +353,6 @@ where
 
     /// For each id returns the first item with given id, if any
     pub fn get_by_ids<'a>(&'a self, ids: &[Pos]) -> Vec<(Pos, &'a Row)> {
-        profile!("get_by_ids");
-
         ids.iter()
             .filter_map(|id| self.get_by_id(id).map(|row| (*id, row)))
             .collect()
@@ -378,7 +361,6 @@ where
     /// Filter all in Pos'(P) in Circle (C,r) where ||C-P|| < r
     /// This is a simplfication of `query_range`, mainly here for backwards compatibility
     pub fn find_by_range<'a>(&'a self, center: &Pos, radius: u32, out: &mut Vec<(Pos, &'a Row)>) {
-        profile!("find_by_range");
         self.query_range(center, radius, &mut |id, v| {
             out.push((id, v));
         });
@@ -388,7 +370,6 @@ where
     where
         Op: FnMut(Pos, &'a Row) -> (),
     {
-        profile!("query_range");
         debug_assert!(
             radius & 0xefff == radius,
             "Radius must fit into 31 bits!; {} != {}",
@@ -484,8 +465,6 @@ where
     where
         F: Fn(&Pos, &Row) -> bool,
     {
-        profile!("find_closest_by_filter");
-
         self.values
             .iter()
             .filter(|(id, row)| filter(id, row))
@@ -495,8 +474,6 @@ where
 
     /// Count in AABB
     pub fn count_in_range<'a>(&'a self, center: &Pos, radius: u32) -> u32 {
-        profile!("count_in_range");
-
         let r = i32::try_from(radius).expect("radius to fit into 31 bits");
         let min = *center + Pos::new(-r, -r);
         let max = *center + Pos::new(r, r);
@@ -516,8 +493,6 @@ where
     where
         Query: Fn(&Pos, &Row) -> bool,
     {
-        profile!("count_in_range");
-
         let r = i32::try_from(radius).expect("radius to fit into 31 bits");
         let min = *center + Pos::new(-r, -r);
         let max = *center + Pos::new(r, r);
@@ -574,8 +549,6 @@ where
     /// Compute the minimum and maximum positions for this table's AABB.
     /// Note that this might be (a lot) larger than the minimum bounding box that might hold this table!
     pub fn aabb(&self) -> Option<[Pos; 2]> {
-        profile!("aabb");
-
         let min = self.keys.get(0)?;
         let [minx, miny] = self.values[0].0.as_array();
         let min_loc = round_down_to_one_less_than_pow_two(min.0) + 1;
@@ -597,8 +570,6 @@ where
     /// Note that during sorting the order of values may alter from the order which they were
     /// inserted.
     pub fn dedupe(&mut self) -> &mut Self {
-        profile!("dedupe");
-
         for i in (1..self.keys.len()).rev() {
             if self.keys[i] == self.keys[i - 1] {
                 self.keys.remove(i);
@@ -615,8 +586,6 @@ where
     where
         F: FnMut(&Pos, &Row, &Row) -> Row,
     {
-        profile!("merge");
-
         let inserts = {
             let mut lhs = self.iter_mut();
             let mut rhs = other.iter();
@@ -665,7 +634,6 @@ where
 
     /// delete all values at id and return the first one, if any
     fn delete(&mut self, id: &Pos) -> Option<Row> {
-        profile!("delete");
         if !self.intersects(id) {
             return None;
         }

@@ -181,6 +181,7 @@ fn move_to_pos(
     user_id: UserId,
     storage: &World,
 ) -> Result<Option<MoveToPosIntent>, OperationResult> {
+    profile!("move_to_pos");
     let botpos = storage
         .view::<EntityId, components::PositionComponent>()
         .reborrow()

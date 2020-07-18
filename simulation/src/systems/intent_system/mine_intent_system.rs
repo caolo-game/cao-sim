@@ -2,6 +2,7 @@ use super::IntentExecutionSystem;
 use crate::components::{CarryComponent, EnergyComponent, Resource, ResourceComponent};
 use crate::intents::MineIntent;
 use crate::model::EntityId;
+use crate::profile;
 use crate::storage::views::{UnsafeView, View};
 
 pub const MINE_AMOUNT: u16 = 10; // TODO: get from bot body
@@ -22,6 +23,7 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
         (resource_table,): Self::Const,
         intents: &[Self::Intent],
     ) {
+        profile!(" MineSystem update");
         for intent in intents {
             trace!("Bot [{:?}] is mining [{:?}]", intent.bot, intent.resource);
             match resource_table.get_by_id(&intent.resource) {
