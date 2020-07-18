@@ -58,8 +58,6 @@ pub fn execute_single_script(
     script_id: ScriptId,
     storage: &World,
 ) -> ExecutionResult {
-    profile!("execute_single_script");
-
     let program = storage
         .view::<ScriptId, ScriptComponent>()
         .reborrow()
