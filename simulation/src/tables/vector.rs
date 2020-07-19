@@ -25,7 +25,7 @@ where
     Vec<Option<(Id, Row)>>: rayon::iter::IntoParallelRefIterator<'a, Item = Option<(Id, Row)>>,
 {
     pub fn par_iter(&'a self) -> impl ParallelIterator<Item = (Id, &'a Row)> + 'a {
-        self.data[self.offset..]
+        self.data[..]
             .par_iter()
             .filter_map(|k| k.as_ref())
             .map(|(id, row)| (*id, row))
