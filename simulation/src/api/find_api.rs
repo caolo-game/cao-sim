@@ -221,12 +221,8 @@ mod tests {
                     components::ResourceComponent(components::Resource::Energy),
                 );
         }
-        let data = ScriptExecutionData {
-            storage: &*storage.as_ref() as *const _,
-            entity_id,
-            user_id: Default::default(),
-            intents: Default::default(),
-        };
+        let data =
+            ScriptExecutionData::new(&*storage.as_ref(), Default::default(), entity_id, None);
         let mut vm = VM::new(data);
 
         let constant = FindConstant::Resource;
@@ -263,12 +259,12 @@ mod tests {
         };
 
         let storage = init_resource_storage(entity_id, center_pos, expected_id, expected_pos);
-        let data = ScriptExecutionData {
-            storage: &*storage.as_ref() as *const _,
+        let data = ScriptExecutionData::new(
+            &*storage.as_ref(),
+            Default::default(),
             entity_id,
-            user_id: Default::default(),
-            intents: Default::default(),
-        };
+            Default::default(),
+        );
         let mut vm = VM::new(data);
 
         let constant = FindConstant::Resource;
