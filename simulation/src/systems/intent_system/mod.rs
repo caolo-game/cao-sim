@@ -9,7 +9,7 @@ use self::dropoff_intent_system::DropoffSystem;
 use self::log_intent_system::LogSystem;
 use self::mine_intent_system::MineSystem;
 use self::move_intent_system::MoveSystem;
-use self::path_cache_intent_system::{PopPathCacheSystem, UpdatePathCacheSystem};
+use self::path_cache_intent_system::{MutPathCacheSystem, UpdatePathCacheSystem};
 use self::spawn_intent_system::SpawnSystem;
 use crate::intents::{Intents, MoveIntent};
 use crate::profile;
@@ -56,7 +56,7 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
         });
 
         let update_cache_sys = executor(UpdatePathCacheSystem, storage);
-        let pop_path_cache_sys = executor(PopPathCacheSystem, storage);
+        let pop_path_cache_sys = executor(MutPathCacheSystem, storage);
         s.spawn(move |_| {
             update_cache_sys(intents);
             pop_path_cache_sys(intents);

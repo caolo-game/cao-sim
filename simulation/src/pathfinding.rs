@@ -434,6 +434,8 @@ pub fn get_valid_transits(
             }
         });
 
+    trace!("Bridge candidates {:?}", candidates);
+
     if candidates.is_empty() {
         debug!(
             "Could not find an acceptable bridge candidate around pos {:?} in {:?}",
@@ -449,8 +451,11 @@ pub fn get_valid_transits(
         .collect();
 
     if candidates.is_empty() {
+        trace!("No empty candidate was found");
         return Err(TransitError::NotFound);
     }
+
+    trace!("Returning bridge candidates: {:?}", candidates);
 
     debug_assert!(candidates.len() >= 1);
     Ok(candidates)

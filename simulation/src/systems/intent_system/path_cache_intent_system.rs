@@ -1,9 +1,10 @@
 use super::IntentExecutionSystem;
 use crate::components::{Bot, PathCacheComponent};
-use crate::intents::{CachePathIntent, PopPathCacheIntent};
+use crate::intents::{CachePathIntent, MutPathCacheIntent, PathCacheIntentAction};
 use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
+use crate::tables::Table;
 
 pub struct UpdatePathCacheSystem;
 
@@ -34,12 +35,12 @@ impl<'a> IntentExecutionSystem<'a> for UpdatePathCacheSystem {
     }
 }
 
-pub struct PopPathCacheSystem;
+pub struct MutPathCacheSystem;
 
-impl<'a> IntentExecutionSystem<'a> for PopPathCacheSystem {
+impl<'a> IntentExecutionSystem<'a> for MutPathCacheSystem {
     type Mut = (UnsafeView<EntityId, PathCacheComponent>,);
     type Const = ();
-    type Intent = PopPathCacheIntent;
+    type Intent = MutPathCacheIntent;
 
     fn execute(
         &mut self,
@@ -47,13 +48,18 @@ impl<'a> IntentExecutionSystem<'a> for PopPathCacheSystem {
         (): Self::Const,
         intents: &[Self::Intent],
     ) {
-        profile!(" PopPathCacheSystem update");
+        profile!(" MutPathCacheSystem update");
         for intent in intents {
             let entity_id = intent.bot;
-            unsafe {
-                if let Some(cache) = path_cache_table.as_mut().get_by_id_mut(&entity_id) {
-                    cache.path.pop();
-                }
+            match intent.action {
+                PathCacheIntentAction::Pop => unsafe {
+                    if let Some(cache) = path_cache_table.as_mut().get_by_id_mut(&entity_id) {
+                        cache.path.pop();
+                    }
+                },
+                PathCacheIntentAction::Del => unsafe {
+                    path_cache_table.as_mut().delete(&entity_id);
+                },
             }
         }
     }

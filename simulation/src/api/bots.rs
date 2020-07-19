@@ -4,7 +4,7 @@ use crate::{
     components::{self, PathCacheComponent, Resource, TerrainComponent, PATH_CACHE_LEN},
     intents::{
         check_dropoff_intent, check_mine_intent, check_move_intent, CachePathIntent, DropoffIntent,
-        MineIntent, MoveIntent, PopPathCacheIntent,
+        MineIntent, MoveIntent, MutPathCacheIntent, PathCacheIntentAction,
     },
     model::{EntityId, OperationResult, UserId, WorldPosition},
     pathfinding, profile,
@@ -125,7 +125,7 @@ pub fn approach_entity(
             let intents = &mut vm.get_aux_mut().intents;
             intents.move_intents.push(move_intent);
             if let Some(pop_cache_intent) = pop_cache_intent {
-                intents.pop_path_cache_intents.push(pop_cache_intent);
+                intents.mut_path_cache_intents.push(pop_cache_intent);
             }
             if let Some(update_cache_intent) = update_cache_intent {
                 intents.update_path_cache_intents.push(update_cache_intent);
@@ -164,7 +164,7 @@ pub fn move_bot_to_position(
             let intents = &mut vm.get_aux_mut().intents;
             intents.move_intents.push(move_intent);
             if let Some(pop_cache_intent) = pop_cache_intent {
-                intents.pop_path_cache_intents.push(pop_cache_intent);
+                intents.mut_path_cache_intents.push(pop_cache_intent);
             }
             if let Some(update_cache_intent) = update_cache_intent {
                 intents.update_path_cache_intents.push(update_cache_intent);
@@ -183,7 +183,7 @@ pub fn move_bot_to_position(
 
 type MoveToPosIntent = (
     MoveIntent,
-    Option<PopPathCacheIntent>,
+    Option<MutPathCacheIntent>,
     Option<CachePathIntent>,
 );
 
@@ -223,7 +223,14 @@ fn move_to_pos(
                     check_move_intent(&intent, user_id, FromWorld::new(storage))
                 {
                     trace!("Bot {:?} path cache hit", bot);
-                    return Ok(Some((intent, Some(PopPathCacheIntent { bot }), None)));
+                    return Ok(Some((
+                        intent,
+                        Some(MutPathCacheIntent {
+                            bot,
+                            action: PathCacheIntentAction::Pop,
+                        }),
+                        None,
+                    )));
                 }
             }
         }
@@ -264,18 +271,23 @@ fn move_to_pos(
             let checkresult = check_move_intent(&intent, user_id, FromWorld::new(storage));
             match checkresult {
                 OperationResult::Ok => {
-                    // skip >= 0
-                    let skip = path.len().max(PATH_CACHE_LEN) - PATH_CACHE_LEN;
+                    let cache_intent = if path.len() > 0 {
+                        // skip >= 0
+                        let skip = path.len().max(PATH_CACHE_LEN) - PATH_CACHE_LEN;
 
-                    let cache_intent = CachePathIntent {
-                        bot,
-                        cache: PathCacheComponent {
-                            target: to,
-                            path: path.into_iter().skip(skip).take(PATH_CACHE_LEN).collect(),
-                        },
+                        let cache_intent = CachePathIntent {
+                            bot,
+                            cache: PathCacheComponent {
+                                target: to,
+                                path: path.into_iter().skip(skip).take(PATH_CACHE_LEN).collect(),
+                            },
+                        };
+                        Some(cache_intent)
+                    } else {
+                        None
                     };
 
-                    Ok(Some((intent, None, Some(cache_intent))))
+                    Ok(Some((intent, None, cache_intent)))
                 }
                 _ => Err(checkresult),
             }
@@ -313,7 +325,14 @@ fn move_to_pos(
                         bot,
                         position: target_pos,
                     };
-                    Ok(Some((intent, None, None)))
+                    Ok(Some((
+                        intent,
+                        Some(MutPathCacheIntent {
+                            bot,
+                            action: PathCacheIntentAction::Del,
+                        }),
+                        None,
+                    )))
                 }
                 None => {
                     debug!("Entity {:?} is trying to move to its own position, but no next room was returned", bot);

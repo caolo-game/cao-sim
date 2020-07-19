@@ -24,10 +24,10 @@ impl Axial {
     pub fn hex_distance(self, other: Axial) -> u32 {
         let [ax, ay, az] = self.hex_axial_to_cube();
         let [bx, by, bz] = other.hex_axial_to_cube();
-        let x = (ax - bx).abs() as u32;
-        let y = (ay - by).abs() as u32;
-        let z = (az - bz).abs() as u32;
-        x.max(y).max(z)
+        let x = (ax - bx).abs();
+        let y = (ay - by).abs();
+        let z = (az - bz).abs();
+        x.max(y).max(z) as u32
     }
 
     /// Convert self from a hexagonal axial vector to a hexagonal cube vector

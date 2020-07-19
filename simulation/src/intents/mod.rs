@@ -56,5 +56,5 @@ intents!(
     dropoff_intents: DropoffIntent,
     log_intents: LogIntent,
     update_path_cache_intents: CachePathIntent,
-    pop_path_cache_intents: PopPathCacheIntent,
+    mut_path_cache_intents: MutPathCacheIntent,
 );

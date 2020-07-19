@@ -10,6 +10,13 @@ pub struct CachePathIntent {
 
 /// Remove the top item from the path cache
 #[derive(Debug, Clone)]
-pub struct PopPathCacheIntent {
+pub struct MutPathCacheIntent {
     pub bot: EntityId,
+    pub action: PathCacheIntentAction,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PathCacheIntentAction {
+    Pop,
+    Del,
 }

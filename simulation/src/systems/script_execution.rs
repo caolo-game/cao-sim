@@ -86,15 +86,18 @@ pub fn execute_single_script(
         }
     })?;
 
-    Ok(vm.unwrap_aux().intents)
+    let aux = vm.unwrap_aux();
+    trace!("Script execution completed\n{:?}", aux);
+
+    Ok(aux.intents)
 }
 
 #[derive(Debug)]
 pub struct ScriptExecutionData {
-    storage: *const World,
-    pub intents: Intents,
     pub entity_id: EntityId,
     pub user_id: Option<UserId>,
+    pub intents: Intents,
+    storage: *const World,
 }
 
 impl Display for ScriptExecutionData {
