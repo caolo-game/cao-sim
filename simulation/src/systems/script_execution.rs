@@ -33,24 +33,21 @@ pub fn execute_scripts(storage: &World) -> Intents {
 }
 
 fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
-    storage
-        .view::<EntityId, EntityScript>()
-        .reborrow()
-        .par_iter()
-        .for_each(|(entity_id, script)| {
-            match execute_single_script(*entity_id, script.script_id, storage) {
-                Ok(ints) => {
-                    let mut intents = intents.lock().unwrap();
-                    intents.merge(&ints);
-                }
-                Err(err) => {
-                    warn!(
-                        "Execution failure in {:?} of {:?}:\n{}",
-                        script.script_id, entity_id, err
-                    );
-                }
+    let table = storage.view::<EntityId, EntityScript>().reborrow();
+    table.par_iter().for_each(|(entity_id, script)| {
+        match execute_single_script(*entity_id, script.script_id, storage) {
+            Ok(ints) => {
+                let mut intents = intents.lock().unwrap();
+                intents.merge(&ints);
             }
-        });
+            Err(err) => {
+                warn!(
+                    "Execution failure in {:?} of {:?}:\n{}",
+                    script.script_id, entity_id, err
+                );
+            }
+        }
+    });
 }
 
 pub fn execute_single_script(
@@ -67,12 +64,12 @@ pub fn execute_single_script(
             ExecutionError::ScriptNotFound(script_id)
         })?;
 
-    let data = ScriptExecutionData {
-        intents: Intents::with_capacity(4),
-        storage: storage as *const _,
+    let data = ScriptExecutionData::new(
+        storage,
+        Intents::with_capacity(4),
         entity_id,
-        user_id: Some(Default::default()), // None, // TODO
-    };
+        Some(Default::default()), // TODO
+    );
     let mut vm = VM::new(data);
     crate::api::make_import().execute_imports(&mut vm);
 
@@ -91,16 +88,29 @@ pub fn execute_single_script(
     Ok(vm.unwrap_aux().intents)
 }
 
-// TODO: take immutable reference to World??
 #[derive(Debug)]
 pub struct ScriptExecutionData {
-    pub storage: *const World,
+    storage: *const World,
     pub intents: Intents,
     pub entity_id: EntityId,
     pub user_id: Option<UserId>,
 }
 
 impl ScriptExecutionData {
+    pub fn new(
+        storage: &World,
+        intents: Intents,
+        entity_id: EntityId,
+        user_id: Option<UserId>,
+    ) -> Self {
+        Self {
+            storage: storage as *const _,
+            intents,
+            entity_id,
+            user_id,
+        }
+    }
+
     pub fn storage(&self) -> &World {
         unsafe { &*self.storage }
     }

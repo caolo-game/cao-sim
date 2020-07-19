@@ -145,15 +145,9 @@ fn find_path_multiroom(
         error!("Failed to obtain edge iterator {:?}", e);
         PathFindingError::EdgeNotExists(edge)
     })?;
-    // If running in debug mode just use `collect` which panics if the length of the bridge is
-    // larger than MAX_BRIDGE_LEN
-    //
-    // in release mode take only MAX_BRIDGE_LEN candidates and avoid panic
-    #[cfg(debug_assertions)]
-    let mut bridge = { bridge.collect::<ArrayVec<[_; MAX_BRIDGE_LEN]>>() };
-    #[cfg(not(debug_assertions))]
     let mut bridge = {
         bridge
+            .filter(|p| !positions.contains_key(p)) // consider only empty spots
             .take(MAX_BRIDGE_LEN)
             .collect::<ArrayVec<[_; MAX_BRIDGE_LEN]>>()
     };
@@ -431,20 +425,21 @@ pub fn get_valid_transits(
         })?
         .query_range(&mirror_pos, 2, &mut |pos, TerrainComponent(tile)| {
             if *tile == TileTerrainType::Bridge {
-                candidates.push(WorldPosition {
-                    room: target_room.0,
-                    pos,
-                });
+                candidates
+                    .try_push(WorldPosition {
+                        room: target_room.0,
+                        pos,
+                    })
+                    .unwrap_or_else(|e| warn!("Failed to push bridge candidate: {:?}", e));
             }
         });
 
     if candidates.is_empty() {
-        let msg = format!(
+        debug!(
             "Could not find an acceptable bridge candidate around pos {:?} in {:?}",
             mirror_pos, target_room
         );
-        trace!("{}", msg);
-        return Err(TransitError::InternalError(anyhow::Error::msg(msg)));
+        return Err(TransitError::NotFound);
     }
 
     let candidates: ArrayVec<[_; 3]> = candidates
