@@ -1,0 +1,46 @@
+[package]
+name = "caolo-worker"
+version = "0.1.0"
+authors = ["Daniel Kiss <littlesnorrboy@gmail.com>"]
+edition = "2018"
+
+[[bin]]
+name = "caolo-worker"
+path = "src/main.rs"
+required-features = []
+
+[features]
+default = ["dotenv"]
+dotenv = ["dep-dotenv"]
+
+[dependencies]
+caolo-sim = { path="../simulation", features=["profile"] }
+cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
+cao-math = { git = "https://github.com/caolo-game/cao-math.git", default-features=false }
+caolo-messages = { git = "https://github.com/caolo-game/caolo-backend.git" }
+
+jemallocator = { version="0.3", optional=true }
+log = "*"
+pretty_env_logger = "0.4"
+chrono = { version="0.4", features=["serde"] }
+serde_json = "1"
+serde = "1"
+serde_derive = "1"
+redis = "0.15"
+rand="*"
+sentry = "0.19"
+sentry-log = { version="0.19", features=["env_logger"] }
+rmp-serde = "0.14"
+anyhow = "1"
+thiserror = "1"
+sqlx = { version="0.3", features=["postgres", "chrono", "uuid", "json", "tls"] }
+async-std = { version = "1.4.0", features = [ "attributes" ] }
+
+dep-dotenv = { version="0.14", optional=true, package="dotenv" }
+uuid = { version="0.7", features=["v4"] }
+
+[dev-dependencies]
+env_logger = { version="*", default-features=false }
+
+[profile.release]
+debug=true

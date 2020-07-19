@@ -3,5 +3,6 @@
 members = [
     "cao-storage-derive",
     "simulation",
-    "test-env"
+    "test-env",
+    "worker"
 ]

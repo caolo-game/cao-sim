@@ -1,0 +1,45 @@
+{
+  "nodes": {
+    "0": {
+      "node": {
+        "Start": null
+      },
+      "child": 1
+    },
+    "1": {
+      "node": {
+        "ScalarInt": 12
+      },
+      "child": 2
+    },
+    "2": {
+      "node": {
+        "ScalarInt": 12
+      },
+      "child": 3
+    },
+    "3": {
+      "node": {
+        "ScalarInt": 16
+      },
+      "child": 4
+    },
+    "4": {
+      "node": {
+        "ScalarInt": 15
+      },
+      "child": 100
+    },
+    "100": {
+      "node": {
+        "Call": "world_position"
+      },
+      "child": 200
+    },
+    "200": {
+      "node": {
+        "Call": "move_bot_to_position"
+      }
+    }
+  }
+}

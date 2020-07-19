@@ -1,0 +1,8 @@
+*
+!cao-storage-derive
+!simulation
+!worker
+!Cargo.toml
+!Cargo.lock
+!build.sh
+!rust-toolchain

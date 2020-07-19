@@ -1,0 +1,82 @@
+{
+  "nodes": {
+    "-10": {
+      "node": {
+        "ScalarInt": 1
+      },
+      "child": 0
+    },
+    "0": {
+      "node": {
+        "Call": "find_closest_resource_by_range"
+      },
+      "child": 1
+    },
+    "1": {
+      "node": {
+        "ScalarInt": 0
+      },
+      "child": 30
+    },
+    "30": {
+      "node": {
+        "Equals": null
+      },
+      "child": 40
+    },
+    "40": {
+      "node": {
+        "JumpIfTrue": 60
+      },
+      "child": 42
+    },
+    "42": {
+      "node": {
+        "StringLiteral": "No resource found"
+      },
+      "child": 45
+    },
+    "45": {
+      "node": {
+        "Call": "console_log"
+      },
+      "child": 50
+    },
+    "50": {
+      "node": {
+        "Exit": null
+      },
+      "child": 60
+    },
+    "60": {
+      "node": {
+        "CopyLast": null
+      },
+      "child": 70
+    },
+    "70": {
+      "node": {
+        "Call": "approach_entity"
+      },
+      "child": 80
+    },
+    "80": {
+      "node": {
+        "Pop": null
+      },
+      "child": 90
+    },
+    "90": {
+      "node": {
+        "Call": "mine_resource"
+      },
+      "child": null
+    },
+    "-1": {
+      "node": {
+        "Start": null
+      },
+      "child": -10
+    }
+  }
+}

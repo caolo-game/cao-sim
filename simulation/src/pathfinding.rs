@@ -440,8 +440,8 @@ pub fn get_valid_transits(
 
     if candidates.is_empty() {
         let msg = format!(
-            "Could not find an acceptable bridge candidate around pos {:?}",
-            mirror_pos
+            "Could not find an acceptable bridge candidate around pos {:?} in {:?}",
+            mirror_pos, target_room
         );
         trace!("{}", msg);
         return Err(TransitError::InternalError(anyhow::Error::msg(msg)));
