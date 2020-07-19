@@ -15,7 +15,7 @@ use std::convert::TryFrom;
 
 pub fn unload(
     vm: &mut VM<ScriptExecutionData>,
-    (amount, ty, structure): (i32, Resource, TPointer),
+    (amount, ty, target): (i32, Resource, TPointer),
 ) -> Result<(), ExecutionError> {
     profile!(trace "unload");
 
@@ -23,12 +23,20 @@ pub fn unload(
         warn!("unload called with invalid amount: {}", e);
         ExecutionError::InvalidArgument
     })?;
-    let structure: EntityId = vm.get_value(structure).ok_or_else(|| {
+    let target: EntityId = vm.get_value(target).ok_or_else(|| {
         warn!("upload called without a structure");
         ExecutionError::InvalidArgument
     })?;
 
     let aux = vm.get_aux();
+    trace!(
+        "unload: amount: {} type: {:?} target: {:?}, {}",
+        amount,
+        ty,
+        target,
+        aux
+    );
+
     let storage = aux.storage();
     let entity_id = aux.entity_id;
     let user_id = aux.user_id.expect("user_id to be set");
@@ -37,7 +45,7 @@ pub fn unload(
         bot: entity_id,
         amount,
         ty,
-        structure,
+        structure: target,
     };
 
     let checkresult = check_dropoff_intent(&dropoff_intent, user_id, FromWorld::new(storage));
@@ -53,22 +61,24 @@ pub fn unload(
 
 pub fn mine_resource(
     vm: &mut VM<ScriptExecutionData>,
-    entity_id: TPointer,
+    target: TPointer,
 ) -> Result<(), ExecutionError> {
-    profile!(trace "mine_resource");
+    profile!("mine_resource");
 
-    let entity_id: EntityId = vm.get_value(entity_id).ok_or_else(|| {
+    let target: EntityId = vm.get_value(target).ok_or_else(|| {
         warn!("mine_resource called without a target");
         ExecutionError::InvalidArgument
     })?;
 
     let aux = vm.get_aux();
+    trace!("mine_resource: target: {:?}, {}", target, aux);
+
     let storage = aux.storage();
     let user_id = aux.user_id.expect("user_id to be set");
 
     let intent = MineIntent {
         bot: aux.entity_id,
-        resource: entity_id,
+        resource: target,
     };
 
     let checkresult = check_mine_intent(&intent, user_id, FromWorld::new(storage));
@@ -83,7 +93,7 @@ pub fn approach_entity(
     vm: &mut VM<ScriptExecutionData>,
     target: TPointer,
 ) -> Result<(), ExecutionError> {
-    profile!(trace "approach_entity");
+    profile!("approach_entity");
 
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
         warn!("approach_entity called without a target");
@@ -91,6 +101,8 @@ pub fn approach_entity(
     })?;
 
     let aux = vm.get_aux();
+    trace!("approach_entity: target: {:?}, {}", target, aux);
+
     let entity = aux.entity_id;
     let storage = aux.storage();
     let user_id = aux.user_id.expect("user_id to be set");

@@ -3,6 +3,7 @@ use crate::model::{EntityId, ScriptId, UserId};
 use crate::{intents::Intents, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
+use std::fmt::{self, Display, Formatter};
 use std::sync::Mutex;
 use thiserror::Error;
 
@@ -94,6 +95,16 @@ pub struct ScriptExecutionData {
     pub intents: Intents,
     pub entity_id: EntityId,
     pub user_id: Option<UserId>,
+}
+
+impl Display for ScriptExecutionData {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.entity_id)?;
+        if let Some(ref user_id) = self.user_id {
+            write!(f, " UserId: {}", user_id.0)?
+        }
+        Ok(())
+    }
 }
 
 impl ScriptExecutionData {
