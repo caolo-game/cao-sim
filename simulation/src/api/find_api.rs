@@ -230,13 +230,13 @@ mod tests {
         }
         let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
         let data = ScriptExecutionData::new(
-            &logger,
+            logger.clone(),
             &*storage.as_ref(),
             Default::default(),
             entity_id,
             None,
         );
-        let mut vm = VM::new(data);
+        let mut vm = VM::new(logger, data);
 
         let constant = FindConstant::Resource;
 
@@ -275,13 +275,13 @@ mod tests {
         let storage = init_resource_storage(entity_id, center_pos, expected_id, expected_pos);
         let logger = &storage.logger;
         let data = ScriptExecutionData::new(
-            logger,
+            logger.clone(),
             &*storage.as_ref(),
             Default::default(),
             entity_id,
             Default::default(),
         );
-        let mut vm = VM::new(data);
+        let mut vm = VM::new(logger.clone(), data);
 
         let constant = FindConstant::Resource;
 

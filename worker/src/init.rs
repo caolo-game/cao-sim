@@ -25,7 +25,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         serde_json::from_str(include_str!("./programs/mining_program.json"))
             .expect("deserialize example program");
     debug!("compiling default program");
-    let compiled = compile(script).expect("failed to compile example program");
+    let compiled = compile(None, script).expect("failed to compile example program");
     debug!("compilation done");
 
     caolo_sim::query!(
@@ -42,7 +42,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         serde_json::from_str(include_str!("./programs/center_walking_program.json"))
             .expect("deserialize example program");
     debug!("compiling default program");
-    let compiled = compile(script).expect("failed to compile example program");
+    let compiled = compile(None, script).expect("failed to compile example program");
     debug!("compilation done");
 
     caolo_sim::query!(

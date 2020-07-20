@@ -78,7 +78,7 @@ pub fn execute_single_script(
         entity_id,
         Some(Default::default()), // TODO
     );
-    let mut vm = VM::new(data);
+    let mut vm = VM::new(logger.clone(), data);
     crate::api::make_import().execute_imports(&mut vm);
 
     trace!(logger, "Starting script execution");
