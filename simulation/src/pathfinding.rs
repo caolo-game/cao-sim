@@ -7,17 +7,36 @@ use crate::profile;
 use crate::storage::views::View;
 use arrayvec::ArrayVec;
 use slog::{debug, error, trace, warn, Logger};
-use std::collections::{HashMap, HashSet};
+use std::cmp::{Ord, Ordering, PartialOrd};
+use std::collections::BinaryHeap;
+use std::collections::HashMap;
 use thiserror::Error;
 
 const MAX_BRIDGE_LEN: usize = 64;
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 struct Node {
     pub pos: Axial,
     pub parent: Axial,
     pub h_cost: i32,
     pub g_cost: i32,
+}
+
+// std::BinaryHeap puts the max value at the top, so the ordering of Node is reversed!!!!
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let fa = self.f_cost();
+        let fb = other.f_cost();
+        fb.partial_cmp(&fa)
+    }
+}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let fa = self.f_cost();
+        let fb = other.f_cost();
+        fb.cmp(&fa)
+    }
 }
 
 impl Node {
@@ -209,18 +228,13 @@ pub fn find_path_overworld(
     let end = to;
 
     let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_steps as usize);
-    let mut open_set = HashSet::with_capacity(max_steps as usize);
+    let mut open_set = BinaryHeap::with_capacity(max_steps as usize);
     let mut current = Node::new(from, from, from.hex_distance(end) as i32, 0);
     closed_set.insert(current.pos, current.clone());
-    open_set.insert(current.clone());
+    open_set.push(current.clone());
     while current.pos != end && !open_set.is_empty() && max_steps > 0 {
         max_steps -= 1;
-        current = open_set
-            .iter()
-            .min_by_key(|node| node.f_cost())
-            .unwrap()
-            .clone();
-        open_set.remove(&current);
+        current = open_set.pop().unwrap();
         closed_set.insert(current.pos, current.clone());
         let current_pos = current.pos;
         // [0, 6] items
@@ -245,7 +259,7 @@ pub fn find_path_overworld(
                     neighbour.hex_distance(end) as i32,
                     current.g_cost + 1,
                 );
-                open_set.insert(node);
+                open_set.push(node);
             }
             if let Some(node) = closed_set.get_mut(&neighbour) {
                 let g_cost = current.g_cost + 1;
@@ -314,19 +328,14 @@ pub fn find_path_in_room(
     let end = to;
 
     let mut closed_set = HashMap::<Axial, Node>::with_capacity(max_steps as usize);
-    let mut open_set = HashSet::with_capacity(max_steps as usize);
+    let mut open_set = BinaryHeap::with_capacity(max_steps as usize);
 
     let mut current = Node::new(current, current, current.hex_distance(end) as i32, 0);
     closed_set.insert(current.pos, current.clone());
-    open_set.insert(current.clone());
+    open_set.push(current.clone());
 
     while current.pos != end && !open_set.is_empty() && max_steps > 0 {
-        current = open_set
-            .iter()
-            .min_by_key(|node| node.f_cost())
-            .unwrap()
-            .clone();
-        open_set.remove(&current);
+        current = open_set.pop().unwrap();
         closed_set.insert(current.pos, current.clone());
         for point in current
             .pos
@@ -355,7 +364,7 @@ pub fn find_path_in_room(
                     point.hex_distance(end) as i32,
                     current.g_cost + 1,
                 );
-                open_set.insert(node);
+                open_set.push(node);
             }
             if let Some(node) = closed_set.get_mut(&point) {
                 let g_cost = current.g_cost + 1;

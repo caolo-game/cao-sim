@@ -42,5 +42,4 @@ uuid = { version="0.7", features=["v4"] }
 env_logger = { version="*", default-features=false }
 
 [profile.release]
-debug=true
 lto=true
