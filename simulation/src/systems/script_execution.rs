@@ -133,7 +133,7 @@ impl ScriptExecutionData {
         entity_id: EntityId,
         user_id: Option<UserId>,
     ) -> Self {
-        let logger = logger.new(o!( "entity_id" => entity_id.0));
+        let logger = logger.new(o!( "entity_id" => entity_id.0, "tick" => storage.time ));
 
         Self {
             storage: storage as *const _,

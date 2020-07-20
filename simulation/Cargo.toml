@@ -19,7 +19,7 @@ cao_storage_derive = { path = "../cao-storage-derive" }
 cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, default-features=false, features=["http", "log"] }
 
 log = "0.4"
-slog = { version="2", features=["max_level_trace", "release_max_level_info"] }
+slog = { version="2", features=["max_level_trace", "release_max_level_trace"] }
 slog-async = "*"
 slog-term = "*"
 slog-envlogger = "*"
