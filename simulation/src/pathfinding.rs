@@ -520,7 +520,7 @@ pub fn get_valid_transits(
 /// - Inverting the position ( pos * -1 )
 /// - Translating it back to center
 pub fn mirrored_room_position(
-    logger: &Logger,
+    _logger: &Logger,
     current_pos: Axial,
     props: &RoomProperties,
 ) -> Result<Axial, TransitError> {
@@ -550,7 +550,7 @@ pub fn mirrored_room_position(
     #[cfg(debug_assertions)]
     {
         if zero_ind.is_some() {
-            error!(logger, "Room corners are not supported {:?}", current_pos);
+            error!(_logger, "Room corners are not supported {:?}", current_pos);
             return Err(TransitError::InvalidPos);
         }
     }
