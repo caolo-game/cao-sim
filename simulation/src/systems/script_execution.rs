@@ -2,9 +2,9 @@ use crate::components::{EntityScript, ScriptComponent};
 use crate::model::{EntityId, ScriptId, UserId};
 use crate::{intents::Intents, profile, World};
 use cao_lang::prelude::*;
-use log::{trace, warn};
 use rayon::prelude::*;
 use slog::{o, Drain};
+use slog::{trace, warn};
 use std::fmt::{self, Display, Formatter};
 use std::sync::Mutex;
 use thiserror::Error;
@@ -42,7 +42,8 @@ fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
     let drain = slog_async::Async::new(drain)
         .overflow_strategy(slog_async::OverflowStrategy::DropAndReport)
         .chan_size(16000)
-        .build().fuse();
+        .build()
+        .fuse();
     let logger = slog::Logger::root(drain, o!());
 
     let table = storage.view::<EntityId, EntityScript>().reborrow();
@@ -54,8 +55,8 @@ fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
             }
             Err(err) => {
                 warn!(
-                    "Execution failure in {:?} of {:?}:\n{}",
-                    script.script_id, entity_id, err
+                    logger,
+                    "Execution failure in {:?} of {:?}:\n{}", script.script_id, entity_id, err
                 );
             }
         }
@@ -73,7 +74,7 @@ pub fn execute_single_script(
         .reborrow()
         .get_by_id(&script_id)
         .ok_or_else(|| {
-            warn!("Script by ID {:?} does not exist", script_id);
+            warn!(logger, "Script by ID {:?} does not exist", script_id);
             ExecutionError::ScriptNotFound(script_id)
         })?;
 
@@ -89,8 +90,8 @@ pub fn execute_single_script(
 
     vm.run(&program.0).map_err(|err| {
         warn!(
-            "Error while executing script {:?} of entity {:?}\n{:?}",
-            script_id, entity_id, err
+            logger,
+            "Error while executing script {:?} of entity {:?}\n{:?}", script_id, entity_id, err
         );
         ExecutionError::RuntimeError {
             script_id,
@@ -100,7 +101,7 @@ pub fn execute_single_script(
     })?;
 
     let aux = vm.unwrap_aux();
-    trace!("Script execution completed\n{:?}", aux);
+    trace!(logger, "Script execution completed\n{:?}", aux);
 
     Ok(aux.intents)
 }
