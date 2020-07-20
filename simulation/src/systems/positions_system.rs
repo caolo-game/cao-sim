@@ -3,6 +3,7 @@ use crate::components::{EntityComponent, PositionComponent};
 use crate::model::{EntityId, WorldPosition};
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
+use log::{debug, error};
 
 pub struct PositionSystem;
 

@@ -8,6 +8,7 @@ use crate::geometry::{Axial, Hexagon};
 use crate::model::{EmptyKey, Room};
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::{ExtendFailure, MortonTable};
+use log::{debug, error};
 use rand::Rng;
 use thiserror::Error;
 

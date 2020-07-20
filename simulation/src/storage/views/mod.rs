@@ -39,6 +39,7 @@ pub use view::*;
 use super::{Component, DeleteById, TableId};
 use crate::model::EntityId;
 use crate::World;
+use log::trace;
 use std::ptr::NonNull;
 
 pub trait FromWorld<'a> {

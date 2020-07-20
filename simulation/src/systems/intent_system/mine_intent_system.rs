@@ -4,6 +4,7 @@ use crate::intents::MineIntent;
 use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
+use log::{trace, warn};
 
 pub const MINE_AMOUNT: u16 = 10; // TODO: get from bot body
 

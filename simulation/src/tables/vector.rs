@@ -3,6 +3,7 @@
 //! Because of this one should use this if the domain of the ids is small or dense.
 //!
 use super::*;
+use log::debug;
 use rayon::prelude::*;
 use serde_derive::{Deserialize, Serialize};
 use std::mem;

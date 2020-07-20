@@ -2,6 +2,7 @@ use crate::components::{EntityScript, ScriptComponent};
 use crate::model::{EntityId, ScriptId, UserId};
 use crate::{intents::Intents, profile, World};
 use cao_lang::prelude::*;
+use log::{trace, warn};
 use rayon::prelude::*;
 use slog::{o, Drain};
 use std::fmt::{self, Display, Formatter};

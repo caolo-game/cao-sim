@@ -1,6 +1,7 @@
 use super::GradientMap;
 use crate::geometry::Axial;
 use crate::tables::{SpatialKey2d, Table};
+use log::debug;
 use rand::Rng;
 
 pub fn create_noise(

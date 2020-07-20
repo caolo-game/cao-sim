@@ -4,6 +4,7 @@ use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;
+use log::debug;
 
 pub struct SpawnSystem;
 

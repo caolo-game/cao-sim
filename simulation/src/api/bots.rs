@@ -490,9 +490,10 @@ mod tests {
 
         let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
 
-        let (MoveIntent { bot, position }, ..) = move_to_pos(&logger, bot_id, to, user_id, &storage)
-            .expect("Expected move to succeed")
-            .expect("Expected a move intent");
+        let (MoveIntent { bot, position }, ..) =
+            move_to_pos(&logger, bot_id, to, user_id, &storage)
+                .expect("Expected move to succeed")
+                .expect("Expected a move intent");
 
         assert_eq!(bot, bot_id);
         assert_eq!(position.room, next_room);

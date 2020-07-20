@@ -3,6 +3,7 @@ use crate::components::{
 };
 use crate::model::{self, EntityId, OperationResult};
 use crate::storage::views::View;
+use log::error;
 
 pub const DROPOFF_RANGE: u32 = 1;
 

@@ -1,6 +1,7 @@
 use crate::components;
 use crate::model::{self, EntityId, OperationResult, UserId};
 use crate::World;
+use log::debug;
 
 #[derive(Debug, Clone)]
 pub struct SpawnIntent {

@@ -4,6 +4,7 @@ use crate::intents::SpawnIntent;
 use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::{InsertEntityView, UnsafeView, View};
+use log::{error, trace, warn};
 
 pub struct SpawnSystem;
 

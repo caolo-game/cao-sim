@@ -4,6 +4,7 @@ use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::{DeleteEntityView, UnsafeView};
 use crate::tables::JoinIterator;
+use log::{debug, trace};
 
 pub struct DecaySystem;
 

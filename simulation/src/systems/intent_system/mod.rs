@@ -15,6 +15,7 @@ use crate::intents::{Intents, MoveIntent};
 use crate::profile;
 use crate::storage::views::{FromWorld, FromWorldMut};
 use crate::World;
+use log::debug;
 use rayon::prelude::*;
 
 pub trait IntentExecutionSystem<'a> {

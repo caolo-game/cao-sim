@@ -4,6 +4,7 @@ use crate::intents::MoveIntent;
 use crate::model::{EntityId, WorldPosition};
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
+use log::trace;
 
 pub struct MoveSystem;
 

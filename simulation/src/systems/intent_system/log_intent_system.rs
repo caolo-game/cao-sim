@@ -4,6 +4,7 @@ use crate::intents::LogIntent;
 use crate::model::EntityTime;
 use crate::profile;
 use crate::storage::views::UnsafeView;
+use log::trace;
 
 pub struct LogSystem;
 

@@ -15,6 +15,7 @@ use cao_lang::prelude::*;
 use cao_lang::scalar::Scalar;
 use cao_lang::traits::ByteEncodeProperties;
 use find_api::FindConstant;
+use slog::trace;
 
 pub fn make_point(
     vm: &mut VM<ScriptExecutionData>,
@@ -41,16 +42,18 @@ pub fn console_log(
     vm: &mut VM<ScriptExecutionData>,
     message: TPointer,
 ) -> Result<(), ExecutionError> {
-    profile!(trace "console_log");
+    profile!("console_log");
+    let logger = &vm.get_aux().logger;
+    trace!(logger, "console_log");
     let message: String = vm.get_value(message).ok_or_else(|| {
-        trace!("console_log called with invalid message");
+        trace!(logger, "console_log called with invalid message");
         ExecutionError::InvalidArgument
     })?;
     let entity_id = vm.get_aux().entity_id;
     let time = vm.get_aux().storage().time();
 
     let payload = format!("{:?} says {}", entity_id, message);
-    trace!("{}", payload);
+    trace!(logger, "{}", payload);
     vm.get_aux_mut()
         .intents
         .log_intents
@@ -64,11 +67,13 @@ pub fn console_log(
 }
 
 pub fn log_scalar(vm: &mut VM<ScriptExecutionData>, value: Scalar) -> Result<(), ExecutionError> {
-    profile!(trace "log_scalar");
+    profile!("log_scalar");
+    let logger = &vm.get_aux().logger;
+    trace!(logger, "log_scalar");
     let entity_id = vm.get_aux().entity_id;
     let time = vm.get_aux().storage().time();
     let payload = format!("{:?} says {:?}", entity_id, value);
-    trace!("{}", payload);
+    trace!(logger, "{}", payload);
     vm.get_aux_mut()
         .intents
         .log_intents

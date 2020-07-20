@@ -19,6 +19,7 @@ pub use self::morton_key::*;
 pub use self::serde::*;
 use super::*;
 use litmax_bigmin::litmax_bigmin;
+use log::trace;
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 

@@ -16,6 +16,7 @@ use crate::tables::{
     morton::{msb_de_bruijn, MortonTable},
     Table,
 };
+use log::{debug, error, trace};
 use rand::Rng;
 use std::cmp::Ordering;
 use std::collections::HashSet;

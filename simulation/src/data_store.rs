@@ -9,6 +9,7 @@ use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
 use chrono::{DateTime, Duration, Utc};
+use log::debug;
 use serde_derive::Serialize;
 use std::pin::Pin;
 

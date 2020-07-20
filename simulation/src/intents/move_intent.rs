@@ -4,6 +4,7 @@
 use crate::components::{self, EntityComponent, PositionComponent};
 use crate::model::{self, terrain, EntityId, OperationResult, WorldPosition};
 use crate::storage::views::View;
+use log::{debug, trace, warn};
 
 #[derive(Debug, Clone)]
 pub struct MoveIntent {

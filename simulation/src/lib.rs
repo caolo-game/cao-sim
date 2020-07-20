@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate log;
-
 pub mod api;
 pub mod components;
 pub mod geometry;
@@ -16,6 +13,7 @@ mod intents;
 mod systems;
 mod utils;
 
+use log::info;
 use systems::execute_world_update;
 use systems::intent_system::execute_intents;
 use systems::script_execution::execute_scripts;

@@ -1,6 +1,7 @@
 use crate::components;
 use crate::model::{EntityId, OperationResult, UserId};
 use crate::storage::views::View;
+use log::{debug, warn};
 
 #[derive(Debug, Clone)]
 pub struct MineIntent {

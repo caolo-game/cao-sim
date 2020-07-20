@@ -39,8 +39,6 @@ where
     type Row = Row;
 
     fn delete(&mut self, _id: &Self::Id) -> Option<Row> {
-        let mut res = None;
-        mem::swap(&mut res, &mut self.value);
-        res
+        mem::replace(&mut self.value, None)
     }
 }
