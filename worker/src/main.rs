@@ -176,20 +176,15 @@ fn send_schema(client: &redis::Client) -> anyhow::Result<()> {
 async fn main() -> Result<(), anyhow::Error> {
     init();
 
+    pretty_env_logger::init();
     let _sentry = std::env::var("SENTRY_URI")
         .ok()
         .map(|uri| {
-            let mut log_builder = pretty_env_logger::formatted_builder();
-            let filters = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_owned());
-            log_builder.parse_filters(filters.as_str());
-            let log_integration = sentry_log::LogIntegration::default()
-                .with_env_logger_dest(Some(log_builder.build()));
             let options: sentry::ClientOptions = uri.as_str().into();
-            sentry::init(options.add_integration(log_integration))
+            sentry::init(options)
         })
         .ok_or_else(|| {
             warn!("Sentry URI was not provided");
-            pretty_env_logger::init();
         });
 
     let n_actors = std::env::var("N_ACTORS")

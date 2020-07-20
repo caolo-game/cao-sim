@@ -39,7 +39,10 @@ fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_envlogger::new(drain).fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
+    let drain = slog_async::Async::new(drain)
+        .overflow_strategy(slog_async::OverflowStrategy::DropAndReport)
+        .chan_size(16000)
+        .build().fuse();
     let logger = slog::Logger::root(drain, o!());
 
     let table = storage.view::<EntityId, EntityScript>().reborrow();

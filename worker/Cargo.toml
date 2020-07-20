@@ -29,7 +29,6 @@ serde_derive = "1"
 redis = "0.15"
 rand="*"
 sentry = "0.19"
-sentry-log = { version="0.19", features=["env_logger"] }
 rmp-serde = "0.14"
 anyhow = "1"
 thiserror = "1"
