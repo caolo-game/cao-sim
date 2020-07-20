@@ -35,7 +35,6 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
         {
             use super::logging;
             use crate::tables::traits::Table;
-            use log::trace;
 
             let key = C::Table::name();
 
