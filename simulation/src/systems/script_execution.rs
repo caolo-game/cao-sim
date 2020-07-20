@@ -70,8 +70,9 @@ pub fn execute_single_script(
             ExecutionError::ScriptNotFound(script_id)
         })?;
 
+    let logger = logger.new(o!( "entity_id" => entity_id.0 ));
     let data = ScriptExecutionData::new(
-        logger,
+        logger.clone(),
         storage,
         Intents::with_capacity(4),
         entity_id,
@@ -80,10 +81,12 @@ pub fn execute_single_script(
     let mut vm = VM::new(data);
     crate::api::make_import().execute_imports(&mut vm);
 
+    trace!(logger, "Starting script execution");
+
     vm.run(&program.0).map_err(|err| {
         warn!(
             logger,
-            "Error while executing script {:?} of entity {:?}\n{:?}", script_id, entity_id, err
+            "Error while executing script {:?} {:?}", script_id, err
         );
         ExecutionError::RuntimeError {
             script_id,
@@ -93,7 +96,11 @@ pub fn execute_single_script(
     })?;
 
     let aux = vm.unwrap_aux();
-    trace!(logger, "Script execution completed\n{:?}", aux);
+    trace!(
+        logger,
+        "Script execution completed, intents:{:?}",
+        aux.intents
+    );
 
     Ok(aux.intents)
 }
@@ -119,14 +126,12 @@ impl Display for ScriptExecutionData {
 
 impl ScriptExecutionData {
     pub fn new(
-        logger: &slog::Logger,
+        logger: slog::Logger,
         storage: &World,
         intents: Intents,
         entity_id: EntityId,
         user_id: Option<UserId>,
     ) -> Self {
-        let logger = logger.new(o!( "entity_id" => entity_id.0 ));
-
         Self {
             storage: storage as *const _,
             intents,

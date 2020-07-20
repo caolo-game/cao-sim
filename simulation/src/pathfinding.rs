@@ -176,12 +176,21 @@ fn find_path_multiroom(
         error!(logger, "Failed to obtain edge iterator {:?}", e);
         PathFindingError::EdgeNotExists(edge)
     })?;
+    let mut is_bot_on_bridge = false;
     let mut bridge = {
         bridge
+            .map(|pos| {
+                is_bot_on_bridge = is_bot_on_bridge || pos == from.pos;
+                pos
+            })
             .filter(|p| !positions.contains_key(p)) // consider only empty spots
             .take(MAX_BRIDGE_LEN)
             .collect::<ArrayVec<[_; MAX_BRIDGE_LEN]>>()
     };
+    if is_bot_on_bridge {
+        // bot is standing on the bridge
+        return Ok(max_steps);
+    }
 
     bridge.sort_unstable_by_key(|p| p.hex_distance(from.pos));
 
@@ -465,7 +474,7 @@ pub fn get_valid_transits(
             warn!(logger, "{}", err);
             TransitError::InternalError(anyhow::Error::msg(err))
         })?
-        .query_range(&mirror_pos, 2, &mut |pos, TerrainComponent(tile)| {
+        .query_range(&mirror_pos, 1, &mut |pos, TerrainComponent(tile)| {
             if *tile == TileTerrainType::Bridge {
                 candidates
                     .try_push(WorldPosition {
