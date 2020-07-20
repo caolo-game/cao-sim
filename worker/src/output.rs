@@ -35,14 +35,13 @@ pub fn build_bots<'a>(
     let positions = positions.reborrow().iter();
     let position_tranform = init_world_pos(room_props);
     JoinIterator::new(bots, positions).map(move |(id, (_bot, pos))| {
-        let msg = BotMsg {
+        BotMsg {
             id: id.0,
             position: position_tranform(pos.0),
             owner: owned_entities
                 .get_by_id(&id)
                 .map(|OwnedEntity { owner_id }| owner_id.0),
-        };
-        msg
+        }
     })
 }
 
@@ -52,7 +51,7 @@ pub fn build_logs<'a>(v: View<'a, EntityTime, LogEntry>) -> impl Iterator<Item =
         .map(|(EntityTime(EntityId(eid), time), entries)| LogMsg {
             entity_id: eid,
             time,
-            payload: entries.payload.iter().cloned().collect(),
+            payload: entries.payload.to_vec(),
         })
 }
 

@@ -35,23 +35,19 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
         {
             use super::logging;
             use crate::tables::traits::Table;
-            use log::Level;
+            use log::trace;
 
-            if log_enabled!(Level::Trace) {
-                let key = C::Table::name();
+            let key = C::Table::name();
 
-                let table = unsafe { self.0.as_ref() };
-                let val = serde_json::to_value(table).expect("Table serialization failed");
+            let table = unsafe { self.0.as_ref() };
+            let val = serde_json::to_value(table).expect("Table serialization failed");
 
-                // release the mutex asap
-                let mut table = logging::TABLE_LOG_HISTORY
-                    .lock()
-                    .expect("Failed to aquire TABLE_LOG_HISTORY");
-                let logger = table.entry(key).or_insert_with(|| Default::default());
-                let logger = unsafe { logger.inserter() };
-                logger(val);
-                trace!("UnsafeView references {:x?}", self.0.as_ptr());
-            }
+            let mut table = logging::TABLE_LOG_HISTORY
+                .lock()
+                .expect("Failed to aquire TABLE_LOG_HISTORY");
+            let logger = table.entry(key).or_insert_with(|| Default::default());
+            let logger = unsafe { logger.inserter() };
+            logger(val);
         }
     }
 }
