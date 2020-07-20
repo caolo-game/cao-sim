@@ -382,13 +382,13 @@ mod tests {
     use crate::model::terrain::TileTerrainType;
     use crate::model::*;
     use crate::query;
-    use slog::{o, Drain};
 
     #[test]
     fn can_move_to_another_room() {
         crate::utils::setup_testing();
 
-        let mut storage = init_inmemory_storage();
+        let logger = crate::utils::test_logger();
+        let mut storage = init_inmemory_storage(logger);
 
         let bot_id = storage.insert_entity();
         let room_radius = 3;
@@ -488,10 +488,8 @@ mod tests {
         init_connections(next_room);
         init_connections(to.room);
 
-        let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
-
         let (MoveIntent { bot, position }, ..) =
-            move_to_pos(&logger, bot_id, to, user_id, &storage)
+            move_to_pos(&storage.logger, bot_id, to, user_id, &storage)
                 .expect("Expected move to succeed")
                 .expect("Expected a move intent");
 

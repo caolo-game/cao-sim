@@ -15,6 +15,12 @@ pub fn setup_testing() {
     });
 }
 
+#[cfg(test)]
+pub fn test_logger() -> slog::Logger {
+    use slog::{o, Drain, Logger};
+    Logger::root(slog_stdlog::StdLog.fuse(), o!())
+}
+
 /// If `profile` feature is enabled, records high-level profiling information to `profile.csv`.
 /// Recording is done via a thread-local buffer and dedicated file writing thread, in an attempt to
 /// mitigate overhead.

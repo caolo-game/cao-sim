@@ -16,7 +16,7 @@
 /// use caolo_sim::geometry::Axial;
 /// use caolo_sim::model::EntityId;
 ///
-/// let mut store = init_inmemory_storage();
+/// let mut store = init_inmemory_storage(None);
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();

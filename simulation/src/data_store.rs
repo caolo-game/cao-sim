@@ -9,8 +9,9 @@ use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
 use chrono::{DateTime, Duration, Utc};
-use log::debug;
 use serde_derive::Serialize;
+use slog::debug;
+use slog::{o, Drain};
 use std::pin::Pin;
 
 #[cfg(feature = "log_tables")]
@@ -62,7 +63,11 @@ pub struct World {
     #[serde(skip)]
     pub dt: Duration,
 
+    #[serde(skip)]
+    pub logger: slog::Logger,
+
     #[cfg(feature = "log_tables")]
+    #[serde(skip)]
     _guard: LogGuard,
 }
 
@@ -79,14 +84,18 @@ where
     }
 }
 
-pub fn init_inmemory_storage() -> Pin<Box<World>> {
+pub fn init_inmemory_storage(logger: impl Into<Option<slog::Logger>>) -> Pin<Box<World>> {
     profile!("init_inmemory_storage");
-    debug!("Init Storage");
+    let logger = logger.into();
+    match logger {
+        Some(ref logger) => debug!(logger, "Init Storage"),
+        None => println!("Init Storage"),
+    }
 
-    let world = World::new();
+    let world = World::new(logger);
     let world = Box::pin(world);
 
-    debug!("Init Storage done");
+    debug!(world.logger, "Init Storage done");
     world
 }
 
@@ -94,12 +103,23 @@ unsafe impl Send for World {}
 
 impl Default for World {
     fn default() -> Self {
-        Self::new()
+        Self::new(None)
     }
 }
 
 impl World {
-    pub fn new() -> Self {
+    pub fn new(logger: impl Into<Option<slog::Logger>>) -> Self {
+        let logger = logger.into().unwrap_or_else(|| {
+            let decorator = slog_term::TermDecorator::new().build();
+            let drain = slog_term::FullFormat::new(decorator).build().fuse();
+            let drain = slog_envlogger::new(drain).fuse();
+            let drain = slog_async::Async::new(drain)
+                .overflow_strategy(slog_async::OverflowStrategy::DropAndReport)
+                .chan_size(16000)
+                .build()
+                .fuse();
+            slog::Logger::root(drain, o!())
+        });
         let store = Storage::default();
         let deferred_deletes = DeferredDeletes::default();
         Self {
@@ -109,6 +129,8 @@ impl World {
             last_tick: Utc::now(),
             next_entity: crate::model::EntityId::default(),
             dt: Duration::zero(),
+
+            logger,
 
             #[cfg(feature = "log_tables")]
             _guard: LogGuard {
@@ -222,6 +244,6 @@ mod tests {
     #[test]
     fn check_world_sanity() {
         setup_testing();
-        let _world = init_inmemory_storage();
+        let _world = init_inmemory_storage(None);
     }
 }

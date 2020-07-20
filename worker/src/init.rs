@@ -18,7 +18,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
 
     let mut rng = rand::thread_rng();
 
-    let mut storage = caolo_sim::init_inmemory_storage();
+    let mut storage = caolo_sim::init_inmemory_storage(None);
 
     let mining_script_id = ScriptId(Uuid::new_v4());
     let script: CompilationUnit =

@@ -23,7 +23,7 @@
 //!     // do stuff
 //! }
 //!
-//! let mut storage = World::new();
+//! let mut storage = World::new(None);
 //! update_minerals(FromWorldMut::new(&mut storage), FromWorld::new(&storage));
 //! ```
 //!

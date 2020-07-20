@@ -144,7 +144,7 @@ mod tests {
         thread_rng().fill(&mut seed);
         let mut rng = SmallRng::from_seed(seed);
 
-        let mut storage = init_inmemory_storage();
+        let mut storage = init_inmemory_storage(crate::utils::test_logger());
 
         unsafe {
             let mut entity_positions = storage.unsafe_view::<EntityId, PositionComponent>();
@@ -259,6 +259,7 @@ mod tests {
 
     #[test]
     fn finds_closest_resources_as_expected() {
+        crate::utils::setup_testing();
         let entity_id = EntityId(1024);
         let center_pos = WorldPosition {
             room: Axial::new(0, 0),
@@ -272,9 +273,9 @@ mod tests {
         };
 
         let storage = init_resource_storage(entity_id, center_pos, expected_id, expected_pos);
-        let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
+        let logger = &storage.logger;
         let data = ScriptExecutionData::new(
-            &logger,
+            logger,
             &*storage.as_ref(),
             Default::default(),
             entity_id,

@@ -3,7 +3,7 @@ use crate::model::{EntityId, ScriptId, UserId};
 use crate::{intents::Intents, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
-use slog::{o, Drain};
+use slog::o;
 use slog::{trace, warn};
 use std::fmt::{self, Display, Formatter};
 use std::sync::Mutex;
@@ -28,23 +28,15 @@ pub enum ExecutionError {
 pub fn execute_scripts(storage: &World) -> Intents {
     profile!("execute_scripts");
 
-    let n_stricts = storage.view::<EntityId, EntityScript>().len();
-    let intents = Mutex::new(Intents::with_capacity(n_stricts));
+    let n_scripts = storage.view::<EntityId, EntityScript>().len();
+    let intents = Mutex::new(Intents::with_capacity(n_scripts));
     execute_scripts_parallel(&intents, storage);
 
     intents.into_inner().expect("Mutex unwrap")
 }
 
 fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
-    let decorator = slog_term::TermDecorator::new().build();
-    let drain = slog_term::FullFormat::new(decorator).build().fuse();
-    let drain = slog_envlogger::new(drain).fuse();
-    let drain = slog_async::Async::new(drain)
-        .overflow_strategy(slog_async::OverflowStrategy::DropAndReport)
-        .chan_size(16000)
-        .build()
-        .fuse();
-    let logger = slog::Logger::root(drain, o!());
+    let logger = storage.logger.new(o!("tick" => storage.time));
 
     let table = storage.view::<EntityId, EntityScript>().reborrow();
     table.par_iter().for_each(|(entity_id, script)| {
@@ -133,7 +125,7 @@ impl ScriptExecutionData {
         entity_id: EntityId,
         user_id: Option<UserId>,
     ) -> Self {
-        let logger = logger.new(o!( "entity_id" => entity_id.0, "tick" => storage.time ));
+        let logger = logger.new(o!( "entity_id" => entity_id.0 ));
 
         Self {
             storage: storage as *const _,
