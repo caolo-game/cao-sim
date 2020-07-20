@@ -693,6 +693,7 @@ mod tests {
     use crate::storage::views::View;
     use rand::rngs::SmallRng;
     use rand::SeedableRng;
+    use slog::{o, Drain};
 
     #[test]
     fn maps_are_not_homogeneous() {
@@ -778,9 +779,11 @@ mod tests {
         let mut path = Vec::with_capacity(1024);
 
         let first = plains.iter().next().expect("at least 1 plain");
+        let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
         for b in plains.iter().skip(1) {
             path.clear();
             if let Err(e) = find_path_in_room(
+                &logger,
                 *first,
                 *b,
                 (View::from_table(&positions), View::from_table(&terrain)),

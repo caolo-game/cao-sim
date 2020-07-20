@@ -266,6 +266,7 @@ fn move_to_pos<'a>(
     let mut path = Vec::with_capacity(max_pathfinding_iter as usize);
     let mut rooms_path = Vec::with_capacity(to.room.hex_distance(botpos.0.room) as usize);
     if let Err(e) = pathfinding::find_path(
+        logger,
         botpos.0,
         to,
         FromWorld::new(storage),
@@ -334,6 +335,7 @@ fn move_to_pos<'a>(
                         return Err(OperationResult::InvalidTarget);
                     }
                     let target_pos = match pathfinding::get_valid_transits(
+                        logger,
                         botpos.0,
                         to_room,
                         FromWorld::new(storage),
