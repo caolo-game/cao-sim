@@ -3,6 +3,7 @@ use crate::model::{EntityId, ScriptId, UserId};
 use crate::{intents::Intents, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
+use slog::{o, Drain};
 use std::fmt::{self, Display, Formatter};
 use std::sync::Mutex;
 use thiserror::Error;
@@ -34,9 +35,15 @@ pub fn execute_scripts(storage: &World) -> Intents {
 }
 
 fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
+    let decorator = slog_term::TermDecorator::new().build();
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain = slog_envlogger::new(drain).fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
+    let logger = slog::Logger::root(drain, o!());
+
     let table = storage.view::<EntityId, EntityScript>().reborrow();
     table.par_iter().for_each(|(entity_id, script)| {
-        match execute_single_script(*entity_id, script.script_id, storage) {
+        match execute_single_script(&logger, *entity_id, script.script_id, storage) {
             Ok(ints) => {
                 let mut intents = intents.lock().unwrap();
                 intents.merge(&ints);
@@ -52,6 +59,7 @@ fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
 }
 
 pub fn execute_single_script(
+    logger: &slog::Logger,
     entity_id: EntityId,
     script_id: ScriptId,
     storage: &World,
@@ -66,6 +74,7 @@ pub fn execute_single_script(
         })?;
 
     let data = ScriptExecutionData::new(
+        logger,
         storage,
         Intents::with_capacity(4),
         entity_id,
@@ -98,6 +107,7 @@ pub struct ScriptExecutionData {
     pub user_id: Option<UserId>,
     pub intents: Intents,
     storage: *const World,
+    pub logger: slog::Logger,
 }
 
 impl Display for ScriptExecutionData {
@@ -112,16 +122,20 @@ impl Display for ScriptExecutionData {
 
 impl ScriptExecutionData {
     pub fn new(
+        logger: &slog::Logger,
         storage: &World,
         intents: Intents,
         entity_id: EntityId,
         user_id: Option<UserId>,
     ) -> Self {
+        let logger = logger.new(o!( "entity_id" => entity_id.0));
+
         Self {
             storage: storage as *const _,
             intents,
             entity_id,
             user_id,
+            logger,
         }
     }
 

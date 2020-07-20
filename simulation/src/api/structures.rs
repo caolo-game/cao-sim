@@ -3,7 +3,7 @@ use crate::model::{EntityId, OperationResult};
 use crate::profile;
 use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;
-use log::error;
+use slog::{error, trace};
 
 #[derive(Debug, Clone, Copy)]
 pub struct SpawnIntent {
@@ -13,9 +13,11 @@ impl AutoByteEncodeProperties for SpawnIntent {}
 
 /// Given a SpawnIntent as input instructs the current spawn to spawn a new Bot
 pub fn spawn(vm: &mut VM<ScriptExecutionData>, intent: TPointer) -> Result<(), ExecutionError> {
-    profile!(trace "spawn");
+    profile!("spawn");
+    let logger = &vm.get_aux().logger;
+    trace!(logger, "spawn");
     let intent = vm.get_value::<SpawnIntent>(intent).ok_or_else(|| {
-        error!("spawn intent not set");
+        error!(logger, "spawn intent not set");
         ExecutionError::MissingArgument
     })?;
 

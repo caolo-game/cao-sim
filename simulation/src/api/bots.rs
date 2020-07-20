@@ -11,25 +11,30 @@ use crate::{
     storage::views::FromWorld,
     World,
 };
+use slog::{debug, error, trace, warn};
 use std::convert::TryFrom;
 
 pub fn unload(
     vm: &mut VM<ScriptExecutionData>,
     (amount, ty, target): (i32, Resource, TPointer),
 ) -> Result<(), ExecutionError> {
-    profile!(trace "unload");
+    profile!("unload");
+    let aux = vm.get_aux();
+    let logger = &aux.logger;
+
+    trace!(logger, "unload");
 
     let amount = TryFrom::try_from(amount).map_err(|e| {
-        warn!("unload called with invalid amount: {}", e);
+        warn!(logger, "unload called with invalid amount: {}", e);
         ExecutionError::InvalidArgument
     })?;
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
-        warn!("upload called without a structure");
+        warn!(logger, "upload called without a structure");
         ExecutionError::InvalidArgument
     })?;
 
-    let aux = vm.get_aux();
     trace!(
+        logger,
         "unload: amount: {} type: {:?} target: {:?}, {}",
         amount,
         ty,
@@ -64,14 +69,15 @@ pub fn mine_resource(
     target: TPointer,
 ) -> Result<(), ExecutionError> {
     profile!("mine_resource");
+    let aux = vm.get_aux();
+    let logger = &aux.logger;
 
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
-        warn!("mine_resource called without a target");
+        warn!(logger, "mine_resource called without a target");
         ExecutionError::InvalidArgument
     })?;
 
-    let aux = vm.get_aux();
-    trace!("mine_resource: target: {:?}, {}", target, aux);
+    trace!(logger, "mine_resource: target: {:?}, {}", target, aux);
 
     let storage = aux.storage();
     let user_id = aux.user_id.expect("user_id to be set");
@@ -95,13 +101,15 @@ pub fn approach_entity(
 ) -> Result<(), ExecutionError> {
     profile!("approach_entity");
 
+    let aux = vm.get_aux();
+    let logger = &aux.logger;
+
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
-        warn!("approach_entity called without a target");
+        warn!(logger, "approach_entity called without a target");
         ExecutionError::InvalidArgument
     })?;
 
-    let aux = vm.get_aux();
-    trace!("approach_entity: target: {:?}, {}", target, aux);
+    trace!(logger, "approach_entity: target: {:?}", target);
 
     let entity = aux.entity_id;
     let storage = aux.storage();
@@ -114,13 +122,16 @@ pub fn approach_entity(
     {
         Some(x) => x,
         None => {
-            warn!("entity {:?} does not have position component!", target);
+            warn!(
+                logger,
+                "entity {:?} does not have position component!", target
+            );
             vm.stack_push(OperationResult::InvalidInput)?;
             return Ok(());
         }
     };
 
-    let checkresult = match move_to_pos(entity, targetpos.0, user_id, storage) {
+    let checkresult = match move_to_pos(logger, entity, targetpos.0, user_id, storage) {
         Ok(Some((move_intent, pop_cache_intent, update_cache_intent))) => {
             let intents = &mut vm.get_aux_mut().intents;
             intents.move_intents.push(move_intent);
@@ -134,7 +145,7 @@ pub fn approach_entity(
             OperationResult::Ok
         }
         Ok(None) => {
-            trace!("Bot {:?} approach_entity: nothing to do", entity);
+            trace!(logger, "Bot {:?} approach_entity: nothing to do", entity);
             OperationResult::Ok
         }
         Err(e) => e,
@@ -147,19 +158,23 @@ pub fn move_bot_to_position(
     vm: &mut VM<ScriptExecutionData>,
     point: TPointer,
 ) -> Result<(), ExecutionError> {
-    profile!(trace "move_bot_to_position");
+    profile!("move_bot_to_position");
 
     let aux = vm.get_aux();
+    let logger = &aux.logger;
+
+    trace!(logger, "move_bot_to_position");
+
     let entity = aux.entity_id;
     let storage = aux.storage();
     let user_id = aux.user_id.expect("user_id to be set");
 
     let point: WorldPosition = vm.get_value(point).ok_or_else(|| {
-        warn!("move_bot called without a point");
+        warn!(logger, "move_bot called without a point");
         ExecutionError::InvalidArgument
     })?;
 
-    let checkresult = match move_to_pos(entity, point, user_id, storage) {
+    let checkresult = match move_to_pos(logger, entity, point, user_id, storage) {
         Ok(Some((move_intent, pop_cache_intent, update_cache_intent))) => {
             let intents = &mut vm.get_aux_mut().intents;
             intents.move_intents.push(move_intent);
@@ -172,7 +187,7 @@ pub fn move_bot_to_position(
             OperationResult::Ok
         }
         Ok(None) => {
-            trace!("{:?} move_to_pos nothing to do", entity);
+            trace!(logger, "{:?} move_to_pos nothing to do", entity);
             OperationResult::Ok
         }
         Err(e) => e,
@@ -187,19 +202,23 @@ type MoveToPosIntent = (
     Option<CachePathIntent>,
 );
 
-fn move_to_pos(
+fn move_to_pos<'a>(
+    logger: impl Into<&'a slog::Logger>,
     bot: EntityId,
     to: WorldPosition,
     user_id: UserId,
     storage: &World,
 ) -> Result<Option<MoveToPosIntent>, OperationResult> {
     profile!("move_to_pos");
+
+    let logger = logger.into();
+
     let botpos = storage
         .view::<EntityId, components::PositionComponent>()
         .reborrow()
         .get_by_id(&bot)
         .ok_or_else(|| {
-            warn!("entity {:?} does not have position component!", bot);
+            warn!(logger, "entity {:?} does not have position component!", bot);
             OperationResult::InvalidInput
         })?;
 
@@ -222,7 +241,7 @@ fn move_to_pos(
                 if let OperationResult::Ok =
                     check_move_intent(&intent, user_id, FromWorld::new(storage))
                 {
-                    trace!("Bot {:?} path cache hit", bot);
+                    trace!(logger, "Bot {:?} path cache hit", bot);
                     return Ok(Some((
                         intent,
                         Some(MutPathCacheIntent {
@@ -236,7 +255,7 @@ fn move_to_pos(
         }
         _ => {}
     }
-    trace!("Bot {:?} path cache miss", bot);
+    trace!(logger, "Bot {:?} path cache miss", bot);
 
     // TODO: config omponent and read from there
     let max_pathfinding_iter: u32 = std::env::var("MAX_PATHFINDING_ITER")
@@ -254,7 +273,7 @@ fn move_to_pos(
         &mut path,
         &mut rooms_path,
     ) {
-        trace!("pathfinding failed {:?}", e);
+        trace!(logger, "pathfinding failed {:?}", e);
         return Err(OperationResult::InvalidTarget);
     }
 
@@ -293,7 +312,11 @@ fn move_to_pos(
             }
         }
         None => {
-            trace!("Entity {:?} is trying to move to its own position", bot);
+            trace!(
+                logger,
+                "Entity {:?} is trying to move to its own position",
+                bot
+            );
             match rooms_path.pop() {
                 Some(to_room) => {
                     let is_bridge = storage
@@ -301,7 +324,10 @@ fn move_to_pos(
                         .get_by_id(&botpos.0)
                         .map(|TerrainComponent(t)| *t == TileTerrainType::Bridge)
                         .unwrap_or_else(|| {
-                            error!("Bot {:?} is not standing on terrain {:?}", bot, botpos);
+                            error!(
+                                logger,
+                                "Bot {:?} is not standing on terrain {:?}", bot, botpos
+                            );
                             false
                         });
                     if !is_bridge {
@@ -317,7 +343,7 @@ fn move_to_pos(
                             return Err(OperationResult::PathNotFound)
                         }
                         Err(e) => {
-                            error!("Transit failed {:?}", e);
+                            error!(logger, "Transit failed {:?}", e);
                             return Err(OperationResult::OperationFailed);
                         }
                     };
@@ -335,7 +361,7 @@ fn move_to_pos(
                     )))
                 }
                 None => {
-                    debug!("Entity {:?} is trying to move to its own position, but no next room was returned", bot);
+                    debug!(logger, "Entity {:?} is trying to move to its own position, but no next room was returned", bot);
 
                     Ok(None)
                 }
@@ -354,6 +380,7 @@ mod tests {
     use crate::model::terrain::TileTerrainType;
     use crate::model::*;
     use crate::query;
+    use slog::{o, Drain};
 
     #[test]
     fn can_move_to_another_room() {
@@ -459,7 +486,9 @@ mod tests {
         init_connections(next_room);
         init_connections(to.room);
 
-        let (MoveIntent { bot, position }, ..) = move_to_pos(bot_id, to, user_id, &storage)
+        let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
+
+        let (MoveIntent { bot, position }, ..) = move_to_pos(&logger, bot_id, to, user_id, &storage)
             .expect("Expected move to succeed")
             .expect("Expected a move intent");
 

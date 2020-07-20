@@ -4,6 +4,7 @@ use crate::data_store::World;
 use crate::model::WorldPosition;
 use crate::profile;
 use cao_lang::prelude::*;
+use slog::{trace, warn};
 use std::convert::TryFrom;
 
 #[derive(Debug, Clone, Copy)]
@@ -34,9 +35,12 @@ pub fn find_closest_by_range(
 ) -> Result<(), ExecutionError> {
     profile!("find_closest_by_range");
 
-    let entity_id = vm.get_aux().entity_id;
+    let aux = vm.get_aux();
+    let logger = &aux.logger;
 
-    trace!("find_closest_by_range {:?} {:?}", entity_id, param);
+    trace!(logger, "find_closest_by_range {:?}", param);
+
+    let entity_id = aux.entity_id;
 
     let position = match vm
         .get_aux()
@@ -46,12 +50,12 @@ pub fn find_closest_by_range(
     {
         Some(p) => p.0,
         None => {
-            warn!("{:?} has no PositionComponent", entity_id);
+            warn!(logger, "{:?} has no PositionComponent", entity_id);
             return Err(ExecutionError::InvalidArgument);
         }
     };
 
-    trace!("Executing find_closest_by_range {:?}", position);
+    trace!(logger, "Executing find_closest_by_range {:?}", position);
 
     param.execute(vm, position)
 }
@@ -63,20 +67,21 @@ impl FindConstant {
         position: WorldPosition,
     ) -> Result<(), ExecutionError> {
         let storage = vm.get_aux().storage();
+        let logger = &vm.get_aux().logger;
         let candidate = match self {
             FindConstant::Resource => {
                 let resources = vm
                     .get_aux()
                     .storage()
                     .view::<EntityId, components::ResourceComponent>();
-                find_closest_entity_impl(storage, position, |id| resources.contains(&id))
+                find_closest_entity_impl(logger, storage, position, |id| resources.contains(&id))
             }
             FindConstant::Spawn => {
                 let spawns = vm
                     .get_aux()
                     .storage()
                     .view::<EntityId, components::SpawnComponent>();
-                find_closest_entity_impl(storage, position, |id| spawns.contains(&id))
+                find_closest_entity_impl(logger, storage, position, |id| spawns.contains(&id))
             }
         }?;
         match candidate {
@@ -86,7 +91,7 @@ impl FindConstant {
                 vm.stack_push(OperationResult::Ok)?;
             }
             None => {
-                trace!("No stuff was found");
+                trace!(logger, "No stuff was found");
                 vm.stack_push(OperationResult::OperationFailed)?;
             }
         }
@@ -95,6 +100,7 @@ impl FindConstant {
 }
 
 fn find_closest_entity_impl<F>(
+    logger: &slog::Logger,
     storage: &World,
     position: WorldPosition,
     filter: F,
@@ -107,8 +113,8 @@ where
 
     let room = entities_by_pos.table.get_by_id(&room).ok_or_else(|| {
         warn!(
-            "find_closest_resource_by_range called on invalid room {:?}",
-            position
+            logger,
+            "find_closest_resource_by_range called on invalid room {:?}", position
         );
         ExecutionError::InvalidArgument
     })?;
@@ -124,6 +130,7 @@ mod tests {
     use super::*;
     use crate::data_store::{init_inmemory_storage, World};
     use rand::{rngs::SmallRng, thread_rng, Rng, SeedableRng};
+    use slog::{o, Drain};
 
     fn init_resource_storage(
         entity_id: EntityId,
@@ -221,8 +228,14 @@ mod tests {
                     components::ResourceComponent(components::Resource::Energy),
                 );
         }
-        let data =
-            ScriptExecutionData::new(&*storage.as_ref(), Default::default(), entity_id, None);
+        let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
+        let data = ScriptExecutionData::new(
+            &logger,
+            &*storage.as_ref(),
+            Default::default(),
+            entity_id,
+            None,
+        );
         let mut vm = VM::new(data);
 
         let constant = FindConstant::Resource;
@@ -259,7 +272,9 @@ mod tests {
         };
 
         let storage = init_resource_storage(entity_id, center_pos, expected_id, expected_pos);
+        let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
         let data = ScriptExecutionData::new(
+            &logger,
             &*storage.as_ref(),
             Default::default(),
             entity_id,
