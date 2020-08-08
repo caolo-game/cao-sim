@@ -1,4 +1,4 @@
-use caolo_messages::{
+use cao_messages::{
     UpdateEntityScript as UpdateEntityScriptMsg, UpdateScript as UpdateScriptMsg,
 };
 use caolo_sim::components::{EntityScript, OwnedEntity, ScriptComponent};

@@ -1,12 +1,12 @@
 use cao_math::vec::vec2f32::Point as Vec2;
 use cao_math::vec::vec3f32::Point as Vec3;
-use caolo_messages::Bot as BotMsg;
-use caolo_messages::LogEntry as LogMsg;
-use caolo_messages::{
+use cao_messages::Bot as BotMsg;
+use cao_messages::LogEntry as LogMsg;
+use cao_messages::{
     AxialPoint, Point as PointMsg, TerrainType, Tile as TileMsg, WorldPosition as WorldPositionMsg,
 };
-use caolo_messages::{Resource as ResourceMsg, ResourceType};
-use caolo_messages::{
+use cao_messages::{Resource as ResourceMsg, ResourceType};
+use cao_messages::{
     Structure as StructureMsg, StructurePayload as StructurePayloadMsg,
     StructureSpawn as StructureSpawnMsg,
 };

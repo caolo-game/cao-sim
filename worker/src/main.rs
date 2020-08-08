@@ -14,7 +14,7 @@ use thiserror::Error;
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-use caolo_messages::{
+use cao_messages::{
     Function, RoomProperties as RoomPropertiesMsg, RoomTerrainMessage, Schema, WorldState,
 };
 

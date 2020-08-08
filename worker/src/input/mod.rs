@@ -1,6 +1,6 @@
 //! Handle inputs received via the message bus
 mod script_update;
-use caolo_messages::{InputMsg, InputPayload};
+use cao_messages::{InputMsg, InputPayload};
 use caolo_sim::prelude::*;
 use log::{debug, error};
 use redis::Commands;
