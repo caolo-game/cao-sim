@@ -1,5 +1,6 @@
 pub mod decay_system;
 pub mod energy_system;
+pub mod death_system;
 pub mod intent_system;
 pub mod log_system;
 pub mod mineral_system;
@@ -28,14 +29,17 @@ pub trait System<'a> {
 pub fn execute_world_update(storage: &mut World) {
     profile!("execute_world_update");
 
+    let mut decay_sys = decay_system::DecaySystem;
+    update(&mut decay_sys, storage);
+
+    let mut death_sys = death_system::DeathSystem;
+    update(&mut death_sys, storage);
+
     let mut energy_sys = energy_system::EnergySystem;
     update(&mut energy_sys, storage);
 
     let mut spawn_sys = spawn_system::SpawnSystem;
     update(&mut spawn_sys, storage);
-
-    let mut decay_sys = decay_system::DecaySystem;
-    update(&mut decay_sys, storage);
 
     let mut mineral_sys = mineral_system::MineralSystem;
     update(&mut mineral_sys, storage);
