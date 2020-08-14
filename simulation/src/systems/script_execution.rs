@@ -1,6 +1,9 @@
 use crate::components::{EntityScript, ScriptComponent};
 use crate::model::{EntityId, ScriptId, UserId};
-use crate::{intents::Intents, profile, World};
+use crate::{
+    intents::{BotIntents, Intents},
+    profile, World,
+};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
 use slog::o;
@@ -9,7 +12,7 @@ use std::fmt::{self, Display, Formatter};
 use std::sync::Mutex;
 use thiserror::Error;
 
-pub type ExecutionResult = Result<Intents, ExecutionError>;
+pub type ExecutionResult = Result<BotIntents, ExecutionError>;
 
 #[derive(Debug, Error, Clone)]
 pub enum ExecutionError {
@@ -43,7 +46,7 @@ fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
         match execute_single_script(&logger, *entity_id, script.script_id, storage) {
             Ok(ints) => {
                 let mut intents = intents.lock().unwrap();
-                intents.merge(&ints);
+                intents.append(ints);
             }
             Err(err) => {
                 warn!(
@@ -74,7 +77,7 @@ pub fn execute_single_script(
     let data = ScriptExecutionData::new(
         logger.clone(),
         storage,
-        Intents::with_capacity(4),
+        BotIntents::default(),
         entity_id,
         Some(Default::default()), // TODO
     );
@@ -109,7 +112,7 @@ pub fn execute_single_script(
 pub struct ScriptExecutionData {
     pub entity_id: EntityId,
     pub user_id: Option<UserId>,
-    pub intents: Intents,
+    pub intents: BotIntents,
     storage: *const World,
     pub logger: slog::Logger,
 }
@@ -128,7 +131,7 @@ impl ScriptExecutionData {
     pub fn new(
         logger: slog::Logger,
         storage: &World,
-        intents: Intents,
+        intents: BotIntents,
         entity_id: EntityId,
         user_id: Option<UserId>,
     ) -> Self {

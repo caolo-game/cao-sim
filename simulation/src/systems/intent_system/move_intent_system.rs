@@ -14,13 +14,13 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
         View<'a, EntityId, Bot>,
         View<'a, WorldPosition, EntityComponent>,
     );
-    type Intent = MoveIntent;
+    type Intents =&'a[ MoveIntent];
 
     fn execute(
         &mut self,
         (mut positions,): Self::Mut,
         (bots, pos_entities): Self::Const,
-        intents: &[Self::Intent],
+        intents: Self::Intents,
     ) {
         profile!(" MoveSystem update");
         for intent in intents {

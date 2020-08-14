@@ -14,13 +14,13 @@ impl<'a> IntentExecutionSystem<'a> for DropoffSystem {
         UnsafeView<EntityId, CarryComponent>,
     );
     type Const = ();
-    type Intent = DropoffIntent;
+    type Intents = &'a[DropoffIntent];
 
     fn execute(
         &mut self,
         (mut energy_table, mut carry_table): Self::Mut,
         _: Self::Const,
-        intents: &[Self::Intent],
+        intents: Self::Intents,
     ) {
         profile!(" DropoffSystem update");
         for intent in intents {

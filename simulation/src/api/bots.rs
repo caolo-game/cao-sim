@@ -55,10 +55,7 @@ pub fn unload(
 
     let checkresult = check_dropoff_intent(&dropoff_intent, user_id, FromWorld::new(storage));
     if let OperationResult::Ok = checkresult {
-        vm.get_aux_mut()
-            .intents
-            .dropoff_intents
-            .push(dropoff_intent);
+        vm.get_aux_mut().intents.dropoff_intent = Some(dropoff_intent);
     }
     vm.stack_push(checkresult)?;
     Ok(())
@@ -90,7 +87,7 @@ pub fn mine_resource(
     let checkresult = check_mine_intent(&intent, user_id, FromWorld::new(storage));
     vm.stack_push(checkresult)?;
     if let OperationResult::Ok = checkresult {
-        vm.get_aux_mut().intents.mine_intents.push(intent);
+        vm.get_aux_mut().intents.mine_intent = Some(intent);
     }
     Ok(())
 }
@@ -134,12 +131,12 @@ pub fn approach_entity(
     let checkresult = match move_to_pos(logger, entity, targetpos.0, user_id, storage) {
         Ok(Some((move_intent, pop_cache_intent, update_cache_intent))) => {
             let intents = &mut vm.get_aux_mut().intents;
-            intents.move_intents.push(move_intent);
+            intents.move_intent = Some(move_intent);
             if let Some(pop_cache_intent) = pop_cache_intent {
-                intents.mut_path_cache_intents.push(pop_cache_intent);
+                intents.mut_path_cache_intent = Some(pop_cache_intent);
             }
             if let Some(update_cache_intent) = update_cache_intent {
-                intents.update_path_cache_intents.push(update_cache_intent);
+                intents.update_path_cache_intent = Some(update_cache_intent);
             }
 
             OperationResult::Ok
@@ -177,12 +174,12 @@ pub fn move_bot_to_position(
     let checkresult = match move_to_pos(logger, entity, point, user_id, storage) {
         Ok(Some((move_intent, pop_cache_intent, update_cache_intent))) => {
             let intents = &mut vm.get_aux_mut().intents;
-            intents.move_intents.push(move_intent);
+            intents.move_intent = Some(move_intent);
             if let Some(pop_cache_intent) = pop_cache_intent {
-                intents.mut_path_cache_intents.push(pop_cache_intent);
+                intents.mut_path_cache_intent = Some(pop_cache_intent);
             }
             if let Some(update_cache_intent) = update_cache_intent {
-                intents.update_path_cache_intents.push(update_cache_intent);
+                intents.update_path_cache_intent = Some(update_cache_intent);
             }
             OperationResult::Ok
         }

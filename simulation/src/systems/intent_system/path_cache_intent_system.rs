@@ -11,13 +11,13 @@ pub struct UpdatePathCacheSystem;
 impl<'a> IntentExecutionSystem<'a> for UpdatePathCacheSystem {
     type Mut = (UnsafeView<EntityId, PathCacheComponent>,);
     type Const = (View<'a, EntityId, Bot>,);
-    type Intent = CachePathIntent;
+    type Intents =&'a[ CachePathIntent];
 
     fn execute(
         &mut self,
         (mut path_cache_table,): Self::Mut,
         (bot_table,): Self::Const,
-        intents: &[Self::Intent],
+        intents: Self::Intents,
     ) {
         profile!(" UpdatePathCacheSystem update");
         for intent in intents {
@@ -40,13 +40,13 @@ pub struct MutPathCacheSystem;
 impl<'a> IntentExecutionSystem<'a> for MutPathCacheSystem {
     type Mut = (UnsafeView<EntityId, PathCacheComponent>,);
     type Const = ();
-    type Intent = MutPathCacheIntent;
+    type Intents = &'a[MutPathCacheIntent];
 
     fn execute(
         &mut self,
         (mut path_cache_table,): Self::Mut,
         (): Self::Const,
-        intents: &[Self::Intent],
+        intents: Self::Intents,
     ) {
         profile!(" MutPathCacheSystem update");
         for intent in intents {

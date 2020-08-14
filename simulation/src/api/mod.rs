@@ -54,14 +54,7 @@ pub fn console_log(
 
     let payload = format!("{:?} says {}", entity_id, message);
     trace!(logger, "{}", payload);
-    vm.get_aux_mut()
-        .intents
-        .log_intents
-        .push(crate::intents::LogIntent {
-            entity: entity_id,
-            payload,
-            time,
-        });
+    vm.get_aux_mut().intents.with_log(entity_id, payload, time);
 
     Ok(())
 }
@@ -74,14 +67,7 @@ pub fn log_scalar(vm: &mut VM<ScriptExecutionData>, value: Scalar) -> Result<(),
     let time = vm.get_aux().storage().time();
     let payload = format!("{:?} says {:?}", entity_id, value);
     trace!(logger, "{}", payload);
-    vm.get_aux_mut()
-        .intents
-        .log_intents
-        .push(crate::intents::LogIntent {
-            entity: entity_id,
-            payload,
-            time,
-        });
+    vm.get_aux_mut().intents.with_log(entity_id, payload, time);
     Ok(())
 }
 

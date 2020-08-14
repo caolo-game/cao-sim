@@ -16,13 +16,13 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
         UnsafeView<EntityId, CarryComponent>,
     );
     type Const = (View<'a, EntityId, ResourceComponent>,);
-    type Intent = MineIntent;
+    type Intents =&'a[ MineIntent];
 
     fn execute(
         &mut self,
         (mut energy_table, mut carry_table): Self::Mut,
         (resource_table,): Self::Const,
-        intents: &[Self::Intent],
+        intents: Self::Intents,
     ) {
         profile!(" MineSystem update");
         for intent in intents {

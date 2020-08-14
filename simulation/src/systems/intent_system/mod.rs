@@ -21,16 +21,19 @@ use rayon::prelude::*;
 pub trait IntentExecutionSystem<'a> {
     type Mut: FromWorldMut + Clone;
     type Const: FromWorld<'a>;
-    type Intent;
+    type Intents;
 
-    fn execute(&mut self, m: Self::Mut, c: Self::Const, intents: &[Self::Intent]);
+    fn execute(&mut self, m: Self::Mut, c: Self::Const, intents: Self::Intents);
 }
 
 /// Executes all intents in order of priority (as defined by this system)
 pub fn execute_intents(mut intents: Intents, storage: &mut World) {
     profile!("execute_intents");
 
-    pre_process_move_intents(&mut intents.move_intents);
+    pre_process_move_intents(&mut intents.move_intent);
+
+    // logs will be processed a bit differently
+    let logs = std::mem::replace(&mut intents.log_intent, vec![]);
 
     let intents = &intents;
 
@@ -51,10 +54,14 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
             });
         }
 
-        let log_sys = executor(LogSystem, storage);
-        s.spawn(move |_| {
-            log_sys(intents);
-        });
+        {
+            let m = FromWorldMut::new(storage);
+            let c = FromWorld::new(storage as &_);
+            s.spawn(move |_| {
+                let mut log_sys = LogSystem;
+                log_sys.execute(m, c, logs);
+            });
+        }
 
         let update_cache_sys = executor(UpdatePathCacheSystem, storage);
         let pop_path_cache_sys = executor(MutPathCacheSystem, storage);
@@ -73,7 +80,7 @@ where
     'b: 'a,
     T: 'a,
     &'a Intents: Into<&'a [T]>,
-    Sys: IntentExecutionSystem<'a, Intent = T> + 'a,
+    Sys: IntentExecutionSystem<'a, Intents = &'a [T]> + 'a,
 {
     let storage = unsafe { &mut *storage };
     let mutable = Sys::Mut::new(storage);

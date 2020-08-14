@@ -18,13 +18,13 @@ type Mut = (
 impl<'a> IntentExecutionSystem<'a> for SpawnSystem {
     type Mut = Mut;
     type Const = (View<'a, EntityId, EnergyComponent>,);
-    type Intent = SpawnIntent;
+    type Intents =&'a[ SpawnIntent];
 
     fn execute(
         &mut self,
         (mut spawn_bot_table, mut spawn_table, mut owner_table, mut insert_entity): Self::Mut,
         (entity_table,): Self::Const,
-        intents: &[Self::Intent],
+        intents: Self::Intents,
     ) {
         profile!(" SpawnSystem update");
         for intent in intents {

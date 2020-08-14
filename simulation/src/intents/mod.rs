@@ -14,9 +14,32 @@ pub use self::move_intent::*;
 pub use self::pathcache_intent::*;
 pub use self::spawn_intent::*;
 
+use crate::model::indices::EntityId;
+
 impl Intents {
     pub fn new() -> Self {
         Self::default()
+    }
+}
+
+impl BotIntents {
+    pub fn with_log<S: Into<String>>(
+        &mut self,
+        entity: EntityId,
+        payload: S,
+        time: u64,
+    ) -> &mut Self {
+        if self.log_intent.is_none() {
+            self.log_intent = Some(LogIntent {
+                entity,
+                payload: Vec::with_capacity(64),
+                time,
+            })
+        }
+        if let Some(ref mut log_intent) = self.log_intent {
+            log_intent.payload.push(payload.into());
+        }
+        self
     }
 }
 
@@ -27,6 +50,7 @@ macro_rules! intents {
         pub struct Intents {
             $(pub $name: Vec<$type>),*
         }
+
         impl Intents {
             pub fn with_capacity(cap: usize) -> Self {
                 Self{
@@ -38,7 +62,23 @@ macro_rules! intents {
                 $(self.$name.extend_from_slice(&other.$name));* ;
                 self
             }
+
+            pub fn append(&mut self, intents: BotIntents) -> &mut Self {
+                $(
+                    if let Some(intent) = intents.$name {
+                        self.$name.push(intent);
+                    }
+                )*
+                self
+            }
         }
+
+        /// Possible intents of a single bot
+        #[derive(Debug, Clone, Default)]
+        pub struct BotIntents {
+            $(pub $name: Option<$type>),*
+        }
+
         $(
             impl<'a> Into<&'a [$type]> for &'a Intents {
                 fn into(self) -> &'a [$type] {
@@ -50,11 +90,11 @@ macro_rules! intents {
 }
 
 intents!(
-    move_intents: MoveIntent,
-    spawn_intents: SpawnIntent,
-    mine_intents: MineIntent,
-    dropoff_intents: DropoffIntent,
-    log_intents: LogIntent,
-    update_path_cache_intents: CachePathIntent,
-    mut_path_cache_intents: MutPathCacheIntent,
+    move_intent: MoveIntent,
+    spawn_intent: SpawnIntent,
+    mine_intent: MineIntent,
+    dropoff_intent: DropoffIntent,
+    log_intent: LogIntent,
+    update_path_cache_intent: CachePathIntent,
+    mut_path_cache_intent: MutPathCacheIntent,
 );

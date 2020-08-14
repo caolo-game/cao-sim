@@ -4,6 +4,7 @@ use crate::intents::LogIntent;
 use crate::model::EntityTime;
 use crate::profile;
 use crate::storage::views::UnsafeView;
+use crate::tables::Table;
 use log::trace;
 
 pub struct LogSystem;
@@ -11,25 +12,28 @@ pub struct LogSystem;
 impl<'a> IntentExecutionSystem<'a> for LogSystem {
     type Mut = (UnsafeView<EntityTime, LogEntry>,);
     type Const = ();
-    type Intent = LogIntent;
+    type Intents = Vec<LogIntent>;
 
-    fn execute(&mut self, (mut log_table,): Self::Mut, _: Self::Const, intents: &[Self::Intent]) {
+    fn execute(&mut self, (mut log_table,): Self::Mut, _: Self::Const, intents: Self::Intents) {
         profile!(" LogSystem update");
         for intent in intents {
             trace!("inserting log entry {:?}", intent);
             let id = EntityTime(intent.entity, intent.time);
-            let entry = match log_table.get_by_id(&id).cloned() {
+            let log_table = unsafe { log_table.as_mut() };
+            // use delete to move out of the data structure, then we'll move it back in
+            // this should be cheaper than cloning all the time, because of the inner vectors
+            match log_table.delete(&id) {
                 Some(mut entry) => {
-                    entry.payload.push(intent.payload.clone());
-                    entry
+                    entry.payload.extend_from_slice(intent.payload.as_slice());
+                    log_table.insert_or_update(id, entry);
                 }
-                None => LogEntry {
-                    payload: vec![intent.payload.clone()],
-                },
+                None => {
+                    let entry = LogEntry {
+                        payload: intent.payload,
+                    };
+                    log_table.insert_or_update(id, entry);
+                }
             };
-            unsafe {
-                log_table.as_mut().insert_or_update(id, entry);
-            }
         }
     }
 }
