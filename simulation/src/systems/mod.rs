@@ -1,6 +1,6 @@
+pub mod death_system;
 pub mod decay_system;
 pub mod energy_system;
-pub mod death_system;
 pub mod intent_system;
 pub mod log_system;
 pub mod mineral_system;

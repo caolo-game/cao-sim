@@ -41,10 +41,48 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
         // we can update systems in parallel that do not use the same tables
 
         {
-            let move_sys = executor(MoveSystem, storage);
-            let mine_sys = executor(MineSystem, storage);
-            let dropoff_sys = executor(DropoffSystem, storage);
-            let spawn_sys = executor(SpawnSystem, storage);
+            use crate::components::*;
+            use crate::model::EntityId;
+            use crate::model::WorldPosition;
+            use crate::storage::views::{InsertEntityView, UnsafeView, View};
+
+            // Explicitly list the dependencies, so we can see what calls can be performed in
+            // parallel
+            let move_sys = executor::<
+                (UnsafeView<EntityId, PositionComponent>,),
+                (View<EntityId, Bot>, View<WorldPosition, EntityComponent>),
+                _,
+                _,
+            >(MoveSystem, storage);
+            let mine_sys = executor::<
+                (
+                    UnsafeView<EntityId, EnergyComponent>,
+                    UnsafeView<EntityId, CarryComponent>,
+                ),
+                (View<EntityId, ResourceComponent>,),
+                _,
+                _,
+            >(MineSystem, storage);
+            let dropoff_sys = executor::<
+                (
+                    UnsafeView<EntityId, EnergyComponent>,
+                    UnsafeView<EntityId, CarryComponent>,
+                ),
+                (),
+                _,
+                _,
+            >(DropoffSystem, storage);
+            let spawn_sys = executor::<
+                (
+                    UnsafeView<EntityId, SpawnBotComponent>,
+                    UnsafeView<EntityId, SpawnComponent>,
+                    UnsafeView<EntityId, OwnedEntity>,
+                    InsertEntityView,
+                ),
+                (View<EntityId, EnergyComponent>,),
+                _,
+                _,
+            >(SpawnSystem, storage);
 
             s.spawn(move |_| {
                 move_sys(intents);
@@ -72,15 +110,17 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
     });
 }
 
-fn executor<'a, 'b, T, Sys>(
+fn executor<'a, 'b, M, C, T, Sys>(
     mut sys: Sys,
     storage: *mut World,
 ) -> impl FnOnce(&'b Intents) -> () + 'a
 where
     'b: 'a,
     T: 'a,
+    M: FromWorldMut + Clone + 'a,
+    C: FromWorld<'a> + 'a,
     &'a Intents: Into<&'a [T]>,
-    Sys: IntentExecutionSystem<'a, Intents = &'a [T]> + 'a,
+    Sys: IntentExecutionSystem<'a, Mut = M, Const = C, Intents = &'a [T]> + 'a,
 {
     let storage = unsafe { &mut *storage };
     let mutable = Sys::Mut::new(storage);

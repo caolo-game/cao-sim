@@ -31,7 +31,7 @@ pub fn spawn(vm: &mut VM<ScriptExecutionData>, intent: TPointer) -> Result<(), E
 
     let check = check_spawn_intent(&intent, user_id, storage);
     if let OperationResult::Ok = check {
-        vm.get_aux_mut().intents.spawn_intent=Some(intent);
+        vm.get_aux_mut().intents.spawn_intent = Some(intent);
     }
     vm.stack_push(check)?;
 

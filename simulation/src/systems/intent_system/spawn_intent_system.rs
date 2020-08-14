@@ -18,7 +18,7 @@ type Mut = (
 impl<'a> IntentExecutionSystem<'a> for SpawnSystem {
     type Mut = Mut;
     type Const = (View<'a, EntityId, EnergyComponent>,);
-    type Intents =&'a[ SpawnIntent];
+    type Intents = &'a [SpawnIntent];
 
     fn execute(
         &mut self,

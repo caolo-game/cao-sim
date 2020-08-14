@@ -14,7 +14,7 @@ impl<'a> IntentExecutionSystem<'a> for DropoffSystem {
         UnsafeView<EntityId, CarryComponent>,
     );
     type Const = ();
-    type Intents = &'a[DropoffIntent];
+    type Intents = &'a [DropoffIntent];
 
     fn execute(
         &mut self,

@@ -16,7 +16,7 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
         UnsafeView<EntityId, CarryComponent>,
     );
     type Const = (View<'a, EntityId, ResourceComponent>,);
-    type Intents =&'a[ MineIntent];
+    type Intents = &'a [MineIntent];
 
     fn execute(
         &mut self,

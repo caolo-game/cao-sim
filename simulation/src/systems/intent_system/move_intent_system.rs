@@ -14,7 +14,7 @@ impl<'a> IntentExecutionSystem<'a> for MoveSystem {
         View<'a, EntityId, Bot>,
         View<'a, WorldPosition, EntityComponent>,
     );
-    type Intents =&'a[ MoveIntent];
+    type Intents = &'a [MoveIntent];
 
     fn execute(
         &mut self,
