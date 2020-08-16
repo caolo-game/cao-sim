@@ -11,12 +11,17 @@ use self::mine_intent_system::MineSystem;
 use self::move_intent_system::MoveSystem;
 use self::path_cache_intent_system::{MutPathCacheSystem, UpdatePathCacheSystem};
 use self::spawn_intent_system::SpawnSystem;
+use crate::components::*;
 use crate::intents::{Intents, MoveIntent};
+use crate::model::EntityId;
+use crate::model::WorldPosition;
 use crate::profile;
 use crate::storage::views::{FromWorld, FromWorldMut};
+use crate::storage::views::{InsertEntityView, UnsafeView, View};
 use crate::World;
 use log::debug;
 use rayon::prelude::*;
+use std::mem::replace;
 
 pub trait IntentExecutionSystem<'a> {
     type Mut: FromWorldMut + Clone;
@@ -32,8 +37,9 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
 
     pre_process_move_intents(&mut intents.move_intent);
 
-    // logs will be processed a bit differently
-    let logs = std::mem::replace(&mut intents.log_intent, vec![]);
+    // these will be processed a bit differently than the rest
+    let log_intent = replace(&mut intents.log_intent, vec![]);
+    let update_path_cache_intent = replace(&mut intents.update_path_cache_intent, vec![]);
 
     let intents = &intents;
 
@@ -41,11 +47,6 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
         // we can update systems in parallel that do not use the same tables
 
         {
-            use crate::components::*;
-            use crate::model::EntityId;
-            use crate::model::WorldPosition;
-            use crate::storage::views::{InsertEntityView, UnsafeView, View};
-
             // Explicitly list the dependencies, so we can see what calls can be performed in
             // parallel
             let move_sys = executor::<
@@ -97,16 +98,20 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
             let c = FromWorld::new(storage as &_);
             s.spawn(move |_| {
                 let mut log_sys = LogSystem;
-                log_sys.execute(m, c, logs);
+                log_sys.execute(m, c, log_intent);
             });
         }
 
-        let update_cache_sys = executor(UpdatePathCacheSystem, storage);
-        let pop_path_cache_sys = executor(MutPathCacheSystem, storage);
-        s.spawn(move |_| {
-            update_cache_sys(intents);
-            pop_path_cache_sys(intents);
-        });
+        {
+            let pop_path_cache_sys = executor(MutPathCacheSystem, storage);
+            let m = FromWorldMut::new(storage);
+            let c = FromWorld::new(storage as &_);
+            s.spawn(move |_| {
+                let mut update_cache_sys = UpdatePathCacheSystem;
+                update_cache_sys.execute(m, c, update_path_cache_intent);
+                pop_path_cache_sys(intents);
+            });
+        }
     });
 }
 

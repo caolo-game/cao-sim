@@ -11,7 +11,7 @@ pub struct UpdatePathCacheSystem;
 impl<'a> IntentExecutionSystem<'a> for UpdatePathCacheSystem {
     type Mut = (UnsafeView<EntityId, PathCacheComponent>,);
     type Const = (View<'a, EntityId, Bot>,);
-    type Intents = &'a [CachePathIntent];
+    type Intents = Vec<CachePathIntent>;
 
     fn execute(
         &mut self,
@@ -29,7 +29,7 @@ impl<'a> IntentExecutionSystem<'a> for UpdatePathCacheSystem {
             unsafe {
                 path_cache_table
                     .as_mut()
-                    .insert_or_update(entity_id, intent.cache.clone());
+                    .insert_or_update(entity_id, intent.cache);
             }
         }
     }

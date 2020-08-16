@@ -30,7 +30,7 @@ impl<'a> IntentExecutionSystem<'a> for SpawnSystem {
         for intent in intents {
             trace!("Spawning bot from structure {:?}", intent.spawn_id);
 
-            let mut spawn = match spawn_table.get_by_id(&intent.spawn_id).cloned() {
+            let spawn = match unsafe { spawn_table.as_mut() }.get_by_id_mut(&intent.spawn_id) {
                 Some(x) => x,
                 None => {
                     error!("structure does not have spawn component");
@@ -69,10 +69,6 @@ impl<'a> IntentExecutionSystem<'a> for SpawnSystem {
 
                 spawn.time_to_spawn = 5;
                 spawn.spawning = Some(bot_id);
-
-                spawn_table
-                    .as_mut()
-                    .insert_or_update(intent.spawn_id, spawn);
             }
         }
     }

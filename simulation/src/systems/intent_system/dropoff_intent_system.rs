@@ -23,17 +23,20 @@ impl<'a> IntentExecutionSystem<'a> for DropoffSystem {
         intents: Self::Intents,
     ) {
         profile!(" DropoffSystem update");
+
+        let carry_table = unsafe { carry_table.as_mut() };
+        let energy_table = unsafe { energy_table.as_mut() };
         for intent in intents {
             trace!("Executing dropoff intent {:?}", intent);
             // dropoff amount = min(bot carry , amount , structure capacity)
-            let mut carry_component = match carry_table.get_by_id(&intent.bot).cloned() {
+            let carry_component = match carry_table.get_by_id_mut(&intent.bot) {
                 Some(x) => x,
                 None => {
                     warn!("Bot has no carry");
                     continue;
                 }
             };
-            let mut store_component = match energy_table.get_by_id(&intent.structure).cloned() {
+            let store_component = match energy_table.get_by_id_mut(&intent.structure) {
                 Some(x) => x,
                 None => {
                     warn!("Structure has no energy");
@@ -47,15 +50,6 @@ impl<'a> IntentExecutionSystem<'a> for DropoffSystem {
 
             store_component.energy += dropoff;
             carry_component.carry -= dropoff;
-
-            unsafe {
-                carry_table
-                    .as_mut()
-                    .insert_or_update(intent.bot, carry_component);
-                energy_table
-                    .as_mut()
-                    .insert_or_update(intent.structure, store_component);
-            }
         }
     }
 }
