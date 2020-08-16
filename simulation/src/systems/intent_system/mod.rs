@@ -110,6 +110,10 @@ pub fn execute_intents(mut intents: Intents, storage: &mut World) {
     });
 }
 
+/// Create an executor for an intent system
+/// M and C types are used so we're able to explicitly list the dependencies and trigger compile
+/// errors when system deps change.
+/// This is intended for readers to better visualize the movement of data in their heads.
 fn executor<'a, 'b, M, C, T, Sys>(
     mut sys: Sys,
     storage: *mut World,
@@ -132,59 +136,61 @@ where
     }
 }
 
-/// Remove duplicate positions and entities.
+/// Remove duplicate positions.
+/// We assume that there are no duplicated entities
 fn pre_process_move_intents(move_intents: &mut Vec<MoveIntent>) {
-    macro_rules! dedupe {
-        ($field: ident, $intents: ident) => {
-            let len = $intents.len();
-            if len < 2 {
-                // 0 and 1 long vectors do not have duplicates
-                return;
-            }
-            $intents.par_sort_unstable_by_key(|intent| intent.$field);
-            // move in reverse order because we want to remove invalid intents as we move, which would be a
-            // lot more expensive the other way around
-            for current in (0..=len - 2).rev() {
-                let last = current + 1;
-                let a = &$intents[last];
-                let b = &$intents[current];
-                if a.$field == b.$field {
-                    debug!(
-                        concat!(
-                            "Duplicated",
-                            stringify!($field),
-                            "in move intents, removing {:?}"
-                        ),
-                        a
-                    );
-                    $intents.remove(last);
-                }
-            }
-        };
+    let len = move_intents.len();
+    if len < 2 {
+        // 0 and 1 long vectors do not have duplicates
+        return;
     }
-
-    dedupe!(position, move_intents);
-    dedupe!(bot, move_intents);
+    move_intents.par_sort_unstable_by_key(|intent| intent.position);
+    // move in reverse order because we want to remove invalid intents as we move,
+    // swap_remove would change the last position, screwing with the ordering
+    for current in (0..=len - 2).rev() {
+        let last = current + 1;
+        let a = &move_intents[last];
+        let b = &move_intents[current];
+        if a.position == b.position {
+            debug!("Duplicated position in move intents, removing {:?}", a);
+            move_intents.swap_remove(last);
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::geometry::Axial;
+    use crate::model::EntityId;
     use crate::model::WorldPosition;
 
     #[test]
     fn pre_process_move_intents_removes_last_dupe() {
         let mut intents = vec![
             MoveIntent {
-                bot: Default::default(),
+                bot: EntityId(42),
                 position: WorldPosition {
                     room: Default::default(),
                     pos: Axial::new(42, 69),
                 },
             },
             MoveIntent {
-                bot: Default::default(),
+                bot: EntityId(123),
+                position: WorldPosition {
+                    room: Default::default(),
+                    pos: Axial::new(42, 69),
+                },
+            },
+            MoveIntent {
+                bot: EntityId(64),
+                position: WorldPosition {
+                    room: Default::default(),
+                    pos: Axial::new(43, 69),
+                },
+            },
+            MoveIntent {
+                bot: EntityId(69),
                 position: WorldPosition {
                     room: Default::default(),
                     pos: Axial::new(42, 69),
@@ -193,36 +199,7 @@ mod tests {
         ];
 
         pre_process_move_intents(&mut intents);
-        assert_eq!(intents.len(), 1);
-    }
-
-    #[test]
-    fn pre_process_move_intents_removes_dupe_entities() {
-        let mut intents = vec![
-            MoveIntent {
-                bot: Default::default(),
-                position: WorldPosition {
-                    room: Default::default(),
-                    pos: Axial::new(42, 42),
-                },
-            },
-            MoveIntent {
-                bot: Default::default(),
-                position: WorldPosition {
-                    room: Default::default(),
-                    pos: Axial::new(42, 69),
-                },
-            },
-            MoveIntent {
-                bot: Default::default(),
-                position: WorldPosition {
-                    room: Default::default(),
-                    pos: Axial::new(69, 69),
-                },
-            },
-        ];
-
-        pre_process_move_intents(&mut intents);
-        assert_eq!(intents.len(), 1);
+        assert_eq!(intents.len(), 2);
+        assert_ne!(intents[0].position, intents[1].position);
     }
 }
