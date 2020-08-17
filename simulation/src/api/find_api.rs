@@ -57,7 +57,7 @@ pub fn parse_find_constant(
             )));
         }
     };
-    vm.set_value(constant)?;
+    vm.stack_push(constant as i32)?;
     Ok(())
 }
 

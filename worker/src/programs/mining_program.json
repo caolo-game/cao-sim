@@ -4,11 +4,23 @@
       "node": {
         "ScalarInt": 1
       },
-      "child": 0
+      "child": -2
+    },
+    "-2" : {
+        "node": {
+            "StringLiteral": "Resource"
+        },
+        "child": -1
+    },
+    "-1" : {
+        "node": {
+            "Call": "parse_find_constant"
+        },
+        "child": 0
     },
     "0": {
       "node": {
-        "Call": "find_closest_resource_by_range"
+        "Call": "find_closest_by_range"
       },
       "child": 1
     },
@@ -72,7 +84,7 @@
       },
       "child": null
     },
-    "-1": {
+    "-10000": {
       "node": {
         "Start": null
       },
