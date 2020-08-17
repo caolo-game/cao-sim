@@ -45,9 +45,9 @@ pub fn console_log(
     profile!("console_log");
     let logger = &vm.get_aux().logger;
     trace!(logger, "console_log");
-    let message: String = vm.get_value(message).ok_or_else(|| {
+    let message = vm.get_value_in_place::<&str>(message).ok_or_else(|| {
         trace!(logger, "console_log called with invalid message");
-        ExecutionError::InvalidArgument
+        ExecutionError::InvalidArgument { context: None }
     })?;
     let entity_id = vm.get_aux().entity_id;
     let time = vm.get_aux().storage().time();
@@ -168,7 +168,7 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    find_closest_resource_by_range,
+                    find_closest_by_range,
                     "Find an object of type `FindConstant`, closest to the current entity",
                     [FindConstant],
                     [OperationResult, EntityId],
@@ -185,6 +185,16 @@ pub fn make_import() -> Schema {
                     []
                 ),
                 fo: Procedure::new(FunctionWrapper::new(bots::unload)),
+            },
+            FunctionRow {
+                desc: subprogram_description!(
+                    parse_find_constant,
+                    "Converts string literal to a find constant",
+                    [String],
+                    [FindConstant],
+                    []
+                ),
+                fo: Procedure::new(FunctionWrapper::new(find_api::parse_find_constant)),
             },
         ],
     }

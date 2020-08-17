@@ -25,12 +25,11 @@ pub fn unload(
     trace!(logger, "unload");
 
     let amount = TryFrom::try_from(amount).map_err(|e| {
-        warn!(logger, "unload called with invalid amount: {}", e);
-        ExecutionError::InvalidArgument
+        ExecutionError::invalid_argument(format!("unload called with invalid amount: {}", e))
     })?;
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
         warn!(logger, "upload called without a structure");
-        ExecutionError::InvalidArgument
+        ExecutionError::invalid_argument("upload called without a structure")
     })?;
 
     trace!(
@@ -71,7 +70,7 @@ pub fn mine_resource(
 
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
         warn!(logger, "mine_resource called without a target");
-        ExecutionError::InvalidArgument
+        ExecutionError::InvalidArgument { context: None }
     })?;
 
     trace!(logger, "mine_resource: target: {:?}, {}", target, aux);
@@ -103,7 +102,7 @@ pub fn approach_entity(
 
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
         warn!(logger, "approach_entity called without a target");
-        ExecutionError::InvalidArgument
+        ExecutionError::InvalidArgument { context: None }
     })?;
 
     trace!(logger, "approach_entity: target: {:?}", target);
@@ -168,7 +167,7 @@ pub fn move_bot_to_position(
 
     let point: WorldPosition = vm.get_value(point).ok_or_else(|| {
         warn!(logger, "move_bot called without a point");
-        ExecutionError::InvalidArgument
+        ExecutionError::InvalidArgument { context: None }
     })?;
 
     let checkresult = match move_to_pos(logger, entity, point, user_id, storage) {

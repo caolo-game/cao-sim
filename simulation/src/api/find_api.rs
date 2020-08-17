@@ -30,6 +30,37 @@ impl TryFrom<Scalar> for FindConstant {
 
 impl AutoByteEncodeProperties for FindConstant {}
 
+pub fn parse_find_constant(
+    vm: &mut VM<ScriptExecutionData>,
+    param: TPointer,
+) -> Result<(), ExecutionError> {
+    profile!("parse_find_constant");
+    let logger = &vm.get_aux().logger;
+    trace!(logger, "parse_find_constant");
+    let param = vm.get_value_in_place::<&str>(param).ok_or_else(|| {
+        trace!(logger, "parse_find_constant called with invalid param");
+        ExecutionError::invalid_argument("parse_find_constant called with invalid param")
+    })?;
+    let constant = match param {
+        "Resource" => FindConstant::Resource,
+        "Spawn" => FindConstant::Spawn,
+        "EnemyBot" => FindConstant::EnemyBot,
+        _ => {
+            trace!(
+                logger,
+                "parse_find_constant got an invalid constant value {}",
+                param
+            );
+            return Err(ExecutionError::invalid_argument(format!(
+                "parse_find_constant got in invalid constant value {}",
+                param
+            )));
+        }
+    };
+    vm.set_value(constant)?;
+    Ok(())
+}
+
 /// Return OperationResult and an EntityId if the Operation succeeded
 pub fn find_closest_by_range(
     vm: &mut VM<ScriptExecutionData>,
@@ -53,7 +84,7 @@ pub fn find_closest_by_range(
         Some(p) => p.0,
         None => {
             warn!(logger, "{:?} has no PositionComponent", entity_id);
-            return Err(ExecutionError::InvalidArgument);
+            return Err(ExecutionError::InvalidArgument { context: None });
         }
     };
 
@@ -127,7 +158,7 @@ where
             logger,
             "find_closest_resource_by_range called on invalid room {:?}", position
         );
-        ExecutionError::InvalidArgument
+        ExecutionError::InvalidArgument { context: None }
     })?;
 
     // search the whole room
