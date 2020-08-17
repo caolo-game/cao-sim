@@ -12,6 +12,7 @@ use std::convert::TryFrom;
 pub enum FindConstant {
     Resource = 1,
     Spawn = 2,
+    EnemyBot = 3,
 }
 
 impl TryFrom<Scalar> for FindConstant {
@@ -20,6 +21,7 @@ impl TryFrom<Scalar> for FindConstant {
         let op = match i {
             Scalar::Integer(1) => FindConstant::Resource,
             Scalar::Integer(2) => FindConstant::Spawn,
+            Scalar::Integer(3) => FindConstant::EnemyBot,
             _ => return Err(i),
         };
         Ok(op)
@@ -66,22 +68,31 @@ impl FindConstant {
         vm: &mut VM<ScriptExecutionData>,
         position: WorldPosition,
     ) -> Result<(), ExecutionError> {
-        let storage = vm.get_aux().storage();
         let logger = &vm.get_aux().logger;
+        trace!(logger, "Executing find {:?}", self);
+
+        let storage = vm.get_aux().storage();
+        let user_id = vm.get_aux().user_id;
         let candidate = match self {
             FindConstant::Resource => {
-                let resources = vm
-                    .get_aux()
-                    .storage()
-                    .view::<EntityId, components::ResourceComponent>();
+                let resources = storage.view::<EntityId, components::ResourceComponent>();
                 find_closest_entity_impl(logger, storage, position, |id| resources.contains(&id))
             }
             FindConstant::Spawn => {
-                let spawns = vm
-                    .get_aux()
-                    .storage()
-                    .view::<EntityId, components::SpawnComponent>();
-                find_closest_entity_impl(logger, storage, position, |id| spawns.contains(&id))
+                let owner = storage.view::<EntityId, components::OwnedEntity>();
+                let spawns = storage.view::<EntityId, components::SpawnComponent>();
+                find_closest_entity_impl(logger, storage, position, |id| {
+                    spawns.contains(&id)
+                        && owner.get_by_id(&id).map(|owner_id| owner_id.owner_id) == user_id
+                })
+            }
+            FindConstant::EnemyBot => {
+                let owner = storage.view::<EntityId, components::OwnedEntity>();
+                let bots = storage.view::<EntityId, components::Bot>();
+                find_closest_entity_impl(logger, storage, position, |id| {
+                    bots.contains_id(&id)
+                        && owner.get_by_id(&id).map(|owner_id| owner_id.owner_id) != user_id
+                })
             }
         }?;
         match candidate {

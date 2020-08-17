@@ -136,7 +136,7 @@ where
     let immutable = Sys::Const::new(storage);
 
     move |intents| {
-        sys.execute(mutable.clone(), immutable, intents.into());
+        sys.execute(Sys::Mut::clone(&mutable), immutable, intents.into());
         mutable.log();
     }
 }
