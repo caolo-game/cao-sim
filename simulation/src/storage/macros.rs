@@ -50,9 +50,134 @@ macro_rules! query {
                 $store.unsafe_view::<$id, $row>().as_mut()
                     . $(
                         $op($($args),*)
-                    ).*;
-            )*
+                    ).*
+            );*
         }
+    };
+}
+
+///```
+/// use caolo_sim::query;
+/// use caolo_sim::init_inmemory_storage;
+/// use caolo_sim::components::*;
+/// use caolo_sim::geometry::Axial;
+/// use caolo_sim::model::EntityId;
+///
+/// // these rows are mandatory
+/// use caolo_sim::join;
+/// use caolo_sim::tables::JoinIterator;
+///
+/// let mut store = init_inmemory_storage(None);
+///
+/// let entity_1 = store.insert_entity();
+/// let entity_2 = store.insert_entity();
+/// let entity_3 = store.insert_entity();
+///
+/// query!(
+///     mutate
+///     store
+///     {
+///         EntityId, Bot, .insert_or_update(entity_1, Bot);
+///         EntityId, Bot, .insert_or_update(entity_2, Bot);
+///
+///         EntityId, PositionComponent, .insert_or_update(entity_1, PositionComponent::default());
+///         EntityId, PositionComponent, .insert_or_update(entity_2, PositionComponent::default());
+///         EntityId, PositionComponent, .insert_or_update(entity_3, PositionComponent::default());
+///
+///         // notice how entity_3 is not a bot, but has carry
+///
+///         EntityId, CarryComponent,
+///                  .insert_or_update(entity_1, CarryComponent{carry: 12, carry_max: 69});
+///         EntityId, CarryComponent,
+///                  .insert_or_update(entity_2, CarryComponent{carry: 30, carry_max: 69});
+///         EntityId, CarryComponent,
+///                  .insert_or_update(entity_3, CarryComponent{carry: 40, carry_max: 69});
+///     }
+/// );
+///
+/// let res: i32 = join!(
+///     store
+///     EntityId
+///     [
+///         bot : Bot,
+///         pos_component : PositionComponent,
+///         carry_component : CarryComponent
+///     ]
+///     )
+///     // data has fields `carry` and `bot`, specified in the macro invocation
+///     // these are references to their respective components...
+///     // we'll extract the carry amount
+///     //
+///     // pos_components are default (0,0), we access them for demo purposes...
+///     .map(|(id, data)|{ data.carry_component.carry as i32 + data.pos_component.0.pos.q })
+///     .sum();
+///
+/// assert_eq!(res, 42); // entity_1 carry + entity_2 carry
+///```
+#[macro_export]
+macro_rules! join {
+    (
+        $storage: ident
+        $id: ty
+        [
+            $name0: ident : $row0: ty,
+            $(
+                $names: ident : $rows: ty
+            ),+
+        ]
+    ) => {{
+        #[derive(Clone, Copy)]
+        pub struct Joined<'a> {
+            $name0: &'a $row0,
+            $(
+                $names: &'a $rows
+            ),*
+        }
+
+        join!(@join $storage $id, $row0, $($rows),*)
+            .map(
+                // closure taking id and a nested tuple of pairs
+                |(
+                    id,
+                    join!(@args $name0, $($names),*)
+                 )| {
+                    (id,
+                    Joined {
+                        $name0,
+                        $($names),*
+                    }
+                    )
+                }
+            )
+    }};
+
+    (@join $storage: ident $id: ty, $row: ty) => {
+        // stop the recursion
+        $storage.view::<$id, $row>().iter()
+    };
+
+    (@join $storage: ident $id: ty, $row0: ty,
+            $(
+                $rows: ty
+            ),+
+    ) => {
+        JoinIterator::new(
+            $storage.view::<$id, $row0>().iter(),
+            join!(@join $storage $id, $($rows),*)
+        )
+    };
+
+    (@args $name: ident) => {
+        // stop the recursion
+        $name
+    };
+
+    (@args $name0: ident, $( $names: ident),+) => {
+        // nested tuple arguments
+        (
+         $name0,
+         join!(@args $( $names),*)
+        )
     };
 }
 
