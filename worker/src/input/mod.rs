@@ -1,5 +1,6 @@
 //! Handle inputs received via the message bus
 mod script_update;
+mod structures;
 use cao_messages::{InputMsg, InputPayload};
 use caolo_sim::prelude::*;
 use log::{debug, error};
@@ -28,6 +29,14 @@ pub fn handle_messages(storage: &mut World, client: &redis::Client) {
         let msg_id = &message.msg_id;
         debug!("Handling message {}", msg_id);
         match message.payload {
+            InputPayload::PlaceStructure(cmd) => {
+                structures::place_structure(storage, &cmd)
+                    .map_err(|e| {
+                        error!("Structure placement {:?} failed {:?}", cmd, e);
+                        // TODO: return error msg
+                    })
+                    .unwrap_or(());
+            }
             InputPayload::UpdateScript(update) => {
                 script_update::update_program(storage, update)
                     .map_err(|e| {

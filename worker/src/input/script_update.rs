@@ -1,4 +1,4 @@
-use cao_messages::{UpdateEntityScript as UpdateEntityScriptMsg, UpdateScript as UpdateScriptMsg};
+use cao_messages::command::{UpdateEntityScriptCommand, UpdateScriptCommand };
 use caolo_sim::components::{EntityScript, OwnedEntity, ScriptComponent};
 use caolo_sim::prelude::*;
 use caolo_sim::{
@@ -15,7 +15,7 @@ pub enum UpdateProgramError {
 type UpdateResult = Result<(), UpdateProgramError>;
 
 /// Update all programs submitted via the PROGRAM field in the Redis storage
-pub fn update_program(storage: &mut World, msg: UpdateScriptMsg) -> UpdateResult {
+pub fn update_program(storage: &mut World, msg: UpdateScriptCommand) -> UpdateResult {
     debug!("Updating program {:?}", msg);
     debug!(
         "Inserting new program for user {} {}",
@@ -75,7 +75,7 @@ fn update_user_bot_scripts(
     }
 }
 
-pub fn update_entity_script(storage: &mut World, msg: UpdateEntityScriptMsg) -> UpdateResult {
+pub fn update_entity_script(storage: &mut World, msg: UpdateEntityScriptCommand) -> UpdateResult {
     let entity_id = EntityId(msg.entity_id);
     let user_id = UserId(msg.user_id);
 
