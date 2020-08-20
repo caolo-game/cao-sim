@@ -1,5 +1,5 @@
-use cao_math::mat::mat3f32::JsMatrix;
-use cao_math::vec::vec2f32::Point as Vec2;
+use cao_math::mat::js_mat3::JsMatrix;
+use cao_math::vec::vec2::Vec2;
 use caolo_sim::components::{RoomComponent, RoomConnections, RoomProperties, TerrainComponent};
 use caolo_sim::map_generation::generate_full_map;
 use caolo_sim::model::terrain::TileTerrainType;
@@ -119,10 +119,8 @@ impl MapRender {
         let mut min = Vec2::new((1 << 20) as f32, (1 << 20) as f32);
         let mut max = Vec2::new(0., 0.);
 
-        let trans = cao_math::hex::axial_to_pixel_mat_flat().as_mat3f().val
-            * (radius as f32 + 0.5)
-            * 3.0f32.sqrt();
-        let trans = cao_math::mat::mat3f32::JsMatrix { val: trans };
+        let mut trans = cao_math::hex::axial_to_pixel_mat_flat().as_mat3f();
+        trans.scalar_mul((radius as f32 + 0.5) * 3.0f32.sqrt());
 
         self.cells = self
             .terrain
