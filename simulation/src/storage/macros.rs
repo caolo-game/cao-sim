@@ -107,17 +107,13 @@ macro_rules! query {
 /// let carry_table = store.view::<EntityId, CarryComponent>();
 /// let car = carry_table.iter();
 ///
-/// let res: i32 = join!( 
-///     [ bot: Bot
-///     , pos: PositionComponent
-///     , car: CarryComponent ]
-/// )
+/// let res: i32 = join!( [ bot , pos , car ])
 ///     // data has fields `carry` and `bot`, specified in the macro invocation
 ///     // these are references to their respective components...
 ///     // we'll extract the carry amount
 ///     //
 ///     // pos_components are default (0,0), we access them for demo purposes...
-///     .map(|(id, data)|{ data.car.carry as i32 + data.pos.0.pos.q })
+///     .map(|(id, (bot, pos, car))|{ car.carry as i32 + pos.0.pos.q })
 ///     .sum();
 ///
 /// assert_eq!(res, 42); // entity_1 carry + entity_2 carry
@@ -165,20 +161,20 @@ macro_rules! query {
 /// );
 ///
 /// let res: i32 = join!(
-///     store
-///     EntityId
-///     [
-///         bot : Bot,
+///       store
+///       EntityId
+///       [ bot : Bot,
 ///         pos_component : PositionComponent,
-///         carry_component : CarryComponent
-///     ]
+///         carry_component : CarryComponent ]
 ///     )
 ///     // data has fields `carry` and `bot`, specified in the macro invocation
 ///     // these are references to their respective components...
 ///     // we'll extract the carry amount
 ///     //
 ///     // pos_components are default (0,0), we access them for demo purposes...
-///     .map(|(id, data)|{ data.carry_component.carry as i32 + data.pos_component.0.pos.q })
+///     .map(|(id, (_bot_component, pos_component, carry_component))| {
+///         carry_component.carry as i32 + pos_component.0.pos.q
+///     })
 ///     .sum();
 ///
 /// assert_eq!(res, 42); // entity_1 carry + entity_2 carry
@@ -187,20 +183,12 @@ macro_rules! query {
 macro_rules! join {
     (
         [
-            $it0: ident : $row0: ty,
+            $it0: ident,
             $(
-                $its: ident : $rows: ty
+                $its: ident
             ),+
         ]
     ) => {{
-        #[derive(Clone, Copy)]
-        pub struct Joined<'a> {
-            $it0: &'a $row0,
-            $(
-                $its: &'a $rows
-            ),*
-        }
-
         join!(@iter $it0, $($its),*)
             .map(
                 // closure taking id and a nested tuple of pairs
@@ -209,10 +197,8 @@ macro_rules! join {
                     join!(@args $it0, $($its),*)
                  )| {
                     (id,
-                    Joined {
-                        $it0,
-                        $($its),*
-                    }
+                     // flatten the tuple
+                     ($it0, $($its),*)
                     )
                 }
             )
@@ -228,14 +214,6 @@ macro_rules! join {
             ),+
         ]
     ) => {{
-        #[derive(Clone, Copy)]
-        pub struct Joined<'a> {
-            $name0: &'a $row0,
-            $(
-                $names: &'a $rows
-            ),*
-        }
-
         join!(@join $storage $id, $row0, $($rows),*)
             .map(
                 // closure taking id and a nested tuple of pairs
@@ -244,10 +222,8 @@ macro_rules! join {
                     join!(@args $name0, $($names),*)
                  )| {
                     (id,
-                    Joined {
-                        $name0,
-                        $($names),*
-                    }
+                     // flatten the tuple
+                     ($name0, $($names),*)
                     )
                 }
             )

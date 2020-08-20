@@ -47,7 +47,7 @@ pub fn place_structure(
                     owner: OwnedEntity
                 ]
             )
-            .find(|(_, data)| &data.owner.owner_id.0 == owner)
+            .find(|(_, (_, OwnedEntity { ref owner_id }))| &owner_id.0 == owner)
             .map(|(id, _)| id);
 
             if let Some(spawn_id) = has_spawn {
