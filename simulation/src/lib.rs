@@ -15,23 +15,18 @@ mod utils;
 
 use log::info;
 use systems::execute_world_update;
-use systems::intent_system::execute_intents;
 use systems::script_execution::execute_scripts;
 
 pub use data_store::{init_inmemory_storage, Storage, World};
 
 pub fn forward(storage: &mut World) -> anyhow::Result<()> {
     info!("Executing scripts");
-    let final_intents = execute_scripts(storage);
+    execute_scripts(storage);
     info!("Executing scripts - done");
 
     info!("Executing signaling");
     storage.signal_done();
     info!("Executing signaling - done");
-
-    info!("Executing intents");
-    execute_intents(final_intents, storage);
-    info!("Executing intents - done");
 
     info!("Executing systems update");
     execute_world_update(storage);

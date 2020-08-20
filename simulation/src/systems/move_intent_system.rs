@@ -1,28 +1,24 @@
-use super::IntentExecutionSystem;
+use super::System;
 use crate::components::{Bot, EntityComponent, PositionComponent};
-use crate::intents::MoveIntent;
+use crate::intents::Intents;
 use crate::model::{EntityId, WorldPosition};
 use crate::profile;
-use crate::storage::views::{UnsafeView, View};
+use crate::storage::views::{UnsafeView, UnwrapView, View};
 use log::trace;
 
 pub struct MoveSystem;
 
-impl<'a> IntentExecutionSystem<'a> for MoveSystem {
+impl<'a> System<'a> for MoveSystem {
     type Mut = (UnsafeView<EntityId, PositionComponent>,);
     type Const = (
         View<'a, EntityId, Bot>,
         View<'a, WorldPosition, EntityComponent>,
+        UnwrapView<'a, Intents>,
     );
-    type Intents = &'a [MoveIntent];
 
-    fn execute(
-        &mut self,
-        (mut positions,): Self::Mut,
-        (bots, pos_entities): Self::Const,
-        intents: Self::Intents,
-    ) {
+    fn update(&mut self, (mut positions,): Self::Mut, (bots, pos_entities, intents): Self::Const) {
         profile!(" MoveSystem update");
+        let intents = &intents.move_intent;
         for intent in intents {
             trace!("Moving bot[{:?}] to {:?}", intent.bot, intent.position);
 

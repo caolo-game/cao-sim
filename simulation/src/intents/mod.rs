@@ -14,9 +14,9 @@ pub use self::move_intent::*;
 pub use self::pathcache_intent::*;
 pub use self::spawn_intent::*;
 
-use crate::model::indices::{EntityId, IntentId};
-use crate::tables::{vector::VecTable, Component};
-use crate::Storage;
+use crate::model::indices::{EmptyKey, EntityId};
+use crate::tables::{unique::UniqueTable, Component};
+use serde::{Deserialize, Serialize};
 
 impl Intents {
     pub fn new() -> Self {
@@ -48,7 +48,7 @@ impl BotIntents {
 /// Implements the SOA style intents container
 macro_rules! intents {
     ($($name: ident: $type: ty),+,) =>{
-        #[derive(Debug, Clone, Default)]
+        #[derive(Debug, Clone, Default, Serialize, Deserialize)]
         pub struct Intents {
             $(pub $name: Vec<$type>),*
         }
@@ -65,6 +65,10 @@ macro_rules! intents {
                 self
             }
 
+            pub fn clear(&mut self) {
+                $(self.$name.clear());* ;
+            }
+
             pub fn append(&mut self, intents: BotIntents) -> &mut Self {
                 $(
                     if let Some(intent) = intents.$name {
@@ -73,17 +77,11 @@ macro_rules! intents {
                 )*
                 self
             }
-
-            pub fn insert_into_storage(self, store: &mut Storage) {
-                unimplemented!()
-            }
         }
 
-        $(
-            impl Component<IntentId> for $type {
-                type Table = VecTable<IntentId, Self>;
-            }
-        )*
+        impl Component<EmptyKey> for Intents {
+            type Table = UniqueTable<Self>;
+        }
 
         /// Possible intents of a single bot
         #[derive(Debug, Clone, Default)]

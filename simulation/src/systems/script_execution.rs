@@ -1,4 +1,5 @@
 use crate::components::{EntityScript, ScriptComponent};
+use crate::model::EmptyKey;
 use crate::model::{EntityId, ScriptId, UserId};
 use crate::{
     intents::{BotIntents, Intents},
@@ -9,6 +10,7 @@ use rayon::prelude::*;
 use slog::o;
 use slog::{trace, warn};
 use std::fmt::{self, Display, Formatter};
+use std::mem;
 use std::sync::Mutex;
 use thiserror::Error;
 
@@ -28,14 +30,34 @@ pub enum ExecutionError {
 
 /// Must be called from a tokio runtime!
 /// Returns the intents that are expected to be executed
-pub fn execute_scripts(storage: &World) -> Intents {
+pub fn execute_scripts(storage: &mut World) {
     profile!("execute_scripts");
 
     let n_scripts = storage.view::<EntityId, EntityScript>().len();
-    let intents = Mutex::new(Intents::with_capacity(n_scripts));
+
+    // Reuse the existing intent memory
+    // Replace the one in the storage, so there is no way to mutate it while the scripts are
+    // running
+    let intents = unsafe {
+        mem::replace(
+            &mut storage.unsafe_view::<EmptyKey, Intents>().as_mut().value,
+            None,
+        )
+    };
+    let intents = intents.unwrap_or_else(|| Intents::with_capacity(n_scripts));
+    let intents = Mutex::new(intents);
+
     execute_scripts_parallel(&intents, storage);
 
-    intents.into_inner().expect("Mutex unwrap")
+    let intents = intents.into_inner().expect("Mutex unwrap");
+
+    // place the final intents into the storage
+    unsafe {
+        mem::replace(
+            &mut storage.unsafe_view::<EmptyKey, Intents>().as_mut().value,
+            Some(intents),
+        )
+    };
 }
 
 fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {

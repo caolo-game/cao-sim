@@ -1,9 +1,9 @@
-use super::IntentExecutionSystem;
+use super::System;
 use crate::components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, SpawnComponent};
-use crate::intents::SpawnIntent;
+use crate::intents::Intents;
 use crate::model::EntityId;
 use crate::profile;
-use crate::storage::views::{InsertEntityView, UnsafeView, View};
+use crate::storage::views::{InsertEntityView, UnsafeView, UnwrapView, View};
 use log::{error, trace, warn};
 
 pub struct SpawnSystem;
@@ -15,18 +15,17 @@ type Mut = (
     InsertEntityView,
 );
 
-impl<'a> IntentExecutionSystem<'a> for SpawnSystem {
+impl<'a> System<'a> for SpawnSystem {
     type Mut = Mut;
-    type Const = (View<'a, EntityId, EnergyComponent>,);
-    type Intents = &'a [SpawnIntent];
+    type Const = (View<'a, EntityId, EnergyComponent>, UnwrapView<'a, Intents>);
 
-    fn execute(
+    fn update(
         &mut self,
         (mut spawn_bot_table, mut spawn_table, mut owner_table, mut insert_entity): Self::Mut,
-        (entity_table,): Self::Const,
-        intents: Self::Intents,
+        (entity_table, intents): Self::Const,
     ) {
         profile!(" SpawnSystem update");
+        let intents = &intents.spawn_intent;
         for intent in intents {
             trace!("Spawning bot from structure {:?}", intent.spawn_id);
 

@@ -28,12 +28,14 @@
 //! ```
 //!
 mod unsafe_view;
+mod unwrap;
 mod view;
 
 #[cfg(feature = "log_tables")]
 pub mod logging;
 
 pub use unsafe_view::*;
+pub use unwrap::*;
 pub use view::*;
 
 use super::{Component, DeleteById, TableId};

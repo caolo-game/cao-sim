@@ -1,26 +1,25 @@
-use super::IntentExecutionSystem;
+use super::System;
 use crate::components::{Bot, PathCacheComponent};
-use crate::intents::{CachePathIntent, MutPathCacheIntent, PathCacheIntentAction};
+use crate::intents::Intents;
+use crate::intents::{CachePathIntent, PathCacheIntentAction};
 use crate::model::EntityId;
 use crate::profile;
-use crate::storage::views::{UnsafeView, View};
+use crate::storage::views::{UnsafeView, UnwrapView, View};
 use crate::tables::Table;
 
-pub struct UpdatePathCacheSystem;
+pub struct UpdatePathCacheSystem {
+    pub intents: Vec<CachePathIntent>,
+}
 
-impl<'a> IntentExecutionSystem<'a> for UpdatePathCacheSystem {
+impl<'a> System<'a> for UpdatePathCacheSystem {
     type Mut = (UnsafeView<EntityId, PathCacheComponent>,);
     type Const = (View<'a, EntityId, Bot>,);
-    type Intents = Vec<CachePathIntent>;
 
-    fn execute(
-        &mut self,
-        (mut path_cache_table,): Self::Mut,
-        (bot_table,): Self::Const,
-        intents: Self::Intents,
-    ) {
-        profile!(" UpdatePathCacheSystem update");
-        for intent in intents {
+    fn update(&mut self, (mut path_cache_table,): Self::Mut, (bot_table,): Self::Const) {
+        profile!("UpdatePathCacheSystem update");
+
+        let intents = std::mem::replace(&mut self.intents, vec![]);
+        for intent in intents.into_iter() {
             let entity_id = intent.bot;
             // check if bot is still alive
             if bot_table.get_by_id(&entity_id).is_none() {
@@ -37,18 +36,13 @@ impl<'a> IntentExecutionSystem<'a> for UpdatePathCacheSystem {
 
 pub struct MutPathCacheSystem;
 
-impl<'a> IntentExecutionSystem<'a> for MutPathCacheSystem {
+impl<'a> System<'a> for MutPathCacheSystem {
     type Mut = (UnsafeView<EntityId, PathCacheComponent>,);
-    type Const = ();
-    type Intents = &'a [MutPathCacheIntent];
+    type Const = (UnwrapView<'a, Intents>,);
 
-    fn execute(
-        &mut self,
-        (mut path_cache_table,): Self::Mut,
-        (): Self::Const,
-        intents: Self::Intents,
-    ) {
+    fn update(&mut self, (mut path_cache_table,): Self::Mut, (intents,): Self::Const) {
         profile!(" MutPathCacheSystem update");
+        let intents = &intents.mut_path_cache_intent;
         for intent in intents {
             let entity_id = intent.bot;
             match intent.action {

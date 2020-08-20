@@ -49,6 +49,7 @@ storage!(
     key WorldPosition, table EntityComponent = pointentity,
 
     key EmptyKey, table RoomProperties = roomproperties,
+    key EmptyKey, table Intents = intents,
 
 );
 

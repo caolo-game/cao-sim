@@ -1,28 +1,24 @@
-use super::IntentExecutionSystem;
+use super::System;
 use crate::components::{CarryComponent, EnergyComponent};
-use crate::intents::DropoffIntent;
+use crate::intents::Intents;
 use crate::model::EntityId;
 use crate::profile;
-use crate::storage::views::UnsafeView;
+use crate::storage::views::{UnsafeView, UnwrapView};
 use log::{trace, warn};
 
 pub struct DropoffSystem;
 
-impl<'a> IntentExecutionSystem<'a> for DropoffSystem {
+impl<'a> System<'a> for DropoffSystem {
     type Mut = (
         UnsafeView<EntityId, EnergyComponent>,
         UnsafeView<EntityId, CarryComponent>,
     );
-    type Const = ();
-    type Intents = &'a [DropoffIntent];
+    type Const = (UnwrapView<'a, Intents>,);
 
-    fn execute(
-        &mut self,
-        (mut energy_table, mut carry_table): Self::Mut,
-        _: Self::Const,
-        intents: Self::Intents,
-    ) {
+    fn update(&mut self, (mut energy_table, mut carry_table): Self::Mut, (intents,): Self::Const) {
         profile!(" DropoffSystem update");
+
+        let intents = &intents.dropoff_intent;
 
         let carry_table = unsafe { carry_table.as_mut() };
         let energy_table = unsafe { energy_table.as_mut() };

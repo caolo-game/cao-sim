@@ -1,30 +1,34 @@
-use super::IntentExecutionSystem;
+use super::System;
 use crate::components::{CarryComponent, EnergyComponent, Resource, ResourceComponent};
-use crate::intents::MineIntent;
+use crate::intents::Intents;
 use crate::model::EntityId;
 use crate::profile;
-use crate::storage::views::{UnsafeView, View};
+use crate::storage::views::{UnsafeView, UnwrapView, View};
 use log::{trace, warn};
 
 pub const MINE_AMOUNT: u16 = 10; // TODO: get from bot body
 
 pub struct MineSystem;
 
-impl<'a> IntentExecutionSystem<'a> for MineSystem {
+impl<'a> System<'a> for MineSystem {
     type Mut = (
         UnsafeView<EntityId, EnergyComponent>,
         UnsafeView<EntityId, CarryComponent>,
     );
-    type Const = (View<'a, EntityId, ResourceComponent>,);
-    type Intents = &'a [MineIntent];
+    type Const = (
+        View<'a, EntityId, ResourceComponent>,
+        UnwrapView<'a, Intents>,
+    );
 
-    fn execute(
+    fn update(
         &mut self,
         (mut energy_table, mut carry_table): Self::Mut,
-        (resource_table,): Self::Const,
-        intents: Self::Intents,
+        (resource_table, intents): Self::Const,
     ) {
         profile!(" MineSystem update");
+
+        let intents = &intents.mine_intent;
+
         for intent in intents {
             trace!("Bot [{:?}] is mining [{:?}]", intent.bot, intent.resource);
             match resource_table.get_by_id(&intent.resource) {

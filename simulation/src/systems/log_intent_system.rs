@@ -1,4 +1,4 @@
-use super::IntentExecutionSystem;
+use super::System;
 use crate::components::LogEntry;
 use crate::intents::LogIntent;
 use crate::model::EntityTime;
@@ -6,16 +6,21 @@ use crate::profile;
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;
 use log::trace;
+use std::mem;
 
-pub struct LogSystem;
+pub struct LogIntentSystem {
+    pub intents: Vec<LogIntent>,
+}
 
-impl<'a> IntentExecutionSystem<'a> for LogSystem {
+impl<'a> System<'a> for LogIntentSystem {
     type Mut = (UnsafeView<EntityTime, LogEntry>,);
     type Const = ();
-    type Intents = Vec<LogIntent>;
 
-    fn execute(&mut self, (mut log_table,): Self::Mut, _: Self::Const, intents: Self::Intents) {
-        profile!(" LogSystem update");
+    fn update(&mut self, (mut log_table,): Self::Mut, (): Self::Const) {
+        profile!("LogIntentSystem update");
+
+        let intents = mem::replace(&mut self.intents, vec![]);
+
         for intent in intents {
             trace!("inserting log entry {:?}", intent);
             let id = EntityTime(intent.entity, intent.time);
