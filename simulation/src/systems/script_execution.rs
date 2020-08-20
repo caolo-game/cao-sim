@@ -44,7 +44,8 @@ pub fn execute_scripts(storage: &mut World) {
             None,
         )
     };
-    let intents = intents.unwrap_or_else(|| Intents::with_capacity(n_scripts));
+    let mut intents = intents.unwrap_or_else(|| Intents::with_capacity(n_scripts));
+    intents.clear();
     let intents = Mutex::new(intents);
 
     execute_scripts_parallel(&intents, storage);
