@@ -18,10 +18,10 @@ where
     Id: SerialId,
     Row: TableRow,
 {
-    ids: Vec<Option<Id>>,
-    data: Vec<mem::MaybeUninit<Row>>,
     /// the `as_usize` index of the first item in the vector
     offset: usize,
+    ids: Vec<Option<Id>>,
+    data: Vec<mem::MaybeUninit<Row>>,
 }
 
 #[derive(Debug, Error)]
@@ -56,6 +56,7 @@ impl<'a, Id, Row> VecTable<Id, Row>
 where
     Id: SerialId + Send + Sync,
     Row: TableRow + Send + Sync,
+    // if the underlying vector implements par_iter...
     Vec<mem::MaybeUninit<Row>>:
         rayon::iter::IntoParallelRefIterator<'a, Item = mem::MaybeUninit<Row>>,
 {
@@ -240,9 +241,9 @@ where
         trace!("Table contains {:?}, removing", id);
         let ind = id.as_usize() - self.offset;
 
+        self.ids[ind] = None;
         let res = mem::replace(&mut self.data[ind], mem::MaybeUninit::uninit());
         let res = unsafe { res.assume_init() };
-        self.ids[ind] = None;
         Some(res)
     }
 }
