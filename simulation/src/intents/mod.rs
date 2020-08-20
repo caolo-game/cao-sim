@@ -14,7 +14,9 @@ pub use self::move_intent::*;
 pub use self::pathcache_intent::*;
 pub use self::spawn_intent::*;
 
-use crate::model::indices::EntityId;
+use crate::model::indices::{EntityId, IntentId};
+use crate::tables::{vector::VecTable, Component};
+use crate::Storage;
 
 impl Intents {
     pub fn new() -> Self {
@@ -71,7 +73,17 @@ macro_rules! intents {
                 )*
                 self
             }
+
+            pub fn insert_into_storage(self, store: &mut Storage) {
+                unimplemented!()
+            }
         }
+
+        $(
+            impl Component<IntentId> for $type {
+                type Table = VecTable<IntentId, Self>;
+            }
+        )*
 
         /// Possible intents of a single bot
         #[derive(Debug, Clone, Default)]

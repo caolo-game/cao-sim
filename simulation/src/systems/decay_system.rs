@@ -23,15 +23,27 @@ impl<'a> System<'a> for DecaySystem {
         let decays = unsafe { decays.as_mut() }.iter_mut();
         let hps = unsafe { hps.as_mut() }.iter_mut();
         let iter = join!([decays, hps]);
-        iter.for_each(|(_id, (decay, hp))| match decay.t {
-            0 => {
-                hp.hp -= hp.hp.min(decay.hp_amount);
-                decay.t = decay.eta;
-            }
-            _ => {
-                decay.t -= 1;
-            }
-        });
+        iter.for_each(
+            |(
+                _id,
+                (
+                    DecayComponent {
+                        hp_amount,
+                        eta,
+                        ref mut t,
+                    },
+                    HpComponent { ref mut hp, .. },
+                ),
+            )| match t {
+                0 => {
+                    *hp -= *hp.min(hp_amount);
+                    *t = *eta;
+                }
+                _ => {
+                    *t -= 1;
+                }
+            },
+        );
 
         debug!("update decay system done");
     }

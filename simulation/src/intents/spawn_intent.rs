@@ -2,8 +2,9 @@ use crate::components;
 use crate::model::{self, EntityId, OperationResult, UserId};
 use crate::World;
 use log::debug;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SpawnIntent {
     pub spawn_id: EntityId,
     pub owner_id: Option<UserId>,

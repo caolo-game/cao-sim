@@ -6,7 +6,14 @@ use std::convert::TryFrom;
 #[derive(Debug, Serialize, Clone, Copy, Deserialize)]
 #[repr(u8)]
 pub enum Resource {
+    Empty = 0,
     Energy = 1,
+}
+
+impl Default for Resource {
+    fn default() -> Self {
+        Resource::Empty
+    }
 }
 
 impl AutoByteEncodeProperties for Resource {}

@@ -2,8 +2,9 @@ use crate::components;
 use crate::model::{EntityId, OperationResult, UserId};
 use crate::storage::views::View;
 use log::{debug, warn};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MineIntent {
     pub bot: EntityId,
     pub resource: EntityId,
@@ -84,7 +85,7 @@ pub fn check_mine_intent(
                 }
             }
         }
-        None => {
+        Some(_) | None => {
             warn!("{:?} is not a resource!", target);
             OperationResult::InvalidInput
         }

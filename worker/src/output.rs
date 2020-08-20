@@ -101,7 +101,7 @@ pub fn build_resources<'a>(
     );
 
     let position_tranform = init_world_pos(room_props);
-    JoinIterator::new(join, energy_table.reborrow().iter()).map(
+    JoinIterator::new(join, energy_table.reborrow().iter()).filter_map(
         move |(id, ((resource, pos), energy))| match resource.0 {
             Resource::Energy => {
                 let msg = ResourceMsg {
@@ -112,8 +112,9 @@ pub fn build_resources<'a>(
                         energy_max: energy.energy_max as u32,
                     },
                 };
-                msg
+                Some(msg)
             }
+            _ => None,
         },
     )
 }

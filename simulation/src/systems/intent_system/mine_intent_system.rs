@@ -28,7 +28,6 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
         for intent in intents {
             trace!("Bot [{:?}] is mining [{:?}]", intent.bot, intent.resource);
             match resource_table.get_by_id(&intent.resource) {
-                None => warn!("Resource not found"),
                 Some(ResourceComponent(Resource::Energy)) => {
                     let resource_energy =
                         match unsafe { energy_table.as_mut() }.get_by_id_mut(&intent.resource) {
@@ -64,6 +63,7 @@ impl<'a> IntentExecutionSystem<'a> for MineSystem {
                         resource_energy
                     );
                 }
+                Some(ResourceComponent(_)) | None => warn!("Resource not found"),
             }
         }
     }

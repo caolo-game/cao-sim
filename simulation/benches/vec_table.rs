@@ -57,9 +57,9 @@ fn update_all_iter_2pow14_sparse(c: &mut Criterion) {
         b.iter(|| {
             table.iter_mut().for_each(|(_, val)| {
                 *val += 8;
-                black_box(val);
             });
         });
+        black_box(table);
     });
 }
 
@@ -76,9 +76,9 @@ fn update_all_iter_2pow14_dense(c: &mut Criterion) {
         b.iter(|| {
             table.iter_mut().for_each(|(_, val)| {
                 *val += 8;
-                black_box(val);
             });
         });
+        black_box(table);
     });
 }
 

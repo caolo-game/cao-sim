@@ -5,8 +5,9 @@ use crate::components::{self, EntityComponent, PositionComponent};
 use crate::model::{self, terrain, EntityId, OperationResult, WorldPosition};
 use crate::storage::views::View;
 use log::{debug, trace, warn};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MoveIntent {
     pub bot: EntityId,
     pub position: WorldPosition,

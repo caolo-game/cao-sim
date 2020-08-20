@@ -34,6 +34,7 @@ impl<'a> System<'a> for MineralSystem {
 
         let minerals_it = resources.iter().filter(|(_, r)| match r.0 {
             components::Resource::Energy => true,
+            _ => false,
         });
         let entity_positions_it = unsafe { entity_positions.as_mut().iter_mut() };
         let energy_iter = unsafe { energy.as_mut().iter_mut() };

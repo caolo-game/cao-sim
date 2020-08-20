@@ -2,7 +2,7 @@ pub use self::store_impl::*;
 
 use super::storage;
 use crate::components::*;
-use crate::intents::Intents;
+use crate::intents::*;
 use crate::model::*;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
@@ -49,6 +49,7 @@ storage!(
     key WorldPosition, table EntityComponent = pointentity,
 
     key EmptyKey, table RoomProperties = roomproperties,
+
 );
 
 #[derive(Debug, Serialize)]
@@ -169,7 +170,8 @@ impl World {
         self.time
     }
 
-    pub fn signal_done(&mut self, _intents: &Intents) {
+    /// Perform post-tick cleanup on the storage
+    pub fn signal_done(&mut self) {
         self.deferred_deletes.execute_all(&mut self.store);
         self.deferred_deletes.clear();
 

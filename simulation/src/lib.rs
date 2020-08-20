@@ -26,7 +26,7 @@ pub fn forward(storage: &mut World) -> anyhow::Result<()> {
     info!("Executing scripts - done");
 
     info!("Executing signaling");
-    storage.signal_done(&final_intents);
+    storage.signal_done();
     info!("Executing signaling - done");
 
     info!("Executing intents");

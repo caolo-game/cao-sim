@@ -17,6 +17,11 @@ pub struct EntityTime(pub EntityId, pub u64);
 )]
 pub struct EntityId(pub u32);
 
+#[derive(
+    Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
+)]
+pub struct IntentId(pub u32);
+
 #[derive(Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Serialize, Deserialize)]
 pub struct ScriptId(pub uuid::Uuid);
 
@@ -24,6 +29,16 @@ pub struct ScriptId(pub uuid::Uuid);
     Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
 )]
 pub struct UserId(pub uuid::Uuid);
+
+impl SerialId for IntentId {
+    fn next(&self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+}
 
 impl SerialId for EntityId {
     fn next(&self) -> Self {
