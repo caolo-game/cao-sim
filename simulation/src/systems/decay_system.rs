@@ -1,5 +1,6 @@
 use super::System;
 use crate::components::{DecayComponent, HpComponent};
+use crate::join;
 use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::UnsafeView;
@@ -19,8 +20,9 @@ impl<'a> System<'a> for DecaySystem {
         profile!("DecaySystem update");
         debug!("update decay system called");
 
-        let iter =
-            unsafe { JoinIterator::new(decays.as_mut().iter_mut(), hps.as_mut().iter_mut()) };
+        let decays = unsafe { decays.as_mut() }.iter_mut();
+        let hps = unsafe { hps.as_mut() }.iter_mut();
+        let iter = join!([decays, hps]);
         iter.for_each(|(_id, (decay, hp))| match decay.t {
             0 => {
                 hp.hp -= hp.hp.min(decay.hp_amount);
