@@ -533,10 +533,8 @@ pub fn mirrored_room_position(
         .max_by_key(|(_i, x)| {
             let x = x.abs();
             #[cfg(debug_assertions)]
-            {
-                if x == 0 {
-                    zero_ind = Some(*_i);
-                }
+            if x == 0 {
+                zero_ind = Some(*_i);
             }
             x
         })
@@ -555,7 +553,11 @@ pub fn mirrored_room_position(
         0 => [-x, -z, -y],
         1 => [-z, -y, -x],
         2 => [-y, -x, -z],
+
+        #[cfg(debug_assertions)]
         _ => unreachable!(),
+        #[cfg(not(debug_assertions))]
+        _ => unsafe { std::hint::unreachable_unchecked() },
     };
     let pos = Axial::hex_cube_to_axial(mirror_cube);
     Ok(pos + offset)
