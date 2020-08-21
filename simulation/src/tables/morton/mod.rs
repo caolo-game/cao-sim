@@ -27,14 +27,21 @@ use thiserror::Error;
 // having the 16th bit set might create problems in find_key
 pub const MORTON_POS_MAX: i32 = 0b0111_1111_1111_1111;
 
+// The original paper counts the garbage items and splits above a threshold.
+// Instead let's speculate if we need a split or if it more beneficial to just scan the
+// range
+// The number I picked is more or less arbitrary, it is a power of two and I ran the basic
+// benchmarks to probe a few numbers.
+const MAX_BRUTE_ITERS: usize = 16;
+
+const SKIP_LEN: usize = 15;
+type SkipList = [u32; SKIP_LEN];
+
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure<Id: SpatialKey2d> {
     #[error("Position {0:?} is out of bounds!")]
     OutOfBounds(Id),
 }
-
-const SKIP_LEN: usize = 8;
-type SkipList = [u32; SKIP_LEN];
 
 #[derive(Clone)]
 pub struct MortonTable<Pos, Row>
@@ -44,10 +51,9 @@ where
 {
     skiplist: SkipList,
     skipstep: u32,
-    // ---- 9 * 4 bytes so far
-    // assuming 64 byte long L1 cache lines we can fit 10 keys
+    // 15*4 + 4 bytes to fill a full L1 cache line
+    // (fingers crossed...)
     //
-    // keys is 24 bytes in memory
     keys: Vec<MortonKey>,
     values: Vec<(Pos, Row)>,
 }
@@ -176,7 +182,7 @@ where
         }
         trace!("MortonTable extend sort");
         sorting::sort(&mut self.keys, &mut self.values);
-        trace!("MortonTable extend sort done\nRebuilding skip_list");
+        trace!("Rebuilding skip_list");
         self.rebuild_skip_list();
         trace!("MortonTable extend done");
         Ok(())
@@ -190,31 +196,29 @@ where
     }
 
     fn rebuild_skip_list(&mut self) {
+        // assert that keys is sorted.
+        // at the time of writing is_sorted is still unstable
         #[cfg(debug_assertions)]
-        {
-            // assert that keys is sorted.
-            // at the time of writing is_sorted is still unstable
-            if self.keys.len() > 2 {
-                let mut it = self.keys.iter();
-                let mut current = it.next().unwrap();
-                for next in it {
-                    assert!(
-                        current <= next,
-                        "`keys` was not sorted when calling `rebuild_skip_list` current: {:?} next: {:?}",
-                        current,
-                        next
-                    );
-                    current = next;
-                }
+        if self.keys.len() > 2 {
+            let mut it = self.keys.iter();
+            let mut current = it.next().unwrap();
+            for next in it {
+                assert!(
+                    current <= next,
+                    "`keys` was not sorted when calling `rebuild_skip_list` current: {:?} next: {:?}",
+                    current,
+                    next
+                );
+                current = next;
             }
         }
 
         let len = self.keys.len();
-        let step = len / SKIP_LEN;
+        let step = len / SKIP_LEN + 1;
         self.skipstep = step as u32;
         // leaving items 0 will cause errors in find_key_morton
         self.skiplist = [std::u32::MAX >> 1; SKIP_LEN];
-        if step < 1 {
+        if step == 1 {
             if let Some(key) = self.keys.last() {
                 self.skiplist[0] = key.0;
             }
@@ -328,23 +332,20 @@ where
         use find_key_partition::find_key_partition;
 
         let step = self.skipstep as usize;
-        if step == 0 {
+        if step <= 1 {
             return self.keys.binary_search(&key);
         }
 
         let index = find_key_partition(&self.skiplist, key);
 
-        let (begin, end) = {
-            if index < 8 {
-                let begin = index * step;
-                let end = self.keys.len().min(begin + step + 1);
-                (begin, end)
-            } else {
-                debug_assert!(self.keys.len() >= step + 3);
-                let end = self.keys.len();
-                let begin = end - step - 3;
-                (begin, end)
-            }
+        let (begin, end) = if index < SKIP_LEN {
+            let begin = index * step;
+            let end = self.keys.len().min(begin + step + 1);
+            (begin, end)
+        } else {
+            let end = self.keys.len();
+            let begin = end - 1 - step;
+            (begin, end)
         };
         self.keys[begin..end]
             .binary_search(&key)
@@ -436,12 +437,7 @@ where
             imax
         );
 
-        // The original paper counts the garbage items and splits above a threshold.
-        // Instead let's speculate if we need a split or if it more beneficial to just scan the
-        // range
-        // The number I picked is more or less arbitrary, it is a power of two and I ran the basic
-        // benchmarks to probe a few numbers.
-        if imax - imin > 32 {
+        if imax - imin > MAX_BRUTE_ITERS {
             let [x, y] = pmin;
             let pmin = [x as u32, y as u32];
             let [x, y] = pmax;
@@ -519,9 +515,8 @@ where
             }
         };
         let max: usize = {
-            let lim = (self.keys.len() as i64 - 1).max(0) as usize;
             if !self.intersects(&max) {
-                lim
+                (self.keys.len() as i64 - 1).max(0) as usize
             } else {
                 self.find_key(&max).unwrap_or_else(|i| i)
             }

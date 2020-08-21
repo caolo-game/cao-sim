@@ -217,6 +217,8 @@ fn regression_get_by_id_bug1() {
 
     let table = MortonTable::<Axial, usize>::from_iterator(points.iter().cloned()).unwrap();
 
+    dbg!(&table);
+
     for p in points {
         let found = table.get_by_id(&p.0);
         let key = MortonKey::new(p.0.q as u16, p.0.r as u16);

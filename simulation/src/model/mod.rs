@@ -1,5 +1,4 @@
 pub mod indices;
-pub mod pathfinding;
 pub mod terrain;
 
 pub use self::indices::*;
