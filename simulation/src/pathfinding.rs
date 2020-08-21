@@ -260,23 +260,15 @@ pub fn find_path_overworld(
             .0
             .iter()
             .filter_map(|edge| edge.as_ref().map(|edge| edge.direction + current_pos))
+            .filter(|pos| !closed_set.contains_key(pos))
         {
-            if !closed_set.contains_key(&neighbour) {
-                let node = Node::new(
-                    neighbour,
-                    current.pos,
-                    neighbour.hex_distance(end) as i32,
-                    current.g_cost + 1,
-                );
-                open_set.push(node);
-            }
-            if let Some(node) = closed_set.get_mut(&neighbour) {
-                let g_cost = current.g_cost + 1;
-                if g_cost < node.g_cost {
-                    node.g_cost = g_cost;
-                    node.parent = current.pos;
-                }
-            }
+            let node = Node::new(
+                neighbour,
+                current.pos,
+                neighbour.hex_distance(end) as i32,
+                current.g_cost + 1,
+            );
+            open_set.push(node);
         }
     }
     if current.pos != end {
@@ -351,37 +343,22 @@ pub fn find_path_in_room(
             .hex_neighbours()
             .iter()
             .cloned()
+            .filter(|pos| !closed_set.contains_key(pos))
             .filter(|neighbour_pos| {
-                let res = positions.intersects(&neighbour_pos);
-                debug_assert!(
-                    terrain.clone().intersects(&neighbour_pos) == res,
-                    "if neighbour_pos intersects positions it must also intersect terrain!"
-                );
-                res && (
-                    // Filter only the free neighbours
-                    // End may be in the either tables!
-                    *neighbour_pos == end
-                        || (!positions.contains_key(neighbour_pos)
-                            && is_walkable(*neighbour_pos, terrain.clone()))
-                )
+                // Filter only the free neighbours
+                // End may be in the either tables!
+                *neighbour_pos == end
+                    || (!positions.contains_key(neighbour_pos)
+                        && is_walkable(*neighbour_pos, terrain.clone()))
             })
         {
-            if !closed_set.contains_key(&point) {
-                let node = Node::new(
-                    point,
-                    current.pos,
-                    point.hex_distance(end) as i32,
-                    current.g_cost + 1,
-                );
-                open_set.push(node);
-            }
-            if let Some(node) = closed_set.get_mut(&point) {
-                let g_cost = current.g_cost + 1;
-                if g_cost < node.g_cost {
-                    node.g_cost = g_cost;
-                    node.parent = current.pos;
-                }
-            }
+            let node = Node::new(
+                point,
+                current.pos,
+                point.hex_distance(end) as i32,
+                current.g_cost + 1,
+            );
+            open_set.push(node);
         }
         max_steps -= 1;
     }
