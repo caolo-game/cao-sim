@@ -90,6 +90,7 @@ where
 }
 
 #[allow(unused)]
+#[inline(always)]
 fn is_less_than_last<Id: TableId, T>(id: Id, val: Option<&(Id, T)>) -> bool {
     val.map(|(i, _)| id < *i).unwrap_or(true)
 }

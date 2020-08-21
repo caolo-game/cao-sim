@@ -194,12 +194,11 @@ async fn main() -> Result<(), anyhow::Error> {
 
     info!("Starting with {} actors", n_actors);
 
-    let redis_url =
-        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
-
     let mut storage = init::init_storage(n_actors);
 
-    let client = redis::Client::open(redis_url.as_str()).expect("Redis client");
+    let redis_url =
+        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
+    let redis_client = redis::Client::open(redis_url.as_str()).expect("Redis client");
     let pg_pool = PgPool::new(
         &std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:admin@localhost:5432/caolo".to_owned()),
@@ -215,7 +214,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .unwrap_or(200);
     let tick_freq = Duration::from_millis(tick_freq);
 
-    send_schema(&client).expect("Send schema");
+    send_schema(&redis_client).expect("Send schema");
 
     sentry::capture_message(
         "Caolo Worker initialization complete! Starting the game loop",
@@ -223,9 +222,9 @@ async fn main() -> Result<(), anyhow::Error> {
     );
     loop {
         let start = Instant::now();
-        input::handle_messages(&mut storage, &client);
+        input::handle_messages(&mut storage, &redis_client);
         tick(&mut storage);
-        send_world(&storage, &client).expect("Sending world");
+        send_world(&storage, &redis_client).expect("Sending world");
         let t = Instant::now() - start;
         let sleep_duration = tick_freq
             .checked_sub(t)

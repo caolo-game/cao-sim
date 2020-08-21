@@ -22,8 +22,7 @@ impl<'a> System<'a> for DecaySystem {
 
         let decays = unsafe { decays.as_mut() }.iter_mut();
         let hps = unsafe { hps.as_mut() }.iter_mut();
-        let iter = join!([decays, hps]);
-        iter.for_each(
+        join!([decays, hps]).for_each(
             |(
                 _id,
                 (

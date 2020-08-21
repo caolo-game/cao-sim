@@ -56,6 +56,26 @@ impl<'a, Id, Row> VecTable<Id, Row>
 where
     Id: SerialId + Send + Sync,
     Row: TableRow + Send + Sync,
+    // if the underlying vector implements par_iter_mut...
+    Vec<mem::MaybeUninit<Row>>:
+        rayon::iter::IntoParallelRefMutIterator<'a, Item = mem::MaybeUninit<Row>>,
+{
+    pub fn par_iter_mut(&'a mut self) -> impl ParallelIterator<Item = (Id, &'a mut Row)> + 'a {
+        let keys = self.ids.as_slice();
+        self.data[..]
+            .par_iter_mut()
+            .enumerate()
+            .filter_map(move |(i, k)| unsafe {
+                let id = *keys.as_ptr().offset(i as isize);
+                id.map(|id| (id, &mut *k.as_mut_ptr()))
+            })
+    }
+}
+
+impl<'a, Id, Row> VecTable<Id, Row>
+where
+    Id: SerialId + Send + Sync,
+    Row: TableRow + Send + Sync,
     // if the underlying vector implements par_iter...
     Vec<mem::MaybeUninit<Row>>:
         rayon::iter::IntoParallelRefIterator<'a, Item = mem::MaybeUninit<Row>>,
@@ -214,7 +234,7 @@ where
         }
         let i = i - self.offset;
         // contains if data has this key AND it is Some
-        self.ids.get(i).and_then(|x| x.as_ref()).is_some()
+        self.ids.get(i).map(|x| x.is_some()).unwrap_or(false)
     }
 }
 
