@@ -1,11 +1,6 @@
 use cao_messages::command::{UpdateEntityScriptCommand, UpdateScriptCommand};
-use caolo_sim::components::{EntityScript, OwnedEntity, ScriptComponent};
 use caolo_sim::prelude::*;
-use caolo_sim::{
-    self,
-    model::{EntityId, ScriptId, UserId},
-    tables::JoinIterator,
-};
+use caolo_sim::{self, tables::JoinIterator};
 use log::debug;
 
 #[derive(Debug, Clone)]

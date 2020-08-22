@@ -1,7 +1,7 @@
 use super::morton::{MortonKey, MortonTable};
 use super::*;
 use crate::geometry::Axial;
-use crate::model::{Room, WorldPosition};
+use crate::indices::{Room, WorldPosition};
 use log::trace;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;

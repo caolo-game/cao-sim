@@ -1,6 +1,5 @@
 use crate::components::{EntityScript, ScriptComponent};
-use crate::model::EmptyKey;
-use crate::model::{EntityId, ScriptId, UserId};
+use crate::indices::{EmptyKey, EntityId, ScriptId, UserId};
 use crate::{
     intents::{BotIntents, Intents},
     profile, World,
@@ -105,7 +104,7 @@ pub fn execute_single_script(
         Some(Default::default()), // TODO
     );
     let mut vm = VM::new(logger.clone(), data);
-    crate::api::make_import().execute_imports(&mut vm);
+    crate::scripting_api::make_import().execute_imports(&mut vm);
 
     trace!(logger, "Starting script execution");
 

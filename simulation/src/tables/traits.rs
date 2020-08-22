@@ -1,5 +1,5 @@
 use crate::components;
-use crate::model::indices;
+use crate::indices::EntityTime;
 use serde::Serialize;
 use std::ops::Add;
 
@@ -76,5 +76,5 @@ pub trait Table {
 }
 
 pub trait LogTable {
-    fn get_logs_by_time(&self, time: u64) -> Vec<(indices::EntityTime, components::LogEntry)>;
+    fn get_logs_by_time(&self, time: u64) -> Vec<(EntityTime, components::LogEntry)>;
 }

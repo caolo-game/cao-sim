@@ -19,8 +19,8 @@ use self::mine_intent_system::MineSystem;
 use self::move_intent_system::MoveSystem;
 use self::path_cache_intent_system::{MutPathCacheSystem, UpdatePathCacheSystem};
 use self::spawn_intent_system::SpawnSystem;
+use crate::indices::EmptyKey;
 use crate::intents::{Intents, MoveIntent};
-use crate::model::indices::EmptyKey;
 use crate::profile;
 use crate::storage::views::{FromWorld, FromWorldMut};
 use crate::World;
@@ -69,15 +69,7 @@ pub fn execute_world_update(storage: &mut World) {
     update(&mut log_sys, storage);
 }
 
-#[inline]
-fn update<'a, Sys: System<'a>>(sys: &mut Sys, storage: &'a mut World) {
-    let m = Sys::Mut::new(storage);
-    let c = Sys::Const::new(storage as &_);
-    sys.update(Sys::Mut::clone(&m), c);
-    m.log();
-}
-
-pub fn execute_intents(storage: &mut World) {
+fn execute_intents(storage: &mut World) {
     profile!("execute_intents");
 
     let log_intent;
@@ -133,12 +125,20 @@ fn pre_process_move_intents(move_intents: &mut Vec<MoveIntent>) {
     }
 }
 
+#[inline]
+fn update<'a, Sys: System<'a>>(sys: &mut Sys, storage: &'a mut World) {
+    let m = Sys::Mut::new(storage);
+    let c = Sys::Const::new(storage as &_);
+    sys.update(Sys::Mut::clone(&m), c);
+    m.log();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::geometry::Axial;
-    use crate::model::EntityId;
-    use crate::model::WorldPosition;
+    use crate::indices::EntityId;
+    use crate::indices::WorldPosition;
 
     #[test]
     fn pre_process_move_intents_removes_last_dupe() {

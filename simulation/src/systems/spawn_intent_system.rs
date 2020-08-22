@@ -1,7 +1,7 @@
 use super::System;
 use crate::components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, SpawnComponent};
+use crate::indices::EntityId;
 use crate::intents::Intents;
-use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::{InsertEntityView, UnsafeView, UnwrapView, View};
 use log::{error, trace, warn};

@@ -1,7 +1,8 @@
 use crate::components::{
     Bot, CarryComponent, EnergyComponent, OwnedEntity, PositionComponent, Resource,
 };
-use crate::model::{self, EntityId, OperationResult};
+use crate::indices::{EntityId, UserId};
+use crate::scripting_api::OperationResult;
 use crate::storage::views::View;
 use log::error;
 use serde::{Deserialize, Serialize};
@@ -31,7 +32,7 @@ type CheckInput<'a> = (
 /// - the target is within dropoff range
 pub fn check_dropoff_intent(
     intent: &DropoffIntent,
-    userid: model::UserId,
+    userid: UserId,
     (bots, owners, positions, carry, energy): CheckInput,
 ) -> OperationResult {
     let id = intent.bot;

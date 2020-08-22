@@ -1,8 +1,8 @@
 use super::System;
 use crate::components::{Bot, PathCacheComponent};
+use crate::indices::EntityId;
 use crate::intents::Intents;
 use crate::intents::{CachePathIntent, PathCacheIntentAction};
-use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, View};
 use crate::tables::Table;

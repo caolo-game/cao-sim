@@ -1,7 +1,7 @@
 use super::System;
 use crate::components::{CarryComponent, EnergyComponent, Resource, ResourceComponent};
+use crate::indices::EntityId;
 use crate::intents::Intents;
-use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, View};
 use log::{trace, warn};

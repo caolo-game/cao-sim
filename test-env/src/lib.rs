@@ -1,14 +1,12 @@
 use cao_math::mat::js_mat3::JsMatrix;
 use cao_math::vec::vec2::Vec2;
-use caolo_sim::components::{RoomComponent, RoomConnections, RoomProperties, TerrainComponent};
 use caolo_sim::map_generation::generate_full_map;
-use caolo_sim::model::terrain::TileTerrainType;
-use caolo_sim::model::Room;
-use caolo_sim::storage::views::UnsafeView;
+use caolo_sim::prelude::*;
 use caolo_sim::tables::morton::MortonTable;
 use caolo_sim::tables::morton_hierarchy::RoomMortonTable;
 use caolo_sim::tables::unique::UniqueTable;
 use caolo_sim::tables::SpatialKey2d;
+use caolo_sim::terrain::TileTerrainType;
 
 use std::convert::TryInto;
 use wasm_bindgen::prelude::*;

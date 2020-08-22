@@ -1,6 +1,6 @@
 use super::super::HasTable;
 use super::{Component, FromWorld, World};
-use crate::model::indices::EmptyKey;
+use crate::indices::EmptyKey;
 use crate::tables::unique::UniqueTable;
 use std::ops::Deref;
 

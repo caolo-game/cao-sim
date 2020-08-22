@@ -9,13 +9,13 @@ use diamond_square::create_noise;
 
 use crate::components::{RoomConnection, TerrainComponent};
 use crate::geometry::{Axial, Hexagon};
-use crate::model::terrain::TileTerrainType;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton::ExtendFailure;
 use crate::tables::{
     morton::{msb_de_bruijn, MortonTable},
     Table,
 };
+use crate::terrain::TileTerrainType;
 use log::{debug, error, trace};
 use rand::Rng;
 use std::cmp::Ordering;

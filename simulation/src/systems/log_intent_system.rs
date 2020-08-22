@@ -1,7 +1,7 @@
 use super::System;
 use crate::components::LogEntry;
+use crate::indices::EntityTime;
 use crate::intents::LogIntent;
-use crate::model::EntityTime;
 use crate::profile;
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;

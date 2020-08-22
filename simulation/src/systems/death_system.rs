@@ -1,6 +1,6 @@
 use super::System;
 use crate::components::HpComponent;
-use crate::model::EntityId;
+use crate::indices::EntityId;
 use crate::profile;
 use crate::storage::views::{DeleteEntityView, View};
 use log::{debug, trace};

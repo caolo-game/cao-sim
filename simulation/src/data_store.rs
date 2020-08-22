@@ -2,12 +2,13 @@ pub use self::store_impl::*;
 
 use super::storage;
 use crate::components::*;
+use crate::indices::*;
 use crate::intents::*;
-use crate::model::*;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
+use crate::Time;
 use chrono::{DateTime, Duration, Utc};
 use serde_derive::Serialize;
 use slog::debug;
@@ -60,7 +61,7 @@ pub struct World {
     pub deferred_deletes: DeferredDeletes,
 
     pub time: u64,
-    pub next_entity: crate::model::EntityId,
+    pub next_entity: EntityId,
     pub last_tick: DateTime<Utc>,
     #[serde(skip)]
     pub dt: Duration,
@@ -129,7 +130,7 @@ impl World {
             store,
             deferred_deletes,
             last_tick: Utc::now(),
-            next_entity: crate::model::EntityId::default(),
+            next_entity: EntityId::default(),
             dt: Duration::zero(),
 
             logger,

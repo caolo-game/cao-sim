@@ -2,7 +2,7 @@
 //! Intended to be used for configurations.
 //!
 use super::*;
-use crate::model::indices::EmptyKey;
+use crate::indices::EmptyKey;
 use serde_derive::{Deserialize, Serialize};
 use std::mem;
 

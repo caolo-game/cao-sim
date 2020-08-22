@@ -10,16 +10,10 @@ use cao_messages::{
     Structure as StructureMsg, StructurePayload as StructurePayloadMsg,
     StructureSpawn as StructureSpawnMsg,
 };
-use caolo_sim::components::{
-    Bot, EnergyComponent, LogEntry, OwnedEntity, PositionComponent, Resource, ResourceComponent,
-    RoomProperties, SpawnComponent, Structure, TerrainComponent,
-};
-use caolo_sim::model::{
-    indices::EntityTime, terrain::TileTerrainType, EmptyKey, EntityId, WorldPosition,
-};
-use caolo_sim::storage::views::View;
+use caolo_sim::prelude::*;
 use caolo_sim::tables::traits::SpatialKey2d;
 use caolo_sim::tables::JoinIterator;
+use caolo_sim::terrain::TileTerrainType;
 
 type BotInput<'a> = (
     View<'a, EntityId, Bot>,

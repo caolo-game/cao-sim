@@ -1,6 +1,6 @@
 use super::System;
 use crate::components::{EntityComponent, PositionComponent};
-use crate::model::{EntityId, WorldPosition};
+use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
 use log::{debug, error};

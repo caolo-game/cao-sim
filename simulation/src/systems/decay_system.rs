@@ -1,7 +1,7 @@
 use super::System;
 use crate::components::{DecayComponent, HpComponent};
+use crate::indices::EntityId;
 use crate::join;
-use crate::model::EntityId;
 use crate::profile;
 use crate::storage::views::UnsafeView;
 use crate::tables::JoinIterator;

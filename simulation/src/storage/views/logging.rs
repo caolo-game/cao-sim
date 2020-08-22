@@ -102,7 +102,7 @@ mod tests {
     use super::*;
     use crate::components::EntityComponent;
     use crate::geometry::Axial;
-    use crate::model::EntityId;
+    use crate::indices::EntityId;
     use crate::tables::morton::MortonTable;
     use crate::tables::traits::Table;
 

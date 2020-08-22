@@ -1,5 +1,6 @@
 use crate::components;
-use crate::model::{self, EntityId, OperationResult, UserId};
+use crate::indices::{EntityId, UserId};
+use crate::scripting_api::OperationResult;
 use crate::World;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ pub struct SpawnIntent {
 
 pub fn check_spawn_intent(
     intent: &SpawnIntent,
-    user_id: Option<model::UserId>,
+    user_id: Option<UserId>,
     storage: &World,
 ) -> OperationResult {
     let id = intent.spawn_id;

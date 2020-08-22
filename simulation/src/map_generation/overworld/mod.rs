@@ -5,7 +5,7 @@ pub use params::*;
 
 use crate::components::{RoomComponent, RoomConnection, RoomConnections, RoomProperties};
 use crate::geometry::{Axial, Hexagon};
-use crate::model::{EmptyKey, Room};
+use crate::indices::{EmptyKey, Room};
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::{ExtendFailure, MortonTable};
 use log::{debug, error};

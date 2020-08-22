@@ -4,9 +4,6 @@
 //! Using tuples of views:
 //!
 //! ```
-//! use caolo_sim::components::{Bot, SpawnComponent, PositionComponent,
-//! EnergyComponent, EntityComponent, ResourceComponent};
-//! use caolo_sim::model::{EntityId, WorldPosition, self};
 //! use caolo_sim::prelude::*;
 //! use caolo_sim::tables::{vector::VecTable, btree::BTreeTable, morton::MortonTable};
 //!
@@ -39,7 +36,7 @@ pub use unwrap::*;
 pub use view::*;
 
 use super::{Component, DeleteById, TableId};
-use crate::model::EntityId;
+use crate::indices::EntityId;
 use crate::World;
 use log::trace;
 use std::ptr::NonNull;

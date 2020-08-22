@@ -1,5 +1,6 @@
 use crate::components;
-use crate::model::{EntityId, OperationResult, UserId};
+use crate::indices::{EntityId, UserId};
+use crate::scripting_api::OperationResult;
 use crate::storage::views::View;
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};

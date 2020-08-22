@@ -1,10 +1,10 @@
 use crate::geometry::Axial;
-use crate::model::terrain::TileTerrainType;
-use crate::model::EmptyKey;
-use crate::model::WorldPosition;
+use crate::indices::EmptyKey;
+use crate::indices::WorldPosition;
 use crate::tables::{
     morton::MortonTable, unique::UniqueTable, Component, RoomMortonTable, SpatialKey2d,
 };
+use crate::terrain::TileTerrainType;
 use serde_derive::{Deserialize, Serialize};
 
 /// Represents a connection of a room to another.

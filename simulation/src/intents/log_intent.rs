@@ -1,4 +1,4 @@
-use crate::model::indices::EntityId;
+use crate::indices::EntityId;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

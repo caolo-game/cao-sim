@@ -3,7 +3,7 @@ mod rooms;
 pub use resources::*;
 pub use rooms::*;
 
-use crate::model::{EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
+use crate::indices::{EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
 use crate::tables::{
     btree::BTreeTable, morton::MortonTable, vector::VecTable, Component, RoomMortonTable,
     SpatialKey2d, TableId,

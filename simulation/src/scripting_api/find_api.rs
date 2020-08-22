@@ -1,7 +1,7 @@
 use super::*;
 use crate::components::{EntityComponent, PositionComponent};
 use crate::data_store::World;
-use crate::model::WorldPosition;
+use crate::indices::WorldPosition;
 use crate::profile;
 use cao_lang::prelude::*;
 use slog::{trace, warn};

@@ -1,12 +1,8 @@
 use cao_lang::prelude::*;
-use caolo_sim::components;
-use caolo_sim::geometry::{Axial, Hexagon};
 use caolo_sim::map_generation::generate_full_map;
 use caolo_sim::map_generation::overworld::OverworldGenerationParams;
 use caolo_sim::map_generation::room::RoomGenerationParams;
-use caolo_sim::model::{self, EntityId, Room, ScriptId, WorldPosition};
-use caolo_sim::storage::views::{FromWorld, FromWorldMut, UnsafeView, View};
-use caolo_sim::World;
+use caolo_sim::prelude::*;
 use log::{debug, trace};
 use rand::Rng;
 use std::pin::Pin;
@@ -32,8 +28,8 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         mutate
         storage
         {
-            ScriptId, components::ScriptComponent,
-                .insert_or_update(mining_script_id, components::ScriptComponent(compiled));
+            ScriptId, ScriptComponent,
+                .insert_or_update(mining_script_id, ScriptComponent(compiled));
         }
     );
 
@@ -49,8 +45,8 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         mutate
         storage
         {
-            ScriptId, components::ScriptComponent,
-                .insert_or_update(center_walking_script_id, components::ScriptComponent(compiled));
+            ScriptId, ScriptComponent,
+                .insert_or_update(center_walking_script_id, ScriptComponent(compiled));
         }
     );
 
@@ -96,15 +92,14 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
 
     unsafe {
         debug!("Reset position storage");
-        let mut entities_by_pos =
-            storage.unsafe_view::<WorldPosition, components::EntityComponent>();
+        let mut entities_by_pos = storage.unsafe_view::<WorldPosition, EntityComponent>();
         entities_by_pos.as_mut().clear();
         entities_by_pos
             .as_mut()
             .table
             .extend(
                 storage
-                    .view::<Room, components::RoomComponent>()
+                    .view::<Room, RoomComponent>()
                     .iter()
                     .map(|(Room(roomid), _)| ((roomid, Default::default()))),
             )
@@ -116,7 +111,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         radius: radius as i32,
     };
     let rooms = storage
-        .view::<Room, components::RoomComponent>()
+        .view::<Room, RoomComponent>()
         .iter()
         .map(|a| a.0)
         .collect::<Vec<_>>();
@@ -143,7 +138,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
             );
             trace!("spawning entities");
             let spawn_pos = storage
-                .view::<EntityId, components::PositionComponent>()
+                .view::<EntityId, PositionComponent>()
                 .get_by_id(&spawnid)
                 .expect("spawn should have position")
                 .0;
@@ -185,17 +180,17 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
 }
 
 type InitBotMuts = (
-    UnsafeView<EntityId, components::EntityScript>,
-    UnsafeView<EntityId, components::Bot>,
-    UnsafeView<EntityId, components::CarryComponent>,
-    UnsafeView<EntityId, components::OwnedEntity>,
-    UnsafeView<EntityId, components::PositionComponent>,
-    UnsafeView<WorldPosition, components::EntityComponent>,
+    UnsafeView<EntityId, EntityScript>,
+    UnsafeView<EntityId, Bot>,
+    UnsafeView<EntityId, CarryComponent>,
+    UnsafeView<EntityId, OwnedEntity>,
+    UnsafeView<EntityId, PositionComponent>,
+    UnsafeView<WorldPosition, EntityComponent>,
 );
 
 unsafe fn init_bot(
     id: EntityId,
-    script_id: model::ScriptId,
+    script_id: ScriptId,
     pos: WorldPosition,
     (
         mut entity_scripts,
@@ -208,42 +203,42 @@ unsafe fn init_bot(
 ) {
     entity_scripts
         .as_mut()
-        .insert_or_update(id, components::EntityScript { script_id });
-    bots.as_mut().insert_or_update(id, components::Bot {});
+        .insert_or_update(id, EntityScript { script_id });
+    bots.as_mut().insert_or_update(id, Bot {});
     carry_component.as_mut().insert_or_update(
         id,
-        components::CarryComponent {
+        CarryComponent {
             carry: 0,
             carry_max: 50,
         },
     );
     owners.as_mut().insert_or_update(
         id,
-        components::OwnedEntity {
+        OwnedEntity {
             owner_id: Default::default(),
         },
     );
 
     positions
         .as_mut()
-        .insert_or_update(id, components::PositionComponent(pos));
+        .insert_or_update(id, PositionComponent(pos));
     entities_by_pos
         .as_mut()
         .table
         .get_by_id_mut(&pos.room)
         .expect("expected bot pos to be in the table")
-        .insert(pos.pos, components::EntityComponent(id))
+        .insert(pos.pos, EntityComponent(id))
         .expect("entities_by_pos insert");
 }
 
 type InitSpawnMuts = (
-    UnsafeView<EntityId, components::OwnedEntity>,
-    UnsafeView<EntityId, components::SpawnComponent>,
-    UnsafeView<EntityId, components::Structure>,
-    UnsafeView<EntityId, components::PositionComponent>,
-    UnsafeView<WorldPosition, components::EntityComponent>,
+    UnsafeView<EntityId, OwnedEntity>,
+    UnsafeView<EntityId, SpawnComponent>,
+    UnsafeView<EntityId, Structure>,
+    UnsafeView<EntityId, PositionComponent>,
+    UnsafeView<WorldPosition, EntityComponent>,
 );
-type InitSpawnConst<'a> = (View<'a, WorldPosition, components::TerrainComponent>,);
+type InitSpawnConst<'a> = (View<'a, WorldPosition, TerrainComponent>,);
 
 unsafe fn init_spawn(
     bounds: &Hexagon,
@@ -254,15 +249,13 @@ unsafe fn init_spawn(
     (terrain,): InitSpawnConst,
 ) {
     debug!("init_spawn");
-    structures
-        .as_mut()
-        .insert_or_update(id, components::Structure {});
+    structures.as_mut().insert_or_update(id, Structure {});
     spawns
         .as_mut()
-        .insert_or_update(id, components::SpawnComponent::default());
+        .insert_or_update(id, SpawnComponent::default());
     owners.as_mut().insert_or_update(
         id,
-        components::OwnedEntity {
+        OwnedEntity {
             owner_id: Default::default(),
         },
     );
@@ -271,25 +264,25 @@ unsafe fn init_spawn(
 
     positions
         .as_mut()
-        .insert_or_update(id, components::PositionComponent(pos));
+        .insert_or_update(id, PositionComponent(pos));
     entities_by_pos
         .as_mut()
         .table
         .get_by_id_mut(&room.0)
         .expect("expected room to be in entities_by_pos table")
-        .insert(pos.pos, components::EntityComponent(id))
+        .insert(pos.pos, EntityComponent(id))
         .expect("entities_by_pos insert");
     debug!("init_spawn done");
 }
 
 type InitResourceMuts = (
-    UnsafeView<EntityId, components::PositionComponent>,
-    UnsafeView<EntityId, components::ResourceComponent>,
-    UnsafeView<EntityId, components::EnergyComponent>,
-    UnsafeView<WorldPosition, components::EntityComponent>,
+    UnsafeView<EntityId, PositionComponent>,
+    UnsafeView<EntityId, ResourceComponent>,
+    UnsafeView<EntityId, EnergyComponent>,
+    UnsafeView<WorldPosition, EntityComponent>,
 );
 
-type InitResourceConst<'a> = (View<'a, WorldPosition, components::TerrainComponent>,);
+type InitResourceConst<'a> = (View<'a, WorldPosition, TerrainComponent>,);
 
 unsafe fn init_resource(
     bounds: &Hexagon,
@@ -299,13 +292,12 @@ unsafe fn init_resource(
     (mut positions_table, mut resources_table, mut energy_table, mut entities_by_pos, ): InitResourceMuts,
     (terrain,): InitResourceConst,
 ) {
-    resources_table.as_mut().insert_or_update(
-        id,
-        components::ResourceComponent(components::Resource::Energy),
-    );
+    resources_table
+        .as_mut()
+        .insert_or_update(id, ResourceComponent(Resource::Energy));
     energy_table.as_mut().insert_or_update(
         id,
-        components::EnergyComponent {
+        EnergyComponent {
             energy: 250,
             energy_max: 250,
         },
@@ -315,13 +307,13 @@ unsafe fn init_resource(
 
     positions_table
         .as_mut()
-        .insert_or_update(id, components::PositionComponent(pos));
+        .insert_or_update(id, PositionComponent(pos));
     entities_by_pos
         .as_mut()
         .table
         .get_by_id_mut(&room.0)
         .expect("expected room to be in entities_by_pos table")
-        .insert(pos.pos, components::EntityComponent(id))
+        .insert(pos.pos, EntityComponent(id))
         .expect("entities_by_pos insert");
 }
 
@@ -329,9 +321,7 @@ fn uncontested_pos<T: caolo_sim::tables::TableRow + Send + Sync>(
     room: Room,
     bounds: &Hexagon,
     positions_table: &caolo_sim::tables::morton_hierarchy::RoomMortonTable<T>,
-    terrain_table: &caolo_sim::tables::morton_hierarchy::RoomMortonTable<
-        components::TerrainComponent,
-    >,
+    terrain_table: &caolo_sim::tables::morton_hierarchy::RoomMortonTable<TerrainComponent>,
     rng: &mut impl Rng,
 ) -> WorldPosition {
     const TRIES: usize = 10_000;
@@ -352,7 +342,7 @@ fn uncontested_pos<T: caolo_sim::tables::TableRow + Send + Sync>(
 
         let pos = WorldPosition { room: room.0, pos };
 
-        if let Some(components::TerrainComponent(terrain)) = terrain_table.get_by_id(&pos) {
+        if let Some(TerrainComponent(terrain)) = terrain_table.get_by_id(&pos) {
             if terrain.is_walkable() && !positions_table.contains_key(&pos) {
                 return pos;
             }

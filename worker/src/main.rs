@@ -89,7 +89,7 @@ pub enum TerrainSendFail {
 
 async fn send_terrain(storage: &World, client: &PgPool) -> anyhow::Result<()> {
     let room_properties = storage
-        .view::<EmptyKey, components::RoomProperties>()
+        .view::<EmptyKey, RoomProperties>()
         .reborrow()
         .value
         .as_ref()
@@ -141,7 +141,7 @@ fn send_schema(client: &redis::Client) -> anyhow::Result<()> {
     debug!("Sending schema");
     let mut con = client.get_connection()?;
 
-    let schema = caolo_sim::api::make_import();
+    let schema = caolo_sim::scripting_api::make_import();
     let functions = schema
         .imports()
         .iter()

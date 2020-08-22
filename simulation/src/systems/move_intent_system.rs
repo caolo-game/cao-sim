@@ -1,7 +1,7 @@
 use super::System;
 use crate::components::{Bot, EntityComponent, PositionComponent};
+use crate::indices::{EntityId, WorldPosition};
 use crate::intents::Intents;
-use crate::model::{EntityId, WorldPosition};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, View};
 use log::trace;

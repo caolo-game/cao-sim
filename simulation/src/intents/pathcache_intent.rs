@@ -1,5 +1,5 @@
 use crate::components::PathCacheComponent;
-use crate::model::EntityId;
+use crate::indices::EntityId;
 use serde::{Deserialize, Serialize};
 
 /// Update the path cache

@@ -1,8 +1,5 @@
 use cao_messages::command::PlaceStructureCommand;
 use cao_messages::StructureType;
-use caolo_sim::components::{EntityComponent, OwnedEntity, PositionComponent, SpawnComponent};
-use caolo_sim::geometry::Axial;
-use caolo_sim::model::WorldPosition;
 use caolo_sim::prelude::*;
 use caolo_sim::tables::JoinIterator;
 use caolo_sim::{join, query};

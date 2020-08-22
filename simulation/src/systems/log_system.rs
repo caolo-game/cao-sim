@@ -1,9 +1,10 @@
 use super::System;
 use crate::components::LogEntry;
-use crate::model::{indices::EntityTime, Time};
+use crate::indices::EntityTime;
 use crate::profile;
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;
+use crate::Time;
 
 pub struct LogSystem;
 

@@ -14,7 +14,7 @@ pub use self::move_intent::*;
 pub use self::pathcache_intent::*;
 pub use self::spawn_intent::*;
 
-use crate::model::indices::{EmptyKey, EntityId};
+use crate::indices::{EmptyKey, EntityId};
 use crate::tables::{unique::UniqueTable, Component};
 use serde::{Deserialize, Serialize};
 

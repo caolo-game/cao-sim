@@ -1,5 +1,6 @@
+use super::OperationResult;
+use crate::indices::EntityId;
 use crate::intents::{check_spawn_intent, SpawnIntent as InnerSpawnIntent};
-use crate::model::{EntityId, OperationResult};
 use crate::profile;
 use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;

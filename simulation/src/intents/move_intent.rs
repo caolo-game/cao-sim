@@ -2,8 +2,10 @@
 //! Currently only bots are allowed to move!
 //!
 use crate::components::{self, EntityComponent, PositionComponent};
-use crate::model::{self, terrain, EntityId, OperationResult, WorldPosition};
+use crate::indices::{EntityId, UserId, WorldPosition};
+use crate::scripting_api::OperationResult;
 use crate::storage::views::View;
+use crate::terrain;
 use log::{debug, trace, warn};
 use serde::{Deserialize, Serialize};
 
@@ -23,7 +25,7 @@ type CheckInput<'a> = (
 
 pub fn check_move_intent(
     intent: &MoveIntent,
-    user_id: model::UserId,
+    user_id: UserId,
     (owner_ids, positions, bots, terrain, entity_positions): CheckInput,
 ) -> OperationResult {
     let id = intent.bot;

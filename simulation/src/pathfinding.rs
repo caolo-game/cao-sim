@@ -1,10 +1,10 @@
 use crate::components::{EntityComponent, RoomConnections, RoomProperties, TerrainComponent};
 use crate::geometry::Axial;
+use crate::indices::{EmptyKey, Room, RoomPosition, WorldPosition};
 use crate::map_generation::room::iter_edge;
-use crate::model::terrain::TileTerrainType;
-use crate::model::{indices::Room, terrain, EmptyKey, RoomPosition, WorldPosition};
 use crate::profile;
 use crate::storage::views::View;
+use crate::terrain::{self, TileTerrainType};
 use arrayvec::ArrayVec;
 use slog::{debug, error, trace, warn, Logger};
 use std::cmp::{Ord, Ordering, PartialOrd};
@@ -566,8 +566,8 @@ pub fn mirrored_room_position(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::terrain::TileTerrainType;
     use crate::tables::morton::MortonTable;
+    use crate::terrain::TileTerrainType;
     use slog::{o, Drain};
 
     #[test]
