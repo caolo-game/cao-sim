@@ -26,6 +26,7 @@
 //!
 mod unsafe_view;
 mod unwrap;
+mod unwrap_mut;
 mod view;
 
 #[cfg(feature = "log_tables")]
@@ -33,6 +34,7 @@ pub mod logging;
 
 pub use unsafe_view::*;
 pub use unwrap::*;
+pub use unwrap_mut::*;
 pub use view::*;
 
 use super::{Component, DeleteById, TableId};
