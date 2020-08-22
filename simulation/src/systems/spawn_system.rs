@@ -1,12 +1,9 @@
-use super::System;
 use crate::components;
 use crate::indices::EntityId;
 use crate::profile;
 use crate::storage::views::UnsafeView;
 use crate::tables::Table;
 use log::debug;
-
-pub struct SpawnSystem;
 
 type SpawnSystemMut = (
     UnsafeView<EntityId, components::SpawnComponent>,
@@ -19,33 +16,25 @@ type SpawnSystemMut = (
     UnsafeView<EntityId, components::OwnedEntity>,
 );
 
-impl<'a> System<'a> for SpawnSystem {
-    type Mut = SpawnSystemMut;
-    type Const = ();
-
-    fn update(
-        &mut self,
-        (mut spawns, spawn_bots, bots, hps, decay, carry, positions, owned): Self::Mut,
-        _: Self::Const,
-    ) {
-        profile!("SpawnSystem update");
-        let spawn_views = (spawn_bots, bots, hps, decay, carry, positions, owned);
-        unsafe { spawns.as_mut().iter_mut() }
-            .filter(|(_spawn_id, spawn_component)| spawn_component.spawning.is_some())
-            .filter_map(|(spawn_id, spawn_component)| {
-                spawn_component.time_to_spawn -= 1;
-                if spawn_component.time_to_spawn == 0 {
-                    let bot = spawn_component.spawning.map(|b| (spawn_id, b));
-                    spawn_component.spawning = None;
-                    bot
-                } else {
-                    None
-                }
-            })
-            .for_each(|(spawn_id, entity_id)| unsafe {
-                spawn_bot(spawn_id, entity_id, spawn_views)
-            });
-    }
+pub fn update(
+    (mut spawns, spawn_bots, bots, hps, decay, carry, positions, owned): SpawnSystemMut,
+    _: (),
+) {
+    profile!("SpawnSystem update");
+    let spawn_views = (spawn_bots, bots, hps, decay, carry, positions, owned);
+    unsafe { spawns.as_mut().iter_mut() }
+        .filter(|(_spawn_id, spawn_component)| spawn_component.spawning.is_some())
+        .filter_map(|(spawn_id, spawn_component)| {
+            spawn_component.time_to_spawn -= 1;
+            if spawn_component.time_to_spawn == 0 {
+                let bot = spawn_component.spawning.map(|b| (spawn_id, b));
+                spawn_component.spawning = None;
+                bot
+            } else {
+                None
+            }
+        })
+        .for_each(|(spawn_id, entity_id)| unsafe { spawn_bot(spawn_id, entity_id, spawn_views) });
 }
 
 type SpawnBotMut = (

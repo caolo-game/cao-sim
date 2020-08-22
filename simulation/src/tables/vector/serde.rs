@@ -96,7 +96,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::EntityId;
+    use crate::indices::EntityId;
     use rand::{thread_rng, Rng};
 
     #[test]

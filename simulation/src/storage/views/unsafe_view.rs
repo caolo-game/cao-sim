@@ -22,6 +22,10 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
         self.0.as_mut()
     }
 
+    pub fn as_ptr(&self) -> *mut C::Table {
+        self.0.as_ptr()
+    }
+
     pub fn from_table(t: &mut C::Table) -> Self {
         let ptr = unsafe { NonNull::new_unchecked(t) };
         let res: UnsafeView<Id, C> = Self(ptr);

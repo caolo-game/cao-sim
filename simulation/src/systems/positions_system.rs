@@ -1,37 +1,32 @@
-use super::System;
 use crate::components::{EntityComponent, PositionComponent};
 use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
 use crate::storage::views::{UnsafeView, View};
 use log::{debug, error};
 
-pub struct PositionSystem;
+type Mut = UnsafeView<WorldPosition, EntityComponent>;
+type Const<'a> = View<'a, EntityId, PositionComponent>;
 
-impl<'a> System<'a> for PositionSystem {
-    type Mut = UnsafeView<WorldPosition, EntityComponent>;
-    type Const = View<'a, EntityId, PositionComponent>;
+/// Reset the entity positions table
+pub fn update(mut position_entities: Mut, positions: Const) {
+    profile!("PositionSystem update");
+    debug!("update positions system called");
 
-    /// Reset the entity positions table
-    fn update(&mut self, mut position_entities: Self::Mut, positions: Self::Const) {
-        profile!("PositionSystem update");
-        debug!("update positions system called");
+    let mut positions = positions
+        .iter()
+        .map(|(id, PositionComponent(pos))| (*pos, EntityComponent(id)))
+        .collect::<Vec<_>>();
 
-        let mut positions = positions
-            .iter()
-            .map(|(id, PositionComponent(pos))| (*pos, EntityComponent(id)))
-            .collect::<Vec<_>>();
-
-        unsafe {
-            position_entities.as_mut().clear();
-            position_entities
-                .as_mut()
-                .extend_from_slice(positions.as_mut_slice())
-                .map_err(|e| {
-                    error!("Failed to rebuild position_entities table {:?}", e);
-                })
-                .ok();
-        }
-
-        debug!("update positions system done");
+    unsafe {
+        position_entities.as_mut().clear();
+        position_entities
+            .as_mut()
+            .extend_from_slice(positions.as_mut_slice())
+            .map_err(|e| {
+                error!("Failed to rebuild position_entities table {:?}", e);
+            })
+            .ok();
     }
+
+    debug!("update positions system done");
 }

@@ -11,6 +11,7 @@
 ///
 /// ```
 /// use caolo_sim::query;
+/// use caolo_sim::init_inmemory_storage;
 /// use caolo_sim::prelude::*;
 ///
 /// let mut store = init_inmemory_storage(None);
@@ -60,6 +61,7 @@ macro_rules! query {
 ///
 ///```
 /// use caolo_sim::query;
+/// use caolo_sim::init_inmemory_storage;
 /// use caolo_sim::prelude::*;
 ///
 /// // these rows are mandatory
@@ -121,6 +123,7 @@ macro_rules! query {
 ///
 /// // these rows are mandatory
 /// use caolo_sim::join;
+/// use caolo_sim::init_inmemory_storage;
 /// use caolo_sim::tables::JoinIterator;
 ///
 /// let mut store = init_inmemory_storage(None);

@@ -1,4 +1,3 @@
-use super::System;
 use crate::components;
 use crate::geometry::Axial;
 use crate::indices::{EntityId, WorldPosition};
@@ -8,99 +7,94 @@ use crate::tables::JoinIterator;
 use log::{debug, error, trace};
 use rand::Rng;
 
-pub struct MineralSystem;
+type Mut = (
+    UnsafeView<EntityId, components::PositionComponent>,
+    UnsafeView<EntityId, components::EnergyComponent>,
+    DeferredDeleteEntityView,
+);
+type Const<'a> = (
+    View<'a, WorldPosition, components::EntityComponent>,
+    View<'a, WorldPosition, components::TerrainComponent>,
+    View<'a, EntityId, components::ResourceComponent>,
+);
 
-impl<'a> System<'a> for MineralSystem {
-    type Mut = (
-        UnsafeView<EntityId, components::PositionComponent>,
-        UnsafeView<EntityId, components::EnergyComponent>,
-        DeferredDeleteEntityView,
-    );
-    type Const = (
-        View<'a, WorldPosition, components::EntityComponent>,
-        View<'a, WorldPosition, components::TerrainComponent>,
-        View<'a, EntityId, components::ResourceComponent>,
-    );
+pub fn update(
+    (mut entity_positions, mut energy, mut delete_entity_deferred): Mut,
+    (position_entities, terrain_table, resources): Const,
+) {
+    profile!("Mineral System update");
+    debug!("update minerals system called");
 
-    fn update(
-        &mut self,
-        (mut entity_positions, mut energy, mut delete_entity_deferred): Self::Mut,
-        (position_entities, terrain_table, resources): Self::Const,
-    ) {
-        profile!("Mineral System update");
-        debug!("update minerals system called");
+    let mut rng = rand::thread_rng();
 
-        let mut rng = rand::thread_rng();
+    let minerals_it = resources.iter().filter(|(_, r)| match r.0 {
+        components::Resource::Energy => true,
+        _ => false,
+    });
+    let entity_positions_it = unsafe { entity_positions.as_mut().iter_mut() };
+    let energy_iter = unsafe { energy.as_mut().iter_mut() };
 
-        let minerals_it = resources.iter().filter(|(_, r)| match r.0 {
-            components::Resource::Energy => true,
-            _ => false,
-        });
-        let entity_positions_it = unsafe { entity_positions.as_mut().iter_mut() };
-        let energy_iter = unsafe { energy.as_mut().iter_mut() };
+    // in case of an error we need to clean up the mineral
+    // however best not to clean it inside the iterator, hmmm???
+    JoinIterator::new(
+        JoinIterator::new(minerals_it, entity_positions_it),
+        energy_iter,
+    )
+    .for_each(|(id, ((_resource, position), energy))| {
+        trace!(
+            "updating {:?} {:?} {:?} {:?}",
+            id,
+            _resource,
+            position,
+            energy
+        );
 
-        // in case of an error we need to clean up the mineral
-        // however best not to clean it inside the iterator, hmmm???
-        JoinIterator::new(
-            JoinIterator::new(minerals_it, entity_positions_it),
-            energy_iter,
-        )
-        .for_each(|(id, ((_resource, position), energy))| {
-            trace!(
-                "updating {:?} {:?} {:?} {:?}",
-                id,
-                _resource,
-                position,
-                energy
-            );
+        if energy.energy > 0 {
+            return;
+        }
+        trace!("Respawning {:?}", id);
 
-            if energy.energy > 0 {
-                return;
+        let position_entities = position_entities
+            .table
+            .get_by_id(&position.0.room)
+            .expect("get room entities table");
+        let terrain_table = terrain_table
+            .table
+            .get_by_id(&position.0.room)
+            .expect("get room terrain table");
+
+        let position_entities = View::from_table(position_entities);
+        let terrain_table = View::from_table(terrain_table);
+
+        // respawning
+        let pos = random_uncontested_pos_in_range(
+            position_entities,
+            terrain_table,
+            &mut rng,
+            position.0.pos,
+            15,
+            100,
+        );
+        trace!(
+            "Mineral [{:?}] has been depleted, respawning at {:?}",
+            id,
+            pos
+        );
+        match pos {
+            Some(pos) => {
+                energy.energy = energy.energy_max;
+                position.0.pos = pos;
             }
-            trace!("Respawning {:?}", id);
-
-            let position_entities = position_entities
-                .table
-                .get_by_id(&position.0.room)
-                .expect("get room entities table");
-            let terrain_table = terrain_table
-                .table
-                .get_by_id(&position.0.room)
-                .expect("get room terrain table");
-
-            let position_entities = View::from_table(position_entities);
-            let terrain_table = View::from_table(terrain_table);
-
-            // respawning
-            let pos = random_uncontested_pos_in_range(
-                position_entities,
-                terrain_table,
-                &mut rng,
-                position.0.pos,
-                15,
-                100,
-            );
-            trace!(
-                "Mineral [{:?}] has been depleted, respawning at {:?}",
-                id,
-                pos
-            );
-            match pos {
-                Some(pos) => {
-                    energy.energy = energy.energy_max;
-                    position.0.pos = pos;
-                }
-                None => {
-                    error!("Failed to find adequate position for resource {:?}", id);
-                    unsafe {
-                        delete_entity_deferred.delete_entity(id);
-                    }
+            None => {
+                error!("Failed to find adequate position for resource {:?}", id);
+                unsafe {
+                    delete_entity_deferred.delete_entity(id);
                 }
             }
-        });
+        }
+    });
 
-        debug!("update minerals system done");
-    }
+    debug!("update minerals system done");
 }
 
 fn random_uncontested_pos_in_range<'a>(
