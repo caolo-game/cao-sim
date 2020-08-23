@@ -6,7 +6,6 @@ use rayon::prelude::*;
 use slog::o;
 use slog::{trace, warn};
 use std::fmt::{self, Display, Formatter};
-use std::sync::Mutex;
 use thiserror::Error;
 
 pub type ExecutionResult = Result<BotIntents, ExecutionError>;
@@ -29,26 +28,37 @@ pub fn execute_scripts(storage: &mut World) {
     profile!("execute_scripts");
 
     let logger = storage.logger.new(o!("tick" => storage.time));
-    let table = storage.view::<EntityId, EntityScript>().reborrow();
+    let scripts_table = storage.view::<EntityId, EntityScript>().reborrow();
+    let n_scripts = scripts_table.len();
 
-    let n_scripts = table.len();
-    let intents = Mutex::new(Vec::with_capacity(n_scripts));
+    let intents: Vec<BotIntents> = scripts_table
+        .par_iter()
+        .fold(
+            || Vec::with_capacity(n_scripts / 8),
+            |mut intents, (entity_id, script)| {
+                match execute_single_script(&logger, *entity_id, script.script_id, storage) {
+                    Ok(ints) => intents.push(ints),
+                    Err(err) => {
+                        warn!(
+                            logger,
+                            "Execution failure in {:?} of {:?}:\n{}",
+                            script.script_id,
+                            entity_id,
+                            err
+                        );
+                    }
+                }
+                intents
+            },
+        )
+        .reduce(
+            || Vec::with_capacity(n_scripts),
+            |mut res, intermediate| {
+                res.extend(intermediate);
+                res
+            },
+        );
 
-    table.par_iter().for_each(|(entity_id, script)| {
-        match execute_single_script(&logger, *entity_id, script.script_id, storage) {
-            Ok(ints) => {
-                let mut intents = intents.lock().unwrap();
-                intents.push(ints)
-            }
-            Err(err) => {
-                warn!(
-                    logger,
-                    "Execution failure in {:?} of {:?}:\n{}", script.script_id, entity_id, err
-                );
-            }
-        }
-    });
-    let intents = Mutex::into_inner(intents).unwrap();
     intents::move_into_storage(storage, intents);
 }
 
