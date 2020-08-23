@@ -1,17 +1,18 @@
-pub mod death_system;
-pub mod decay_system;
-pub mod dropoff_intent_system;
-pub mod energy_system;
-pub mod log_intent_system;
-pub mod log_system;
-pub mod mine_intent_system;
-pub mod mineral_system;
-pub mod move_intent_system;
-pub mod path_cache_intent_system;
-pub mod positions_system;
 pub mod script_execution;
-pub mod spawn_intent_system;
-pub mod spawn_system;
+
+mod death_system;
+mod decay_system;
+mod dropoff_intent_system;
+mod energy_system;
+mod log_intent_system;
+mod log_system;
+mod mine_intent_system;
+mod mineral_system;
+mod move_intent_system;
+mod path_cache_intent_system;
+mod positions_system;
+mod spawn_intent_system;
+mod spawn_system;
 
 use crate::profile;
 use crate::storage::views::{FromWorld, FromWorldMut};
@@ -22,6 +23,17 @@ pub fn execute_world_update(storage: &mut World) {
 
     execute_intents(storage);
     execute_automated_systems(storage);
+}
+
+fn execute_intents(storage: &mut World) {
+    profile!("execute_intents");
+
+    execute_update(move_intent_system::update, storage);
+    execute_update(mine_intent_system::update, storage);
+    execute_update(dropoff_intent_system::update, storage);
+    execute_update(spawn_intent_system::update, storage);
+    execute_update(log_intent_system::update, storage);
+    execute_update(path_cache_intent_system::update, storage);
 }
 
 /// Execute systems that run regardless of player actions
@@ -35,17 +47,6 @@ fn execute_automated_systems(storage: &mut World) {
     execute_update(mineral_system::update, storage);
     execute_update(positions_system::update, storage);
     execute_update(log_system::update, storage);
-}
-
-fn execute_intents(storage: &mut World) {
-    profile!("execute_intents");
-
-    execute_update(move_intent_system::update, storage);
-    execute_update(mine_intent_system::update, storage);
-    execute_update(dropoff_intent_system::update, storage);
-    execute_update(spawn_intent_system::update, storage);
-    execute_update(log_intent_system::update, storage);
-    execute_update(path_cache_intent_system::update, storage);
 }
 
 #[inline]
