@@ -1,6 +1,6 @@
 use crate::components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, SpawnComponent};
 use crate::indices::EntityId;
-use crate::intents::Intents;
+use crate::intents::{Intents, SpawnIntent};
 use crate::profile;
 use crate::storage::views::{InsertEntityView, UnsafeView, UnwrapView, View};
 use log::{error, trace, warn};
@@ -12,15 +12,17 @@ type Mut = (
     InsertEntityView,
 );
 
-type Const<'a> = (View<'a, EntityId, EnergyComponent>, UnwrapView<'a, Intents>);
+type Const<'a> = (
+    View<'a, EntityId, EnergyComponent>,
+    UnwrapView<'a, Intents<SpawnIntent>>,
+);
 
 pub fn update(
     (mut spawn_bot_table, mut spawn_table, mut owner_table, mut insert_entity): Mut,
     (entity_table, intents): Const,
 ) {
     profile!(" SpawnSystem update");
-    let intents = &intents.spawn_intent;
-    for intent in intents {
+    for intent in intents.iter() {
         trace!("Spawning bot from structure {:?}", intent.spawn_id);
 
         let spawn = match unsafe { spawn_table.as_mut() }.get_by_id_mut(&intent.spawn_id) {

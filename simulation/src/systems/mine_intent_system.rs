@@ -1,6 +1,6 @@
 use crate::components::{CarryComponent, EnergyComponent, Resource, ResourceComponent};
 use crate::indices::EntityId;
-use crate::intents::Intents;
+use crate::intents::{Intents, MineIntent};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, View};
 use log::{trace, warn};
@@ -13,7 +13,7 @@ type Mut = (
 );
 type Const<'a> = (
     View<'a, EntityId, ResourceComponent>,
-    UnwrapView<'a, Intents>,
+    UnwrapView<'a, Intents<MineIntent>>,
 );
 
 pub fn update(
@@ -22,9 +22,7 @@ pub fn update(
 ) {
     profile!(" MineSystem update");
 
-    let intents = &intents.mine_intent;
-
-    for intent in intents {
+    for intent in intents.iter() {
         trace!("Bot [{:?}] is mining [{:?}]", intent.bot, intent.resource);
         match resource_table.get_by_id(&intent.resource) {
             Some(ResourceComponent(Resource::Energy)) => {

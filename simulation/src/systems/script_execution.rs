@@ -1,15 +1,11 @@
 use crate::components::{EntityScript, ScriptComponent};
-use crate::indices::{EmptyKey, EntityId, ScriptId, UserId};
-use crate::{
-    intents::{BotIntents, Intents},
-    profile, World,
-};
+use crate::indices::{EntityId, ScriptId, UserId};
+use crate::{intents, intents::*, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
 use slog::o;
 use slog::{trace, warn};
 use std::fmt::{self, Display, Formatter};
-use std::mem;
 use std::sync::Mutex;
 use thiserror::Error;
 
@@ -32,43 +28,17 @@ pub enum ExecutionError {
 pub fn execute_scripts(storage: &mut World) {
     profile!("execute_scripts");
 
-    let n_scripts = storage.view::<EntityId, EntityScript>().len();
-
-    // Reuse the existing intent memory
-    // Replace the one in the storage, so there is no way to mutate it while the scripts are
-    // running
-    let intents = unsafe {
-        mem::replace(
-            &mut storage.unsafe_view::<EmptyKey, Intents>().as_mut().value,
-            None,
-        )
-    };
-    let mut intents = intents.unwrap_or_else(|| Intents::with_capacity(n_scripts));
-    intents.clear();
-    let intents = Mutex::new(intents);
-
-    execute_scripts_parallel(&intents, storage);
-
-    let intents = intents.into_inner().expect("Mutex unwrap");
-
-    // place the final intents into the storage
-    unsafe {
-        mem::replace(
-            &mut storage.unsafe_view::<EmptyKey, Intents>().as_mut().value,
-            Some(intents),
-        )
-    };
-}
-
-fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
     let logger = storage.logger.new(o!("tick" => storage.time));
-
     let table = storage.view::<EntityId, EntityScript>().reborrow();
+
+    let n_scripts = table.len();
+    let intents = Mutex::new(Vec::with_capacity(n_scripts));
+
     table.par_iter().for_each(|(entity_id, script)| {
         match execute_single_script(&logger, *entity_id, script.script_id, storage) {
             Ok(ints) => {
                 let mut intents = intents.lock().unwrap();
-                intents.append(ints);
+                intents.push(ints)
             }
             Err(err) => {
                 warn!(
@@ -78,6 +48,10 @@ fn execute_scripts_parallel(intents: &Mutex<Intents>, storage: &World) {
             }
         }
     });
+    let intents = Mutex::into_inner(intents).unwrap();
+    for intent in intents {
+        intents::append(storage, intent);
+    }
 }
 
 pub fn execute_single_script(

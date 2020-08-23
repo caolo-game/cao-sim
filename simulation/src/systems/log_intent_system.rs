@@ -1,18 +1,21 @@
 use crate::components::LogEntry;
 use crate::indices::EntityTime;
-use crate::intents::Intents;
+use crate::intents::{Intents, LogIntent};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapViewMut};
 use crate::tables::Table;
 use log::trace;
 use std::mem::replace;
 
-type Mut = (UnsafeView<EntityTime, LogEntry>, UnwrapViewMut<Intents>);
+type Mut = (
+    UnsafeView<EntityTime, LogEntry>,
+    UnwrapViewMut<Intents<LogIntent>>,
+);
 
 pub fn update((mut log_table, mut intents): Mut, _: ()) {
     profile!("LogIntentSystem update");
 
-    let intents = replace(&mut intents.log_intent, vec![]);
+    let intents = replace(&mut intents.0, vec![]);
 
     for intent in intents {
         trace!("inserting log entry {:?}", intent);

@@ -15,14 +15,10 @@ pub use self::pathcache_intent::*;
 pub use self::spawn_intent::*;
 
 use crate::indices::{EmptyKey, EntityId};
+use crate::storage::views::UnwrapViewMut;
 use crate::tables::{unique::UniqueTable, Component};
+use crate::World;
 use serde::{Deserialize, Serialize};
-
-impl Intents {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
 
 impl BotIntents {
     pub fn with_log<S: Into<String>>(
@@ -47,40 +43,38 @@ impl BotIntents {
 
 /// Implements the SOA style intents container
 macro_rules! intents {
-    ($($name: ident: $type: ty),+,) =>{
-        #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-        pub struct Intents {
-            $(pub $name: Vec<$type>),*
-        }
+    ($($name: ident : $type: ty),+,) =>{
 
-        impl Intents {
-            pub fn with_capacity(cap: usize) -> Self {
-                Self{
-                    $($name: Vec::<$type>::with_capacity(cap)),*
+        pub fn append(s: &mut World, intents: BotIntents)  {
+            use crate::storage::views::FromWorldMut;
+            $(
+                if let Some(intent) = intents.$name {
+                    let mut ints = UnwrapViewMut::<Intents<$type>>::new(s);
+                    ints.0.push(intent);
                 }
-            }
+            )*
+        }
 
-            pub fn merge(&mut self, other: &Intents) -> &mut Self {
-                $(self.$name.extend_from_slice(&other.$name));* ;
-                self
+        /// Newtype wrapper on intents to implement Component
+        #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+        pub struct Intents<T> (pub Vec<T>);
+        $(
+            impl Component<EmptyKey> for Intents<$type> {
+                type Table = UniqueTable<Self>;
             }
+        )*
 
-            pub fn clear(&mut self) {
-                $(self.$name.clear());* ;
-            }
-
-            pub fn append(&mut self, intents: BotIntents) -> &mut Self {
-                $(
-                    if let Some(intent) = intents.$name {
-                        self.$name.push(intent);
-                    }
-                )*
-                self
+        impl<T> std::ops::DerefMut for Intents<T> {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                self.0.as_mut_slice()
             }
         }
 
-        impl Component<EmptyKey> for Intents {
-            type Table = UniqueTable<Self>;
+        impl<T> std::ops::Deref for Intents<T> {
+            type Target=[T];
+            fn deref(&self) -> &Self::Target {
+                self.0.as_slice()
+            }
         }
 
         /// Possible intents of a single bot
@@ -88,14 +82,6 @@ macro_rules! intents {
         pub struct BotIntents {
             $(pub $name: Option<$type>),*
         }
-
-        $(
-            impl<'a> Into<&'a [$type]> for &'a Intents {
-                fn into(self) -> &'a [$type] {
-                    self.$name.as_slice()
-                }
-            }
-        )*
     };
 }
 

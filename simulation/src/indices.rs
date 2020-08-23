@@ -115,6 +115,7 @@ impl Add for Room {
     }
 }
 
+/// Storage key for unindexed tables.
 #[derive(
     Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
 )]

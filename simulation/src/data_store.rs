@@ -49,9 +49,16 @@ storage!(
     key WorldPosition, table TerrainComponent = pointterrain,
     key WorldPosition, table EntityComponent = pointentity,
 
-    key EmptyKey, table RoomProperties = roomproperties,
-    key EmptyKey, table Intents = intents,
+    // intents
+    key EmptyKey, table Intents<MoveIntent> = move_intents,
+    key EmptyKey, table Intents<SpawnIntent> = spawn_intents,
+    key EmptyKey, table Intents<MineIntent> = mine_intents,
+    key EmptyKey, table Intents<DropoffIntent> = dropoff_intents,
+    key EmptyKey, table Intents<LogIntent> = log_intents,
+    key EmptyKey, table Intents<CachePathIntent> = update_path_cache_intents,
+    key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
 
+    key EmptyKey, table RoomProperties = roomproperties,
 );
 
 #[derive(Debug, Serialize)]

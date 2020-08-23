@@ -8,7 +8,7 @@ use rayon::prelude::*;
 
 type Mut = (
     UnsafeView<EntityId, PositionComponent>,
-    UnwrapViewMut<Intents>,
+    UnwrapViewMut<Intents<MoveIntent>>,
 );
 type Const<'a> = (
     View<'a, EntityId, Bot>,
@@ -18,8 +18,8 @@ type Const<'a> = (
 pub fn update((mut positions, mut intents): Mut, (bots, pos_entities): Const) {
     profile!(" MoveSystem update");
 
-    pre_process_move_intents(&mut intents.move_intent);
-    for intent in intents.move_intent.iter() {
+    pre_process_move_intents(&mut intents.0);
+    for intent in intents.iter() {
         trace!("Moving bot[{:?}] to {:?}", intent.bot, intent.position);
 
         if bots.get_by_id(&intent.bot).is_none() {

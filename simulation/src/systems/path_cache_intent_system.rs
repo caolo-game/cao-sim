@@ -1,22 +1,24 @@
 use crate::components::{Bot, PathCacheComponent};
 use crate::indices::EntityId;
-use crate::intents::Intents;
-use crate::intents::PathCacheIntentAction;
+use crate::intents::{CachePathIntent, Intents, MutPathCacheIntent, PathCacheIntentAction};
 use crate::profile;
-use crate::storage::views::{UnsafeView, UnwrapViewMut, View};
+use crate::storage::views::{UnsafeView, UnwrapView, UnwrapViewMut, View};
 use crate::tables::Table;
 use std::mem::replace;
 
 pub fn update(
-    (mut path_cache_table, mut intents): (
+    (mut path_cache_table, mut cache_intents): (
         UnsafeView<EntityId, PathCacheComponent>,
-        UnwrapViewMut<Intents>,
+        UnwrapViewMut<Intents<CachePathIntent>>,
     ),
-    (bot_table,): (View<EntityId, Bot>,),
+    (bot_table, mut_cache_intents): (
+        View<EntityId, Bot>,
+        UnwrapView<Intents<MutPathCacheIntent>>,
+    ),
 ) {
     profile!("UpdatePathCacheSystem update");
 
-    let cache_intents = replace(&mut intents.update_path_cache_intent, vec![]);
+    let cache_intents = replace(&mut cache_intents.0, vec![]);
 
     for intent in cache_intents.into_iter() {
         let entity_id = intent.bot;
@@ -30,8 +32,7 @@ pub fn update(
                 .insert_or_update(entity_id, intent.cache);
         }
     }
-    let intents = &intents.mut_path_cache_intent;
-    for intent in intents {
+    for intent in mut_cache_intents.iter() {
         let entity_id = intent.bot;
         match intent.action {
             PathCacheIntentAction::Pop => unsafe {
