@@ -29,13 +29,13 @@ pub fn forward(storage: &mut World) -> anyhow::Result<()> {
     execute_scripts(storage);
     info!("Executing scripts - done");
 
-    info!("Executing signaling");
-    storage.signal_done();
-    info!("Executing signaling - done");
-
     info!("Executing systems update");
     execute_world_update(storage);
     info!("Executing systems update - done");
+
+    info!("Executing signaling");
+    storage.signal_done();
+    info!("Executing signaling - done");
 
     info!("-----------Tick {} done-----------", storage.time());
     Ok(())

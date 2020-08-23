@@ -49,9 +49,7 @@ pub fn execute_scripts(storage: &mut World) {
         }
     });
     let intents = Mutex::into_inner(intents).unwrap();
-    for intent in intents {
-        intents::append(storage, intent);
-    }
+    intents::move_into_storage(storage, intents);
 }
 
 pub fn execute_single_script(

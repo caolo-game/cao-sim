@@ -15,7 +15,6 @@ pub use self::pathcache_intent::*;
 pub use self::spawn_intent::*;
 
 use crate::indices::{EmptyKey, EntityId};
-use crate::storage::views::UnwrapViewMut;
 use crate::tables::{unique::UniqueTable, Component};
 use crate::World;
 use serde::{Deserialize, Serialize};
@@ -43,16 +42,29 @@ impl BotIntents {
 
 /// Implements the SOA style intents container
 macro_rules! intents {
-    ($($name: ident : $type: ty),+,) =>{
-
-        pub fn append(s: &mut World, intents: BotIntents)  {
-            use crate::storage::views::FromWorldMut;
+    ($($name: ident : $type: ty),+,) => {
+        /// Move the botintents into the world, overriding the existing ones
+        pub fn move_into_storage(s: &mut World, intents: Vec<BotIntents>)  {
+            use crate::storage::views::{UnwrapViewMut, FromWorldMut};
+            // reset the intent tables
             $(
-                if let Some(intent) = intents.$name {
+                let mut ints = s.unsafe_view::<EmptyKey, Intents<$type>>();
+                let ints = unsafe {ints.as_mut()};
+                match ints.value.as_mut() {
+                    Some(ints) => ints.0.clear(),
+                    None => {
+                        ints.value = Some(Intents(Vec::with_capacity(intents.len())));
+                    }
+                }
+            )*
+            for intent in intents {
+            $(
+                if let Some(intent) = intent.$name {
                     let mut ints = UnwrapViewMut::<Intents<$type>>::new(s);
                     ints.0.push(intent);
                 }
             )*
+            }
         }
 
         /// Newtype wrapper on intents to implement Component
