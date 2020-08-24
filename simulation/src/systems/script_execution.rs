@@ -34,7 +34,7 @@ pub fn execute_scripts(storage: &mut World) {
     let intents: Vec<BotIntents> = scripts_table
         .par_iter()
         .fold(
-            || Vec::with_capacity(n_scripts / 8),
+            || Vec::new(), // generally these vectors are fairly short lived
             |mut intents, (entity_id, script)| {
                 match execute_single_script(&logger, *entity_id, script.script_id, storage) {
                     Ok(ints) => intents.push(ints),
