@@ -57,7 +57,7 @@ pub fn check_mine_intent(
     match carry_table.get_by_id(&bot) {
         Some(carry) => {
             if carry.carry >= carry.carry_max {
-                debug!(logger,"{:?} is full", bot);
+                debug!(logger, "{:?} is full", bot);
                 return OperationResult::Full;
             }
         }

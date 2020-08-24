@@ -15,9 +15,9 @@ mod systems;
 mod utils;
 
 use serde_derive::{Deserialize, Serialize};
+use slog::{info, o};
 use systems::execute_world_update;
 use systems::script_execution::execute_scripts;
-use slog::{info, o};
 
 pub use data_store::{init_inmemory_storage, Storage, World};
 

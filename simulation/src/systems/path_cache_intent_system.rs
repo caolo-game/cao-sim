@@ -11,10 +11,7 @@ pub fn update(
         UnsafeView<EntityId, PathCacheComponent>,
         UnwrapViewMut<Intents<CachePathIntent>>,
     ),
-    (bot_table, mut_cache_intents): (
-        View<EntityId, Bot>,
-        UnwrapView<Intents<MutPathCacheIntent>>,
-    ),
+    (bot_table, mut_cache_intents): (View<EntityId, Bot>, UnwrapView<Intents<MutPathCacheIntent>>),
 ) {
     profile!("UpdatePathCacheSystem update");
 

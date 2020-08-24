@@ -1,7 +1,7 @@
 use cao_messages::command::{UpdateEntityScriptCommand, UpdateScriptCommand};
 use caolo_sim::prelude::*;
 use caolo_sim::{self, tables::JoinIterator};
-use log::debug;
+use slog::{debug, Logger};
 
 #[derive(Debug, Clone)]
 pub enum UpdateProgramError {
@@ -10,11 +10,15 @@ pub enum UpdateProgramError {
 type UpdateResult = Result<(), UpdateProgramError>;
 
 /// Update all programs submitted via the PROGRAM field in the Redis storage
-pub fn update_program(storage: &mut World, msg: UpdateScriptCommand) -> UpdateResult {
-    debug!("Updating program {:?}", msg);
+pub fn update_program(
+    logger: Logger,
+    storage: &mut World,
+    msg: UpdateScriptCommand,
+) -> UpdateResult {
+    debug!(logger, "Updating program {:?}", msg);
     debug!(
-        "Inserting new program for user {} {}",
-        msg.user_id, msg.script_id
+        logger,
+        "Inserting new program for user {} {}", msg.user_id, msg.script_id
     );
 
     let user_id = UserId(msg.user_id);
@@ -48,7 +52,7 @@ pub fn update_program(storage: &mut World, msg: UpdateScriptCommand) -> UpdateRe
         FromWorld::new(storage as &_),
     );
 
-    debug!("Updating program done");
+    debug!(logger, "Updating program done");
     Ok(())
 }
 

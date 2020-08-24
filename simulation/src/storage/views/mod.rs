@@ -25,10 +25,10 @@
 //! ```
 //!
 mod unsafe_view;
-mod world_logger;
 mod unwrap;
 mod unwrap_mut;
 mod view;
+mod world_logger;
 
 #[cfg(feature = "log_tables")]
 pub mod logging;

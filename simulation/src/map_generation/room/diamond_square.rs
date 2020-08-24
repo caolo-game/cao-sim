@@ -1,8 +1,8 @@
 use super::GradientMap;
 use crate::geometry::Axial;
 use crate::tables::{SpatialKey2d, Table};
-use slog::{debug, Logger};
 use rand::Rng;
+use slog::{debug, Logger};
 
 pub fn create_noise(
     logger: Logger,

@@ -3,26 +3,26 @@ use caolo_sim::map_generation::generate_full_map;
 use caolo_sim::map_generation::overworld::OverworldGenerationParams;
 use caolo_sim::map_generation::room::RoomGenerationParams;
 use caolo_sim::prelude::*;
-use log::{debug, trace};
 use rand::Rng;
+use slog::{debug, trace, Logger};
 use std::pin::Pin;
 use uuid::Uuid;
 
-pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
-    debug!("initializing world");
+pub fn init_storage(logger: Logger, n_fake_users: usize) -> Pin<Box<World>> {
+    debug!(logger, "initializing world");
     assert!(n_fake_users >= 1);
 
     let mut rng = rand::thread_rng();
 
-    let mut storage = caolo_sim::init_inmemory_storage(None);
+    let mut storage = caolo_sim::init_inmemory_storage(logger.clone());
 
     let mining_script_id = ScriptId(Uuid::new_v4());
     let script: CompilationUnit =
         serde_json::from_str(include_str!("./programs/mining_program.json"))
             .expect("deserialize example program");
-    debug!("compiling default program");
+    debug!(logger, "compiling default program");
     let compiled = compile(None, script).expect("failed to compile example program");
-    debug!("compilation done");
+    debug!(logger, "compilation done");
 
     caolo_sim::query!(
         mutate
@@ -37,9 +37,9 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
     let script: CompilationUnit =
         serde_json::from_str(include_str!("./programs/center_walking_program.json"))
             .expect("deserialize example program");
-    debug!("compiling default program");
+    debug!(logger, "compiling default program");
     let compiled = compile(None, script).expect("failed to compile example program");
-    debug!("compilation done");
+    debug!(logger, "compilation done");
 
     caolo_sim::query!(
         mutate
@@ -79,7 +79,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         .with_plain_dilation(2)
         .build()
         .unwrap();
-    debug!("generating map {:#?} {:#?}", params, room_params);
+    debug!(logger, "generating map {:#?} {:#?}", params, room_params);
 
     generate_full_map(
         storage.logger.clone(),
@@ -89,10 +89,10 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         FromWorldMut::new(&mut *storage),
     )
     .unwrap();
-    debug!("world generation done");
+    debug!(logger, "world generation done");
 
     unsafe {
-        debug!("Reset position storage");
+        debug!(logger, "Reset position storage");
         let mut entities_by_pos = storage.unsafe_view::<WorldPosition, EntityComponent>();
         entities_by_pos.as_mut().clear();
         entities_by_pos
@@ -119,7 +119,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
 
     let mut taken_rooms = Vec::with_capacity(n_fake_users);
     for i in 0..n_fake_users {
-        trace!("initializing room #{}", i);
+        trace!(logger, "initializing room #{}", i);
         let storage = &mut storage;
         let spawnid = storage.insert_entity();
 
@@ -127,9 +127,10 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         let room = rooms[room];
         taken_rooms.push(room);
 
-        trace!("initializing room #{} in room {:?}", i, room);
+        trace!(logger, "initializing room #{} in room {:?}", i, room);
         unsafe {
             init_spawn(
+                &logger,
                 &bounds,
                 spawnid,
                 room,
@@ -137,7 +138,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
                 FromWorldMut::new(storage),
                 FromWorld::new(storage),
             );
-            trace!("spawning entities");
+            trace!(logger, "spawning entities");
             let spawn_pos = storage
                 .view::<EntityId, PositionComponent>()
                 .get_by_id(&spawnid)
@@ -165,6 +166,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
         let id = storage.insert_entity();
         unsafe {
             init_resource(
+                &logger,
                 &bounds,
                 id,
                 room,
@@ -173,10 +175,10 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
                 FromWorld::new(storage),
             );
         }
-        trace!("initializing room #{} done", i);
+        trace!(logger, "initializing room #{} done", i);
     }
 
-    debug!("init done");
+    debug!(logger, "init done");
     storage
 }
 
@@ -242,6 +244,7 @@ type InitSpawnMuts = (
 type InitSpawnConst<'a> = (View<'a, WorldPosition, TerrainComponent>,);
 
 unsafe fn init_spawn(
+    logger: &Logger,
     bounds: &Hexagon,
     id: EntityId,
     room: Room,
@@ -249,7 +252,7 @@ unsafe fn init_spawn(
     (mut owners, mut spawns, mut structures, mut positions, mut entities_by_pos): InitSpawnMuts,
     (terrain,): InitSpawnConst,
 ) {
-    debug!("init_spawn");
+    debug!(logger, "init_spawn");
     structures.as_mut().insert_or_update(id, Structure {});
     spawns
         .as_mut()
@@ -261,7 +264,7 @@ unsafe fn init_spawn(
         },
     );
 
-    let pos = uncontested_pos(room, bounds, &*entities_by_pos, &*terrain, rng);
+    let pos = uncontested_pos(logger, room, bounds, &*entities_by_pos, &*terrain, rng);
 
     positions
         .as_mut()
@@ -273,7 +276,7 @@ unsafe fn init_spawn(
         .expect("expected room to be in entities_by_pos table")
         .insert(pos.pos, EntityComponent(id))
         .expect("entities_by_pos insert");
-    debug!("init_spawn done");
+    debug!(logger, "init_spawn done");
 }
 
 type InitResourceMuts = (
@@ -286,6 +289,7 @@ type InitResourceMuts = (
 type InitResourceConst<'a> = (View<'a, WorldPosition, TerrainComponent>,);
 
 unsafe fn init_resource(
+    logger: &Logger,
     bounds: &Hexagon,
     id: EntityId,
     room: Room,
@@ -304,7 +308,7 @@ unsafe fn init_resource(
         },
     );
 
-    let pos = uncontested_pos(room, bounds, &*entities_by_pos, &*terrain, rng);
+    let pos = uncontested_pos(logger, room, bounds, &*entities_by_pos, &*terrain, rng);
 
     positions_table
         .as_mut()
@@ -319,6 +323,7 @@ unsafe fn init_resource(
 }
 
 fn uncontested_pos<T: caolo_sim::tables::TableRow + Send + Sync>(
+    logger: &Logger,
     room: Room,
     bounds: &Hexagon,
     positions_table: &caolo_sim::tables::morton_hierarchy::RoomMortonTable<T>,
@@ -334,10 +339,10 @@ fn uncontested_pos<T: caolo_sim::tables::TableRow + Send + Sync>(
 
         let pos = Axial::new(x, y);
 
-        trace!("checking pos {:?}", pos);
+        trace!(logger, "checking pos {:?}", pos);
 
         if !bounds.contains(pos) {
-            trace!("point {:?} is out of bounds {:?}", pos, bounds);
+            trace!(logger, "point {:?} is out of bounds {:?}", pos, bounds);
             continue;
         }
 
@@ -358,20 +363,21 @@ fn uncontested_pos<T: caolo_sim::tables::TableRow + Send + Sync>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Once;
-
-    static INIT: Once = Once::new();
-
-    fn setup() {
-        INIT.call_once(|| {
-            env_logger::init();
-        });
-    }
+    use slog::*;
 
     #[test]
     fn can_init_the_game() {
-        setup();
+        let decorator = slog_term::TermDecorator::new().build();
+        let drain = slog_term::FullFormat::new(decorator).build().fuse();
+        let drain = slog_envlogger::new(drain).fuse();
+        let drain = slog_async::Async::new(drain)
+            .overflow_strategy(slog_async::OverflowStrategy::DropAndReport)
+            .chan_size(16000)
+            .build()
+            .fuse();
+        let logger = slog::Logger::root(drain, o!());
+
         // smoke test: can the game be even initialized?
-        init_storage(5);
+        init_storage(logger, 5);
     }
 }

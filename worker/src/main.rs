@@ -4,7 +4,7 @@ mod output;
 
 use anyhow::Context;
 use caolo_sim::prelude::*;
-use log::{debug, error, info, trace, warn};
+use slog::{debug, error, info, o, trace, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -23,7 +23,7 @@ fn init() {
     dep_dotenv::dotenv().unwrap_or_default();
 }
 
-fn tick(storage: &mut World) {
+fn tick(logger: Logger, storage: &mut World) {
     let start = chrono::Utc::now();
 
     caolo_sim::forward(storage)
@@ -31,6 +31,7 @@ fn tick(storage: &mut World) {
             let duration = chrono::Utc::now() - start;
 
             info!(
+                logger,
                 "Tick {} has been completed in {} ms",
                 storage.time(),
                 duration.num_milliseconds()
@@ -39,24 +40,24 @@ fn tick(storage: &mut World) {
         .expect("Failed to forward game state")
 }
 
-fn send_world(storage: &World, client: &redis::Client) -> anyhow::Result<()> {
-    debug!("Sending world state");
+fn send_world(logger: Logger, storage: &World, client: &redis::Client) -> anyhow::Result<()> {
+    debug!(logger, "Sending world state");
 
     let bots: Vec<_> = output::build_bots(FromWorld::new(storage)).collect();
 
-    debug!("sending {} bots", bots.len());
+    debug!(logger, "sending {} bots", bots.len());
 
     let logs: Vec<_> = output::build_logs(FromWorld::new(storage)).collect();
 
-    debug!("sending {} logs", logs.len());
+    debug!(logger, "sending {} logs", logs.len());
 
     let resources: Vec<_> = output::build_resources(FromWorld::new(storage)).collect();
 
-    debug!("sending {} resources", resources.len());
+    debug!(logger, "sending {} resources", resources.len());
 
     let structures: Vec<_> = output::build_structures(FromWorld::new(storage)).collect();
 
-    debug!("sending {} structures", structures.len());
+    debug!(logger, "sending {} structures", structures.len());
 
     let world = WorldState {
         bots,
@@ -67,7 +68,7 @@ fn send_world(storage: &World, client: &redis::Client) -> anyhow::Result<()> {
 
     let payload = rmp_serde::to_vec_named(&world)?;
 
-    debug!("sending {} bytes", payload.len());
+    debug!(logger, "sending {} bytes", payload.len());
 
     let mut con = client.get_connection()?;
     redis::pipe()
@@ -77,7 +78,7 @@ fn send_world(storage: &World, client: &redis::Client) -> anyhow::Result<()> {
         .query(&mut con)
         .with_context(|| "Failed to send WORLD_STATE")?;
 
-    debug!("Sending world state done");
+    debug!(logger, "Sending world state done");
     Ok(())
 }
 
@@ -87,7 +88,7 @@ pub enum TerrainSendFail {
     RoomPropertiesNotSet,
 }
 
-async fn send_terrain(storage: &World, client: &PgPool) -> anyhow::Result<()> {
+async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyhow::Result<()> {
     let room_properties = storage
         .view::<EmptyKey, RoomProperties>()
         .reborrow()
@@ -103,7 +104,12 @@ async fn send_terrain(storage: &World, client: &PgPool) -> anyhow::Result<()> {
         .await?;
 
     for (room, tiles) in output::build_terrain(FromWorld::new(storage)) {
-        trace!("sending room {:?} terrain, len: {}", room, tiles.len());
+        trace!(
+            logger,
+            "sending room {:?} terrain, len: {}",
+            room,
+            tiles.len()
+        );
 
         let q = room.q;
         let r = room.r;
@@ -133,12 +139,12 @@ async fn send_terrain(storage: &World, client: &PgPool) -> anyhow::Result<()> {
     }
     tx.commit().await?;
 
-    debug!("sending terrain done");
+    debug!(logger, "sending terrain done");
     Ok(())
 }
 
-fn send_schema(client: &redis::Client) -> anyhow::Result<()> {
-    debug!("Sending schema");
+fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
+    debug!(logger, "Sending schema");
     let mut con = client.get_connection()?;
 
     let schema = caolo_sim::scripting_api::make_import();
@@ -168,7 +174,7 @@ fn send_schema(client: &redis::Client) -> anyhow::Result<()> {
         .query(&mut con)
         .with_context(|| "Failed to set SCHEMA")?;
 
-    debug!("Sending schema done");
+    debug!(logger, "Sending schema done");
     Ok(())
 }
 
@@ -176,7 +182,16 @@ fn send_schema(client: &redis::Client) -> anyhow::Result<()> {
 async fn main() -> Result<(), anyhow::Error> {
     init();
 
-    pretty_env_logger::init();
+    let decorator = slog_term::TermDecorator::new().build();
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain = slog_envlogger::new(drain).fuse();
+    let drain = slog_async::Async::new(drain)
+        .overflow_strategy(slog_async::OverflowStrategy::DropAndReport)
+        .chan_size(16000)
+        .build()
+        .fuse();
+    let logger = slog::Logger::root(drain, o!());
+
     let _sentry = std::env::var("SENTRY_URI")
         .ok()
         .map(|uri| {
@@ -184,7 +199,7 @@ async fn main() -> Result<(), anyhow::Error> {
             sentry::init(options)
         })
         .ok_or_else(|| {
-            warn!("Sentry URI was not provided");
+            warn!(logger, "Sentry URI was not provided");
         });
 
     let n_actors = std::env::var("N_ACTORS")
@@ -192,9 +207,9 @@ async fn main() -> Result<(), anyhow::Error> {
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(100);
 
-    info!("Starting with {} actors", n_actors);
+    info!(logger, "Starting with {} actors", n_actors);
 
-    let mut storage = init::init_storage(n_actors);
+    let mut storage = init::init_storage(logger.clone(), n_actors);
 
     let redis_url =
         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
@@ -205,16 +220,16 @@ async fn main() -> Result<(), anyhow::Error> {
     )
     .await?;
 
-    send_terrain(&*storage.as_ref(), &pg_pool)
+    send_terrain(&logger, &*storage.as_ref(), &pg_pool)
         .await
-        .context("Send terrain")?;
+        .expect("Send terrain");
 
     let tick_freq = std::env::var("TARGET_TICK_FREQUENCY_MS")
         .map(|i| i.parse::<u64>().unwrap())
         .unwrap_or(200);
     let tick_freq = Duration::from_millis(tick_freq);
 
-    send_schema(&redis_client).expect("Send schema");
+    send_schema(logger.clone(), &redis_client).expect("Send schema");
 
     sentry::capture_message(
         "Caolo Worker initialization complete! Starting the game loop",
@@ -222,9 +237,9 @@ async fn main() -> Result<(), anyhow::Error> {
     );
     loop {
         let start = Instant::now();
-        input::handle_messages(&mut storage, &redis_client);
-        tick(&mut storage);
-        send_world(&storage, &redis_client).expect("Sending world");
+        input::handle_messages(logger.clone(), &mut storage, &redis_client);
+        tick(logger.clone(), &mut storage);
+        send_world(logger.clone(), &storage, &redis_client).expect("Sending world");
         let t = Instant::now() - start;
         let sleep_duration = tick_freq
             .checked_sub(t)
