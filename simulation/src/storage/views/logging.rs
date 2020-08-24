@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
+use slog::{error, Logger};
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::pin::Pin;
@@ -10,6 +11,7 @@ use std::sync::Mutex;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogGuard {
     pub fname: String,
+    pub logger: Logger,
 }
 
 impl Drop for LogGuard {
@@ -41,11 +43,14 @@ impl Drop for LogGuard {
                 .collect::<HashMap<_, _>>();
             serde_json::to_writer_pretty(f, &table)
                 .map_err(|e| {
-                    log::error!("Failed to write table history {:?}", e);
+                    error!(self.logger, "Failed to write table history {:?}", e);
                 })
                 .unwrap_or(());
         } else {
-            log::error!("Failed to open table logging file: {}", self.fname);
+            error!(
+                self.logger,
+                "Failed to open table logging file: {}", self.fname
+            );
         }
     }
 }
@@ -119,9 +124,12 @@ mod tests {
         }))
         .unwrap();
 
+        let logger = crate::utils::test_logger();
+
         {
             let _log_guard = LogGuard {
                 fname: "test-tables.log".to_owned(),
+                logger,
             };
 
             {
