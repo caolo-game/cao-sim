@@ -1,4 +1,4 @@
-use caolo_sim::model::EntityId;
+use caolo_sim::indices::EntityId;
 use caolo_sim::tables::btree::BTreeTable;
 use criterion::{black_box, criterion_group, Criterion};
 use rand::{rngs::SmallRng, Rng, SeedableRng};

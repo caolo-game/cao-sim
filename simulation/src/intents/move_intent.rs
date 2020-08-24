@@ -6,8 +6,8 @@ use crate::indices::{EntityId, UserId, WorldPosition};
 use crate::scripting_api::OperationResult;
 use crate::storage::views::View;
 use crate::terrain;
-use log::{debug, trace, warn};
 use serde::{Deserialize, Serialize};
+use slog::{debug, trace, Logger};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MoveIntent {
@@ -24,6 +24,7 @@ type CheckInput<'a> = (
 );
 
 pub fn check_move_intent(
+    logger: &Logger,
     intent: &MoveIntent,
     user_id: UserId,
     (owner_ids, positions, bots, terrain, entity_positions): CheckInput,
@@ -42,7 +43,7 @@ pub fn check_move_intent(
     let pos = match positions.get_by_id(&id) {
         Some(pos) => pos,
         None => {
-            warn!("Bot has no position");
+            debug!(logger, "Bot has no position");
             return OperationResult::InvalidInput;
         }
     };
@@ -50,6 +51,7 @@ pub fn check_move_intent(
     // TODO: bot speed component?
     if 1 < pos.0.pos.hex_distance(intent.position.pos) || pos.0.room != intent.position.room {
         trace!(
+            logger,
             "Bot move target {:?} is out of range of bot position {:?} and velocity {:?}",
             intent.position,
             pos,
@@ -61,11 +63,14 @@ pub fn check_move_intent(
     if let Some(components::TerrainComponent(terrain::TileTerrainType::Wall)) =
         terrain.get_by_id(&intent.position)
     {
-        debug!("Position is occupied by terrain");
+        debug!(logger, "Position is occupied by terrain");
         return OperationResult::InvalidInput;
     }
     if let Some(entity) = entity_positions.get_by_id(&intent.position) {
-        debug!("Position is occupied by another entity {:?}", entity);
+        debug!(
+            logger,
+            "Position is occupied by another entity {:?}", entity
+        );
         return OperationResult::InvalidInput;
     }
     OperationResult::Ok

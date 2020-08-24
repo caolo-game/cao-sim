@@ -2,9 +2,9 @@ use crate::components::LogEntry;
 use crate::indices::EntityTime;
 use crate::intents::{Intents, LogIntent};
 use crate::profile;
-use crate::storage::views::{UnsafeView, UnwrapViewMut};
+use crate::storage::views::{UnsafeView, UnwrapViewMut, WorldLogger};
 use crate::tables::Table;
-use log::trace;
+use slog::trace;
 use std::mem::replace;
 
 type Mut = (
@@ -12,13 +12,13 @@ type Mut = (
     UnwrapViewMut<Intents<LogIntent>>,
 );
 
-pub fn update((mut log_table, mut intents): Mut, _: ()) {
+pub fn update((mut log_table, mut intents): Mut, WorldLogger(logger): WorldLogger) {
     profile!("LogIntentSystem update");
 
     let intents = replace(&mut intents.0, vec![]);
 
     for intent in intents {
-        trace!("inserting log entry {:?}", intent);
+        trace!(logger, "inserting log entry {:?}", intent);
         let id = EntityTime(intent.entity, intent.time);
         let log_table = unsafe { log_table.as_mut() };
         // use delete to move out of the data structure, then we'll move it back in

@@ -1,4 +1,4 @@
-use caolo_sim::model::EntityId;
+use caolo_sim::indices::EntityId;
 use caolo_sim::tables::{vector::VecTable, Table};
 use criterion::{black_box, criterion_group, Criterion};
 use rand::seq::SliceRandom;

@@ -7,6 +7,7 @@ use caolo_sim::tables::morton_hierarchy::RoomMortonTable;
 use caolo_sim::tables::unique::UniqueTable;
 use caolo_sim::tables::SpatialKey2d;
 use caolo_sim::terrain::TileTerrainType;
+use slog::{o, Drain, Logger};
 
 use std::convert::TryInto;
 use wasm_bindgen::prelude::*;
@@ -30,8 +31,6 @@ pub struct MapRender {
 
 pub fn init() {
     console_error_panic_hook::set_once();
-    // console_log::init_with_level(log::Level::Trace).unwrap();
-    // console_log::init_with_level(log::Level::Debug).unwrap();
     console_log::init_with_level(log::Level::Info).unwrap();
 }
 
@@ -99,7 +98,11 @@ impl MapRender {
             .map_err(|e| format!("expected valid params {:?}", e))
             .map_err(|e| JsValue::from_serde(&e).unwrap())?;
 
+        let plain = slog_term::PlainSyncDecorator::new(std::io::stdout());
+        let logger = Logger::root(slog_term::FullFormat::new(plain).build().fuse(), o!());
+
         let res = generate_full_map(
+            logger,
             &params,
             &room_params,
             seed,

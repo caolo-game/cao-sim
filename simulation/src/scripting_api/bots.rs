@@ -52,7 +52,8 @@ pub fn unload(
         structure: target,
     };
 
-    let checkresult = check_dropoff_intent(&dropoff_intent, user_id, FromWorld::new(storage));
+    let checkresult =
+        check_dropoff_intent(logger, &dropoff_intent, user_id, FromWorld::new(storage));
     if let OperationResult::Ok = checkresult {
         vm.get_aux_mut().intents.dropoff_intent = Some(dropoff_intent);
     }
@@ -83,7 +84,7 @@ pub fn mine_resource(
         resource: target,
     };
 
-    let checkresult = check_mine_intent(&intent, user_id, FromWorld::new(storage));
+    let checkresult = check_mine_intent(logger, &intent, user_id, FromWorld::new(storage));
     vm.stack_push(checkresult)?;
     if let OperationResult::Ok = checkresult {
         vm.get_aux_mut().intents.mine_intent = Some(intent);
@@ -235,7 +236,7 @@ fn move_to_pos<'a>(
                     },
                 };
                 if let OperationResult::Ok =
-                    check_move_intent(&intent, user_id, FromWorld::new(storage))
+                    check_move_intent(logger, &intent, user_id, FromWorld::new(storage))
                 {
                     trace!(logger, "Bot {:?} path cache hit", bot);
                     return Ok(Some((
@@ -284,7 +285,7 @@ fn move_to_pos<'a>(
                 },
             };
 
-            let checkresult = check_move_intent(&intent, user_id, FromWorld::new(storage));
+            let checkresult = check_move_intent(logger, &intent, user_id, FromWorld::new(storage));
             match checkresult {
                 OperationResult::Ok => {
                     let cache_intent = if path.len() > 0 {

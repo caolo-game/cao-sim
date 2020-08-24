@@ -14,10 +14,10 @@ mod intents;
 mod systems;
 mod utils;
 
-use log::info;
 use serde_derive::{Deserialize, Serialize};
 use systems::execute_world_update;
 use systems::script_execution::execute_scripts;
+use slog::{info, o};
 
 pub use data_store::{init_inmemory_storage, Storage, World};
 
@@ -25,18 +25,20 @@ pub use data_store::{init_inmemory_storage, Storage, World};
 pub struct Time(pub u64);
 
 pub fn forward(storage: &mut World) -> anyhow::Result<()> {
-    info!("Executing scripts");
+    let logger = storage.logger.new(o!("tick" => storage.time()));
+
+    info!(logger, "Executing scripts");
     execute_scripts(storage);
-    info!("Executing scripts - done");
+    info!(logger, "Executing scripts - done");
 
-    info!("Executing systems update");
+    info!(logger, "Executing systems update");
     execute_world_update(storage);
-    info!("Executing systems update - done");
+    info!(logger, "Executing systems update - done");
 
-    info!("Executing signaling");
+    info!(logger, "Executing signaling");
     storage.signal_done();
-    info!("Executing signaling - done");
+    info!(logger, "Executing signaling - done");
 
-    info!("-----------Tick {} done-----------", storage.time());
+    info!(logger, "-----------Tick done-----------");
     Ok(())
 }

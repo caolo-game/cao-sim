@@ -1,9 +1,9 @@
 use crate::components;
 use crate::indices::EntityId;
 use crate::profile;
-use crate::storage::views::UnsafeView;
+use crate::storage::views::{UnsafeView, WorldLogger};
 use crate::tables::Table;
-use log::debug;
+use slog::{debug, Logger};
 
 type SpawnSystemMut = (
     UnsafeView<EntityId, components::SpawnComponent>,
@@ -18,7 +18,7 @@ type SpawnSystemMut = (
 
 pub fn update(
     (mut spawns, spawn_bots, bots, hps, decay, carry, positions, owned): SpawnSystemMut,
-    _: (),
+    WorldLogger(logger): WorldLogger,
 ) {
     profile!("SpawnSystem update");
     let spawn_views = (spawn_bots, bots, hps, decay, carry, positions, owned);
@@ -34,7 +34,9 @@ pub fn update(
                 None
             }
         })
-        .for_each(|(spawn_id, entity_id)| unsafe { spawn_bot(spawn_id, entity_id, spawn_views) });
+        .for_each(|(spawn_id, entity_id)| unsafe {
+            spawn_bot(&logger, spawn_id, entity_id, spawn_views)
+        });
 }
 
 type SpawnBotMut = (
@@ -50,13 +52,14 @@ type SpawnBotMut = (
 /// Spawns a bot from a spawn.
 /// Removes the spawning bot from the spawn and initializes a bot in the world
 unsafe fn spawn_bot(
+    logger: &Logger,
     spawn_id: EntityId,
     entity_id: EntityId,
     (mut spawn_bots, mut bots, mut hps, mut decay, mut carry, mut positions, mut owned): SpawnBotMut,
 ) {
     debug!(
-        "spawn_bot spawn_id: {:?} entity_id: {:?}",
-        spawn_id, entity_id
+        logger,
+        "spawn_bot spawn_id: {:?} entity_id: {:?}", spawn_id, entity_id
     );
 
     let bot = spawn_bots
@@ -100,7 +103,7 @@ unsafe fn spawn_bot(
     }
 
     debug!(
-        "spawn_bot spawn_id: {:?} entity_id: {:?} - done",
-        spawn_id, entity_id
+        logger,
+        "spawn_bot spawn_id: {:?} entity_id: {:?} - done", spawn_id, entity_id
     );
 }

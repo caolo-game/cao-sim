@@ -82,6 +82,7 @@ pub fn init_storage(n_fake_users: usize) -> Pin<Box<World>> {
     debug!("generating map {:#?} {:#?}", params, room_params);
 
     generate_full_map(
+        storage.logger.clone(),
         &params,
         &room_params,
         None,

@@ -1,4 +1,4 @@
-[package]
+indices]
 name = "caolo-sim"
 version = "0.1.0"
 authors = ["Daniel Kiss <littlesnorrboy@gmail.com>"]
@@ -16,9 +16,8 @@ disable-parallelism = []
 [dependencies]
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
 cao_storage_derive = { path = "../cao-storage-derive" }
-cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, default-features=false, features=["log"] }
+cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, default-features=false, features=[] }
 
-log = "0.4"
 slog = { version="2", features=["max_level_trace", "release_max_level_info"] }
 slog-async = "*"
 slog-term = "*"

@@ -2,8 +2,8 @@ use crate::components;
 use crate::indices::{EntityId, UserId};
 use crate::scripting_api::OperationResult;
 use crate::World;
-use log::debug;
 use serde::{Deserialize, Serialize};
+use slog::{debug, Logger};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SpawnIntent {
@@ -12,6 +12,7 @@ pub struct SpawnIntent {
 }
 
 pub fn check_spawn_intent(
+    logger: &Logger,
     intent: &SpawnIntent,
     user_id: Option<UserId>,
     storage: &World,
@@ -33,7 +34,7 @@ pub fn check_spawn_intent(
                 }
             }
             None => {
-                debug!("Structure not found");
+                debug!(logger, "Structure not found");
                 return OperationResult::InvalidInput;
             }
         }
@@ -44,11 +45,11 @@ pub fn check_spawn_intent(
         .get_by_id(&id)
     {
         if spawn.spawning.is_some() {
-            debug!("Structure is busy");
+            debug!(logger, "Structure is busy");
             return OperationResult::InvalidInput;
         }
     } else {
-        debug!("Structure has no spawn component");
+        debug!(logger, "Structure has no spawn component");
         return OperationResult::InvalidInput;
     }
 

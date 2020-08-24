@@ -16,8 +16,8 @@ use crate::tables::{
     Table,
 };
 use crate::terrain::TileTerrainType;
-use log::{debug, error, trace};
 use rand::Rng;
+use slog::{debug, error, trace, Logger};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use thiserror::Error;
@@ -83,12 +83,13 @@ pub struct HeightMapProperties {
 ///
 /// Returns property description of the generated height map.
 pub fn generate_room(
+    logger: Logger,
     params: &RoomGenerationParams,
     edges: &[RoomConnection],
     rng: &mut impl Rng,
     (mut terrain,): MapTables,
 ) -> Result<HeightMapProperties, RoomGenerationError> {
-    debug!("Generating Room {:#?}\nedges:\n{:?}", params, edges);
+    debug!(logger, "Generating Room {:#?}\nedges:\n{:?}", params, edges);
     let RoomGenerationParams { radius, .. } = params;
     if edges.len() > 6 {
         return Err(RoomGenerationError::TooManyNeighbours(edges.len()));
@@ -99,24 +100,24 @@ pub fn generate_room(
     let dsides = pot(radius as u32 * 2) as i32;
     let to = Axial::new(from.q + dsides, from.r + dsides);
 
-    debug!("Initializing GradientMap");
+    debug!(logger, "Initializing GradientMap");
     let mut gradient = GradientMap::from_iterator(
         (from.q..=to.q).flat_map(|x| (from.r..=to.r).map(move |y| (Axial::new(x, y), 0.0))),
     )
     .map_err(|e| {
-        error!("Initializing GradientMap failed {:?}", e);
+        error!(logger, "Initializing GradientMap failed {:?}", e);
         RoomGenerationError::TerrainExtendFailure(e)
     })?;
 
     let mut gradient2 = GradientMap::with_capacity(((to.q - from.q) * (to.r - from.r)) as usize);
-    debug!("Initializing GradientMap done");
+    debug!(logger, "Initializing GradientMap done");
 
     let center = Axial::new(radius, radius);
 
     let mut min_grad = 1e15f32;
     let mut max_grad = -1e15f32;
 
-    debug!("Layering maps");
+    debug!(logger, "Layering maps");
     // generate gradient by repeatedly generating noise and layering them on top of each other
     for i in 0..3 {
         gradient2.clear();
@@ -125,10 +126,10 @@ pub fn generate_room(
                 (from.q..=to.q).flat_map(|x| (from.r..=to.r).map(move |y| (Axial::new(x, y), 0.0))),
             )
             .map_err(|e| {
-                error!("Initializing GradientMap failed {:?}", e);
+                error!(logger, "Initializing GradientMap failed {:?}", e);
                 RoomGenerationError::TerrainExtendFailure(e)
             })?;
-        create_noise(from, to, dsides, rng, &mut gradient2);
+        create_noise(logger.clone(), from, to, dsides, rng, &mut gradient2);
 
         let min_grad = &mut min_grad;
         let max_grad = &mut max_grad;
@@ -141,13 +142,14 @@ pub fn generate_room(
                 merged
             })
             .map_err(|e| {
-                error!("Failed to merge GradientMaps {:?}", e);
+                error!(logger, "Failed to merge GradientMaps {:?}", e);
                 RoomGenerationError::TerrainExtendFailure(e)
             })?;
     }
-    debug!("Layering maps done");
+    debug!(logger, "Layering maps done");
 
     let heightmap_props = transform_heightmap_into_terrain(
+        &logger,
         HeightMapTransformParams {
             center,
             max_grad,
@@ -173,24 +175,32 @@ pub fn generate_room(
         unsafe { terrain.as_mut() }
             .insert_or_update(Axial::new(q, r), TerrainComponent(TileTerrainType::Plain))
             .map_err(|e| {
-                error!("Failed to update the center point {:?}", e);
+                error!(logger, "Failed to update the center point {:?}", e);
                 RoomGenerationError::TerrainExtendFailure(e)
             })?;
     }
 
-    coastline(center, radius - 1, terrain);
+    coastline(&logger, center, radius - 1, terrain);
 
-    let chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
+    let chunk_metadata = calculate_plain_chunks(&logger, View::from_table(&*terrain));
     if chunk_metadata.chunks.len() > 1 {
-        connect_chunks(center, radius - 1, rng, &chunk_metadata.chunks, terrain);
+        connect_chunks(
+            &logger,
+            center,
+            radius - 1,
+            rng,
+            &chunk_metadata.chunks,
+            terrain,
+        );
     }
 
-    fill_edges(center, radius, edges, terrain, rng)?;
+    fill_edges(logger.clone(), center, radius, edges, terrain, rng)?;
 
     {
         // to make dilation unbiased we clone the terrain and inject that as separate input
         let terrain_in = (*terrain).clone();
         dilate(
+            logger.clone(),
             center,
             radius,
             params.plain_dilation,
@@ -203,13 +213,13 @@ pub fn generate_room(
     // this step is designed to make experimental changes to generation algorithms easier at the
     // cost of performance.
     // it is the author's opinion that this is a good trade-off
-    debug!("Deduping");
+    debug!(logger, "Deduping");
     unsafe {
         terrain.as_mut().dedupe();
     }
-    debug!("Deduping done");
+    debug!(logger, "Deduping done");
 
-    debug!("Cutting outliers");
+    debug!(logger, "Cutting outliers");
     // cut the edges, because generation might insert invalid Plains on the edge
     let bounds = Hexagon { center, radius };
     let delegates: Vec<Axial> = terrain
@@ -217,29 +227,31 @@ pub fn generate_room(
         .filter(|(p, _)| !bounds.contains(*p))
         .map(|(p, _)| p)
         .collect();
-    debug!("Deleting {} items from the room", delegates.len());
+    debug!(logger, "Deleting {} items from the room", delegates.len());
     for p in delegates.iter() {
         unsafe {
             terrain.as_mut().delete(p);
         }
     }
-    debug!("Cutting outliers done");
+    debug!(logger, "Cutting outliers done");
 
-    debug!("Map generation done {:#?}", heightmap_props);
+    debug!(logger, "Map generation done {:#?}", heightmap_props);
     Ok(heightmap_props)
 }
 
 fn fill_edges(
+    logger: Logger,
     center: Axial,
     radius: i32,
     edges: &[RoomConnection],
     terrain: UnsafeView<Axial, TerrainComponent>,
     rng: &mut impl Rng,
 ) -> Result<(), RoomGenerationError> {
-    debug!("Filling edges");
-    let mut chunk_metadata = calculate_plain_chunks(View::from_table(&*terrain));
+    debug!(logger, "Filling edges");
+    let mut chunk_metadata = calculate_plain_chunks(&logger, View::from_table(&*terrain));
     if chunk_metadata.chunks.len() != 1 {
         error!(
+            logger,
             "Expected 1 single chunk when applying edges, intead got {}",
             chunk_metadata.chunks.len()
         );
@@ -255,6 +267,7 @@ fn fill_edges(
             .chunks
             .push(HashSet::with_capacity(radius as usize));
         fill_edge(
+            &logger,
             center,
             radius - 1,
             TileTerrainType::Plain,
@@ -263,14 +276,22 @@ fn fill_edges(
             chunk_metadata.chunks.last_mut().unwrap(),
         )?;
     }
-    debug!("Connecting edges to the mainland");
-    connect_chunks(center, radius - 2, rng, &chunk_metadata.chunks, terrain);
-    debug!("Filling edges done");
+    debug!(logger, "Connecting edges to the mainland");
+    connect_chunks(
+        &logger,
+        center,
+        radius - 2,
+        rng,
+        &chunk_metadata.chunks,
+        terrain,
+    );
+    debug!(logger, "Filling edges done");
     for edge in edges.iter() {
         chunk_metadata
             .chunks
             .push(HashSet::with_capacity(radius as usize));
         fill_edge(
+            &logger,
             center,
             radius,
             TileTerrainType::Bridge,
@@ -283,6 +304,7 @@ fn fill_edges(
 }
 
 fn dilate(
+    logger: Logger,
     center: Axial,
     radius: i32,
     kernel_width: u32,
@@ -290,11 +312,11 @@ fn dilate(
     mut terrain_out: UnsafeView<Axial, TerrainComponent>,
 ) {
     debug!(
-        "Dilating terrain center: {:?} radius: {} kernel: {}",
-        center, radius, kernel_width
+        logger,
+        "Dilating terrain center: {:?} radius: {} kernel: {}", center, radius, kernel_width
     );
     if radius < kernel_width as i32 + 1 || kernel_width == 0 {
-        debug!("Skipping dilating");
+        debug!(logger, "Skipping dilating");
         return;
     }
 
@@ -322,17 +344,18 @@ fn dilate(
                 .expect("dilate plain update");
         }
     }
-    debug!("Dilate done");
+    debug!(logger, "Dilate done");
 }
 
 fn connect_chunks(
+    logger: &Logger,
     center: Axial,
     radius: i32,
     rng: &mut impl Rng,
     chunks: &[HashSet<Axial>],
     mut terrain: UnsafeView<Axial, TerrainComponent>,
 ) {
-    debug!("Connecting {} chunks", chunks.len());
+    debug!(logger, "Connecting {} chunks", chunks.len());
     debug_assert!(radius > 0);
     let bounds = Hexagon {
         center,
@@ -399,13 +422,18 @@ fn connect_chunks(
             }
         }
     }
-    debug!("Connecting chunks done");
+    debug!(logger, "Connecting chunks done");
 }
 
 /// Turn every `Wall` into `Plain` if it has empty neighbour(s).
 /// This should result in a nice coastline where the `Walls` were neighbours with the ocean.
-fn coastline(center: Axial, radius: i32, mut terrain: UnsafeView<Axial, TerrainComponent>) {
-    debug!("Building coastline");
+fn coastline(
+    logger: &Logger,
+    center: Axial,
+    radius: i32,
+    mut terrain: UnsafeView<Axial, TerrainComponent>,
+) {
+    debug!(logger, "Building coastline");
     let bounds = Hexagon { center, radius };
     let mut changeset = vec![];
     for (p, _) in terrain
@@ -419,11 +447,11 @@ fn coastline(center: Axial, radius: i32, mut terrain: UnsafeView<Axial, TerrainC
             changeset.push(p);
         }
     }
-    trace!("Changing walls to plains {:#?}", changeset);
+    trace!(logger, "Changing walls to plains {:#?}", changeset);
     for p in changeset.iter() {
         unsafe { terrain.as_mut() }.update(p, TerrainComponent(TileTerrainType::Plain));
     }
-    debug!("Building coastline done");
+    debug!(logger, "Building coastline done");
 }
 
 struct HeightMapTransformParams {
@@ -437,6 +465,7 @@ struct HeightMapTransformParams {
 }
 
 fn transform_heightmap_into_terrain(
+    logger: &Logger,
     HeightMapTransformParams {
         center,
         max_grad,
@@ -449,7 +478,7 @@ fn transform_heightmap_into_terrain(
     gradient: &MortonTable<Axial, f32>,
     mut terrain: UnsafeView<Axial, TerrainComponent>,
 ) -> Result<HeightMapProperties, RoomGenerationError> {
-    debug!("Building terrain from height-map");
+    debug!(logger, "Building terrain from height-map");
     let mut mean = 0.0;
     let mut std = 0.0;
     let mut normal_mean = 0.0;
@@ -464,18 +493,18 @@ fn transform_heightmap_into_terrain(
     .iter_points();
 
     debug!(
-        "Calculating points of a hexagon in the height map around center: {:?}",
-        center
+        logger,
+        "Calculating points of a hexagon in the height map around center: {:?}", center
     );
     unsafe { terrain.as_mut() }
         .extend(points.filter_map(|p| {
-            trace!("Computing terrain of gradient point: {:?}", p);
+            trace!(logger, "Computing terrain of gradient point: {:?}", p);
             let mut grad = *gradient.get_by_id(&p).or_else(|| {
-                error!("{:?} has no gradient", p);
+                error!(logger, "{:?} has no gradient", p);
                 debug_assert!(false);
                 None
             })?;
-            trace!("p: {:?} grad: {}", p, grad);
+            trace!(logger, "p: {:?} grad: {}", p, grad);
 
             {
                 // let's do some stats
@@ -496,7 +525,7 @@ fn transform_heightmap_into_terrain(
                 i += 1.0;
             }
 
-            trace!("Normalized grad: {}", grad);
+            trace!(logger, "Normalized grad: {}", grad);
 
             if !grad.is_finite() {
                 return None;
@@ -511,11 +540,11 @@ fn transform_heightmap_into_terrain(
             Some((p, TerrainComponent(terrain)))
         }))
         .map_err(|e| {
-            error!("Terrain building failed {:?}", e);
+            error!(logger, "Terrain building failed {:?}", e);
             RoomGenerationError::TerrainExtendFailure(e)
         })?;
 
-    debug!("Building terrain from height-map done");
+    debug!(logger, "Building terrain from height-map done");
     std = (std / i).sqrt();
     normal_std = (normal_std / i).sqrt();
 
@@ -537,6 +566,7 @@ fn transform_heightmap_into_terrain(
 }
 
 fn fill_edge(
+    logger: &Logger,
     center: Axial,
     radius: i32,
     ty: TileTerrainType,
@@ -544,14 +574,17 @@ fn fill_edge(
     mut terrain: UnsafeView<Axial, TerrainComponent>,
     chunk: &mut HashSet<Axial>,
 ) -> Result<(), RoomGenerationError> {
-    debug!("Filling edge {:?}", edge);
+    debug!(logger, "Filling edge {:?}", edge);
     unsafe { terrain.as_mut() }
         .extend(iter_edge(center, radius as u32, edge)?.map(move |vertex| {
             chunk.insert(vertex);
             (vertex, TerrainComponent(ty))
         }))
         .map_err(|e| {
-            error!("Failed to expand terrain with edge {:?} {:?}", edge, e);
+            error!(
+                logger,
+                "Failed to expand terrain with edge {:?} {:?}", edge, e
+            );
             RoomGenerationError::TerrainExtendFailure(e)
         })?;
 
@@ -598,8 +631,8 @@ struct ChunkMeta {
 
 /// Find the connecting `Plain` chunks.
 /// The first one will be the largest chunk
-fn calculate_plain_chunks(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
-    debug!("calculate_plain_chunks");
+fn calculate_plain_chunks(logger: &Logger, terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
+    debug!(logger, "calculate_plain_chunks");
     let mut visited = HashSet::new();
     let mut todo = HashSet::new();
     let mut startind = 0;
@@ -652,7 +685,11 @@ fn calculate_plain_chunks(terrain: View<Axial, TerrainComponent>) -> ChunkMeta {
     if chunks.len() >= 2 {
         chunks.swap(0, chungus_id);
     }
-    debug!("calculate_plain_chunks done, found {} chunks", chunks.len());
+    debug!(
+        logger,
+        "calculate_plain_chunks done, found {} chunks",
+        chunks.len()
+    );
     debug_assert!(
         chunks
             .iter()
@@ -692,12 +729,16 @@ mod tests {
     use crate::components::EntityComponent;
     use crate::pathfinding::find_path_in_room;
     use crate::storage::views::View;
+    use crate::utils::*;
     use rand::rngs::SmallRng;
     use rand::SeedableRng;
     use slog::{o, Drain};
 
     #[test]
     fn maps_are_not_homogeneous() {
+        setup_testing();
+        let logger = test_logger();
+
         let mut terrain = MortonTable::with_capacity(512);
 
         let params = RoomGenerationParams::builder()
@@ -709,6 +750,7 @@ mod tests {
         let mut rng = SmallRng::from_seed(*b"deadbeefstewbisc");
 
         let props = generate_room(
+            logger,
             &params,
             &[],
             &mut rng,
@@ -745,6 +787,8 @@ mod tests {
 
     #[test]
     fn all_plain_are_reachable() {
+        let logger = test_logger();
+
         // doesn't work all the time...
         let mut plains = Vec::with_capacity(512);
         let mut terrain = MortonTable::with_capacity(512);
@@ -755,6 +799,7 @@ mod tests {
             .build()
             .unwrap();
         let props = generate_room(
+            logger,
             &params,
             &[],
             &mut rand::thread_rng(),
@@ -798,10 +843,11 @@ mod tests {
 
     #[test]
     fn produces_the_expected_number_of_chunks() {
+        setup_testing();
         let terrain: MortonTable<Axial, TerrainComponent> =
             serde_json::from_str(std::include_str!("./chunk_test_map.json")).unwrap();
 
-        let meta = calculate_plain_chunks(View::from_table(&terrain));
+        let meta = calculate_plain_chunks(&test_logger(), View::from_table(&terrain));
 
         assert_eq!(meta.chunks.len(), 2);
     }

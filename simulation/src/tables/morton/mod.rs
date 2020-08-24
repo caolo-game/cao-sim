@@ -19,7 +19,6 @@ pub use self::morton_key::*;
 pub use self::serde::*;
 use super::*;
 use litmax_bigmin::litmax_bigmin;
-use log::trace;
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
@@ -169,7 +168,6 @@ where
     where
         It: Iterator<Item = (Pos, Row)>,
     {
-        trace!("MortonTable extend");
         for (id, value) in it {
             if !self.intersects(&id) {
                 return Err(ExtendFailure::OutOfBounds(id));
@@ -180,18 +178,14 @@ where
             self.keys.push(key);
             self.values.push((id, value));
         }
-        trace!("MortonTable extend sort");
         sorting::sort(&mut self.keys, &mut self.values);
-        trace!("Rebuilding skip_list");
         self.rebuild_skip_list();
-        trace!("MortonTable extend done");
         Ok(())
     }
 
     /// Extend the map by the items provided.
     /// Note that `Row`s are cloned!
     pub fn extend_from_slice(&mut self, items: &[(Pos, Row)]) -> Result<(), ExtendFailure<Pos>> {
-        trace!("MortonTable extend_from_slice");
         self.extend(items.iter().map(|(pos, row)| (*pos, row.clone())))
     }
 

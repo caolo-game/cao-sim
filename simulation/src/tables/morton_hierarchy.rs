@@ -2,7 +2,6 @@ use super::morton::{MortonKey, MortonTable};
 use super::*;
 use crate::geometry::Axial;
 use crate::indices::{Room, WorldPosition};
-use log::trace;
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use thiserror::Error;
@@ -64,8 +63,7 @@ where
     /// Shallow clear,
     /// leaves the 'overworld' level intact and clear the rooms.
     pub fn clear(&mut self) {
-        self.table.iter_mut().for_each(|(room, table)| {
-            trace!("clearing {:?}", room);
+        self.table.iter_mut().for_each(|(_, table)| {
             table.clear();
         });
     }
@@ -126,7 +124,6 @@ where
         &mut self,
         values: &mut [(WorldPosition, Row)],
     ) -> Result<&mut Self, ExtendFailure> {
-        trace!("RoomMortonTable extend");
         values.sort_unstable_by_key(|(wp, _)| {
             MortonKey::new(
                 u16::try_from(wp.room.q).unwrap(),

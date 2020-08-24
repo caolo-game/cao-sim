@@ -2,8 +2,8 @@ use crate::components::{Bot, EnergyComponent, OwnedEntity, SpawnBotComponent, Sp
 use crate::indices::EntityId;
 use crate::intents::{Intents, SpawnIntent};
 use crate::profile;
-use crate::storage::views::{InsertEntityView, UnsafeView, UnwrapView, View};
-use log::{error, trace, warn};
+use crate::storage::views::{InsertEntityView, UnsafeView, UnwrapView, View, WorldLogger};
+use slog::{error, trace, warn};
 
 type Mut = (
     UnsafeView<EntityId, SpawnBotComponent>,
@@ -15,39 +15,40 @@ type Mut = (
 type Const<'a> = (
     View<'a, EntityId, EnergyComponent>,
     UnwrapView<'a, Intents<SpawnIntent>>,
+    WorldLogger,
 );
 
 pub fn update(
     (mut spawn_bot_table, mut spawn_table, mut owner_table, mut insert_entity): Mut,
-    (entity_table, intents): Const,
+    (entity_table, intents, WorldLogger(logger)): Const,
 ) {
     profile!(" SpawnSystem update");
     for intent in intents.iter() {
-        trace!("Spawning bot from structure {:?}", intent.spawn_id);
+        trace!(logger, "Spawning bot from structure {:?}", intent.spawn_id);
 
         let spawn = match unsafe { spawn_table.as_mut() }.get_by_id_mut(&intent.spawn_id) {
             Some(x) => x,
             None => {
-                error!("structure does not have spawn component");
+                error!(logger, "structure does not have spawn component");
                 continue;
             }
         };
 
         if spawn.spawning.is_some() {
-            warn!("spawn is busy");
+            warn!(logger, "spawn is busy");
             continue;
         }
 
         let energy = match entity_table.get_by_id(&intent.spawn_id) {
             Some(x) => x,
             None => {
-                error!("structure does not have energy");
+                error!(logger, "structure does not have energy");
                 continue;
             }
         };
 
         if energy.energy < 200 {
-            error!("not enough energy");
+            error!(logger, "not enough energy");
             continue;
         }
 

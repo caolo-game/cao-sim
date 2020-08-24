@@ -1,16 +1,16 @@
 use crate::components::{EntityComponent, PositionComponent};
 use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
-use crate::storage::views::{UnsafeView, View};
-use log::{debug, error};
+use crate::storage::views::{UnsafeView, View, WorldLogger};
+use slog::{debug, error};
 
 type Mut = UnsafeView<WorldPosition, EntityComponent>;
-type Const<'a> = View<'a, EntityId, PositionComponent>;
+type Const<'a> = (View<'a, EntityId, PositionComponent>, WorldLogger);
 
 /// Reset the entity positions table
-pub fn update(mut position_entities: Mut, positions: Const) {
+pub fn update(mut position_entities: Mut, (positions, WorldLogger(logger)): Const) {
     profile!("PositionSystem update");
-    debug!("update positions system called");
+    debug!(logger, "update positions system called");
 
     let mut positions = positions
         .iter()
@@ -23,10 +23,10 @@ pub fn update(mut position_entities: Mut, positions: Const) {
             .as_mut()
             .extend_from_slice(positions.as_mut_slice())
             .map_err(|e| {
-                error!("Failed to rebuild position_entities table {:?}", e);
+                error!(logger, "Failed to rebuild position_entities table {:?}", e);
             })
             .ok();
     }
 
-    debug!("update positions system done");
+    debug!(logger, "update positions system done");
 }

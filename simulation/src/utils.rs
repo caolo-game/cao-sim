@@ -1,6 +1,6 @@
-#![allow(unused)]
-
+#[cfg(test)]
 use std::sync::Once;
+#[cfg(test)]
 static INIT: Once = Once::new();
 
 #[cfg(test)]

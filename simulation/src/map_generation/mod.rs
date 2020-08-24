@@ -13,6 +13,7 @@ use crate::storage::views::UnsafeView;
 use crate::tables::morton::MortonTable;
 use arrayvec::ArrayVec;
 use rand::{rngs::SmallRng, thread_rng, RngCore, SeedableRng};
+use slog::{o, Logger};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
@@ -35,6 +36,7 @@ pub type MapGenerationTables = (
 );
 
 pub fn generate_full_map(
+    logger: Logger,
     overworld_params: &OverworldGenerationParams,
     room_params: &RoomGenerationParams,
     seed: Option<[u8; 16]>,
@@ -46,8 +48,13 @@ pub fn generate_full_map(
         bytes
     });
     let mut rng = SmallRng::from_seed(seed);
-    generate_room_layout(overworld_params, &mut rng, (rooms, connections, room_props))
-        .map_err(|err| MapGenError::OverworldGenerationError { err })?;
+    generate_room_layout(
+        logger.clone(),
+        overworld_params,
+        &mut rng,
+        (rooms, connections, room_props),
+    )
+    .map_err(|err| MapGenError::OverworldGenerationError { err })?;
 
     let terrain_tables = rooms.iter().try_fold(
         Vec::with_capacity(rooms.len()),
@@ -64,6 +71,7 @@ pub fn generate_full_map(
                 .cloned()
                 .collect::<ArrayVec<[_; 6]>>();
             generate_room(
+                logger.new(o!("room.q" => room.0.q,"room.r" => room.0.r)),
                 room_params,
                 connections.as_slice(),
                 &mut rng,

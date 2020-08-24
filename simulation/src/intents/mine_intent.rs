@@ -2,8 +2,8 @@ use crate::components;
 use crate::indices::{EntityId, UserId};
 use crate::scripting_api::OperationResult;
 use crate::storage::views::View;
-use log::{debug, warn};
 use serde::{Deserialize, Serialize};
+use slog::{debug, Logger};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MineIntent {
@@ -21,6 +21,7 @@ type CheckInput<'a> = (
 );
 
 pub fn check_mine_intent(
+    logger: &Logger,
     intent: &MineIntent,
     userid: UserId,
     (bots_table, owner_ids_table, positions_table, resources_table, energy_table, carry_table): CheckInput,
@@ -39,7 +40,7 @@ pub fn check_mine_intent(
     let botpos = match positions_table.get_by_id(&bot) {
         Some(pos) => pos,
         None => {
-            warn!("Bot has no position");
+            debug!(logger, "Bot has no position");
             return OperationResult::InvalidInput;
         }
     };
@@ -48,7 +49,7 @@ pub fn check_mine_intent(
     let mineralpos = match positions_table.get_by_id(&target) {
         Some(pos) => pos,
         None => {
-            warn!("{:?} has no position", target);
+            debug!(logger, "{:?} has no position", target);
             return OperationResult::InvalidInput;
         }
     };
@@ -56,12 +57,12 @@ pub fn check_mine_intent(
     match carry_table.get_by_id(&bot) {
         Some(carry) => {
             if carry.carry >= carry.carry_max {
-                debug!("{:?} is full", bot);
+                debug!(logger,"{:?} is full", bot);
                 return OperationResult::Full;
             }
         }
         None => {
-            warn!("{:?} has no carry component", bot);
+            debug!(logger, "{:?} has no carry component", bot);
             return OperationResult::InvalidInput;
         }
     }
@@ -81,13 +82,13 @@ pub fn check_mine_intent(
                     }
                 }
                 None => {
-                    warn!("Mineral has no energy component!");
+                    debug!(logger, "Mineral has no energy component!");
                     OperationResult::InvalidInput
                 }
             }
         }
         Some(_) | None => {
-            warn!("{:?} is not a resource!", target);
+            debug!(logger, "{:?} is not a resource!", target);
             OperationResult::InvalidInput
         }
     }

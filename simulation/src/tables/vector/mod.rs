@@ -7,7 +7,6 @@ mod serde;
 pub use self::serde::*;
 
 use super::*;
-use log::trace;
 use rayon::prelude::*;
 use std::mem;
 use thiserror::Error;
@@ -247,18 +246,9 @@ where
     type Row = Row;
 
     fn delete(&mut self, id: &Id) -> Option<Row> {
-        use std::any::type_name;
-        trace!(
-            "Deleting id {:?} in VecTable<{}, {}>",
-            id,
-            type_name::<Id>(),
-            type_name::<Row>()
-        );
         if !self.contains_id(id) {
-            trace!("Table did not contain {:?}", id);
             return None;
         }
-        trace!("Table contains {:?}, removing", id);
         let ind = id.as_usize() - self.offset;
 
         self.ids[ind] = None;

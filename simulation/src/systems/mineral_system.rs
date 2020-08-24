@@ -2,10 +2,10 @@ use crate::components;
 use crate::geometry::Axial;
 use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
-use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View};
+use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View, WorldLogger};
 use crate::tables::JoinIterator;
-use log::{debug, error, trace};
 use rand::Rng;
+use slog::{debug, error, trace, Logger};
 
 type Mut = (
     UnsafeView<EntityId, components::PositionComponent>,
@@ -16,14 +16,15 @@ type Const<'a> = (
     View<'a, WorldPosition, components::EntityComponent>,
     View<'a, WorldPosition, components::TerrainComponent>,
     View<'a, EntityId, components::ResourceComponent>,
+    WorldLogger,
 );
 
 pub fn update(
     (mut entity_positions, mut energy, mut delete_entity_deferred): Mut,
-    (position_entities, terrain_table, resources): Const,
+    (position_entities, terrain_table, resources, WorldLogger(logger)): Const,
 ) {
     profile!("Mineral System update");
-    debug!("update minerals system called");
+    debug!(logger, "update minerals system called");
 
     let mut rng = rand::thread_rng();
 
@@ -42,6 +43,7 @@ pub fn update(
     )
     .for_each(|(id, ((_resource, position), energy))| {
         trace!(
+            logger,
             "updating {:?} {:?} {:?} {:?}",
             id,
             _resource,
@@ -52,7 +54,7 @@ pub fn update(
         if energy.energy > 0 {
             return;
         }
-        trace!("Respawning {:?}", id);
+        trace!(logger, "Respawning {:?}", id);
 
         let position_entities = position_entities
             .table
@@ -68,6 +70,7 @@ pub fn update(
 
         // respawning
         let pos = random_uncontested_pos_in_range(
+            &logger,
             position_entities,
             terrain_table,
             &mut rng,
@@ -76,6 +79,7 @@ pub fn update(
             100,
         );
         trace!(
+            logger,
             "Mineral [{:?}] has been depleted, respawning at {:?}",
             id,
             pos
@@ -86,7 +90,10 @@ pub fn update(
                 position.0.pos = pos;
             }
             None => {
-                error!("Failed to find adequate position for resource {:?}", id);
+                error!(
+                    logger,
+                    "Failed to find adequate position for resource {:?}", id
+                );
                 unsafe {
                     delete_entity_deferred.delete_entity(id);
                 }
@@ -94,10 +101,11 @@ pub fn update(
         }
     });
 
-    debug!("update minerals system done");
+    debug!(logger, "update minerals system done");
 }
 
 fn random_uncontested_pos_in_range<'a>(
+    logger: &Logger,
     position_entities_table: View<'a, Axial, components::EntityComponent>,
     terrain_table: View<'a, Axial, components::TerrainComponent>,
     rng: &mut rand::rngs::ThreadRng,
@@ -106,6 +114,7 @@ fn random_uncontested_pos_in_range<'a>(
     max_tries: u16,
 ) -> Option<Axial> {
     trace!(
+        logger,
         "random_uncontested_pos_in_range {:?} range: {}, max_tries: {}",
         around,
         range,
@@ -139,6 +148,10 @@ fn random_uncontested_pos_in_range<'a>(
             break;
         }
     }
-    trace!("random_uncontested_pos_in_range returns {:?}", result);
+    trace!(
+        logger,
+        "random_uncontested_pos_in_range returns {:?}",
+        result
+    );
     result
 }

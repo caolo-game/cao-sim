@@ -1,10 +1,11 @@
 use super::GradientMap;
 use crate::geometry::Axial;
 use crate::tables::{SpatialKey2d, Table};
-use log::debug;
+use slog::{debug, Logger};
 use rand::Rng;
 
 pub fn create_noise(
+    logger: Logger,
     from: Axial,
     to: Axial,
     dsides: i32,
@@ -27,7 +28,7 @@ pub fn create_noise(
     let mut max_grad = -1e15f32;
     let mut min_grad = 1e15f32;
 
-    debug!("Running diamond-square");
+    debug!(logger, "Running diamond-square");
 
     while 1 <= d {
         for x in (d..dsides).step_by(2 * d as usize) {
@@ -54,7 +55,7 @@ pub fn create_noise(
         d /= 2;
     }
 
-    debug!("Running diamond-square done");
+    debug!(logger, "Running diamond-square done");
 }
 
 /// returns the new gradient

@@ -2,19 +2,19 @@ use crate::components::{DecayComponent, HpComponent};
 use crate::indices::EntityId;
 use crate::join;
 use crate::profile;
-use crate::storage::views::UnsafeView;
+use crate::storage::views::{UnsafeView, WorldLogger};
 use crate::tables::JoinIterator;
-use log::debug;
+use slog::debug;
 
 pub fn update(
     (mut hps, mut decays): (
         UnsafeView<EntityId, HpComponent>,
         UnsafeView<EntityId, DecayComponent>,
     ),
-    _: (),
+    WorldLogger(logger): WorldLogger,
 ) {
     profile!("DecaySystem update");
-    debug!("update decay system called");
+    debug!(logger, "update decay system called");
 
     let decays = unsafe { decays.as_mut() }.iter_mut();
     let hps = unsafe { hps.as_mut() }.iter_mut();
@@ -40,5 +40,5 @@ pub fn update(
         },
     );
 
-    debug!("update decay system done");
+    debug!(logger, "update decay system done");
 }

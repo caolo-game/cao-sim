@@ -25,6 +25,7 @@
 //! ```
 //!
 mod unsafe_view;
+mod world_logger;
 mod unwrap;
 mod unwrap_mut;
 mod view;
@@ -36,11 +37,12 @@ pub use unsafe_view::*;
 pub use unwrap::*;
 pub use unwrap_mut::*;
 pub use view::*;
+pub use world_logger::*;
 
 use super::{Component, DeleteById, TableId};
 use crate::indices::EntityId;
 use crate::World;
-use log::trace;
+use slog::trace;
 use std::ptr::NonNull;
 
 pub trait FromWorld<'a> {
@@ -83,7 +85,12 @@ impl FromWorldMut for DeferredDeleteEntityView {
     }
 
     fn log(&self) {
-        trace!("DeferredDeleteEntityView to storage {:x?}", self.world);
+        let logger = unsafe { &self.world.as_ref().logger };
+        trace!(
+            logger,
+            "DeferredDeleteEntityView to storage {:x?}",
+            self.world
+        );
     }
 }
 
@@ -116,7 +123,12 @@ impl FromWorldMut for DeleteEntityView {
     }
 
     fn log(&self) {
-        trace!("DeferredDeleteEntityView to storage {:x?}", self.storage);
+        let logger = unsafe { &self.storage.as_ref().logger };
+        trace!(
+            logger,
+            "DeferredDeleteEntityView to storage {:x?}",
+            self.storage
+        );
     }
 }
 
@@ -136,7 +148,8 @@ impl FromWorldMut for InsertEntityView {
     }
 
     fn log(&self) {
-        trace!("InsertEntityView to storage {:x?}", self.storage);
+        let logger = unsafe { &self.storage.as_ref().logger };
+        trace!(logger, "InsertEntityView to storage {:x?}", self.storage);
     }
 }
 
