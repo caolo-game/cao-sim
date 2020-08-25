@@ -4,11 +4,14 @@
 //! This is a severe restriction on the keys that can be used, however dense queries and
 //! constructing from iterators is much faster than quadtrees.
 //!
+//! When compiling for x86 we assume that the machine is capable of executing SSE2 instructions.
+//!
 
 mod find_key_partition;
 mod litmax_bigmin;
 mod morton_key;
 mod serde;
+mod skiplist;
 mod sorting;
 #[cfg(test)]
 mod tests;
@@ -19,6 +22,7 @@ pub use self::morton_key::*;
 pub use self::serde::*;
 use super::*;
 use litmax_bigmin::litmax_bigmin;
+use skiplist::*;
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
@@ -32,9 +36,6 @@ pub const MORTON_POS_MAX: i32 = 0b0111_1111_1111_1111;
 // The number I picked is more or less arbitrary, it is a power of two and I ran the basic
 // benchmarks to probe a few numbers.
 const MAX_BRUTE_ITERS: usize = 16;
-
-const SKIP_LEN: usize = 15;
-type SkipList = [u32; SKIP_LEN];
 
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure<Id: SpatialKey2d> {
@@ -74,8 +75,8 @@ where
 {
     fn default() -> Self {
         Self {
-            skiplist: [0; SKIP_LEN],
             skipstep: 0,
+            skiplist: Default::default(),
             keys: Default::default(),
             values: Default::default(),
         }
@@ -211,15 +212,15 @@ where
         let step = len / SKIP_LEN + 1;
         self.skipstep = step as u32;
         // leaving items 0 will cause errors in find_key_morton
-        self.skiplist = [std::u32::MAX >> 1; SKIP_LEN];
+        self.skiplist = SkipList::default();
         if step == 1 {
             if let Some(key) = self.keys.last() {
-                self.skiplist[0] = key.0;
+                self.skiplist.set(0, key.0 as i32)
             }
             return;
         }
         for (i, k) in (0..len).step_by(step).skip(1).take(SKIP_LEN).enumerate() {
-            self.skiplist[i] = self.keys[k].0;
+            self.skiplist.set(i, self.keys[k].0 as i32);
         }
     }
 
