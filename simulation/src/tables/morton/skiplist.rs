@@ -37,15 +37,15 @@ mod sse {
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 mod normal {
-    pub const SKIP_LEN: usize = 16;
+pub const SKIP_LEN: usize = 16;
 
     #[derive(Debug, Clone)]
-    pub struct SkipList(pub [u32; SKIP_LEN]);
+    pub struct SkipList(pub [i32; SKIP_LEN]);
     impl Default for SkipList {
         fn default() -> Self {
             Self([
                 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff,
-                0xefff, 0xefff, 0xefff, 0xefff, 0xefff,
+                0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff,
             ])
         }
     }

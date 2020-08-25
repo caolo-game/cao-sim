@@ -1,4 +1,4 @@
 .PHONY: build
 
 build:
-	wasm-pack build
+	wasm-pack build --dev

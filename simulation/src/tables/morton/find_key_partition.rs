@@ -15,10 +15,10 @@ pub fn find_key_partition(skiplist: &SkipList, key: MortonKey) -> usize {
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 #[inline(always)]
-pub fn find_key_partition(skiplist: &[u32; SKIP_LEN], key: MortonKey) -> usize {
-    let key = &key.0;
-    for (i, skip) in skiplist.iter().enumerate() {
-        if skip > key {
+pub fn find_key_partition(skiplist: &SkipList, key: MortonKey) -> usize {
+    let key = key.0 as i32;
+    for (i, skip) in skiplist.0.iter().enumerate() {
+        if skip > &key {
             return i;
         }
     }
