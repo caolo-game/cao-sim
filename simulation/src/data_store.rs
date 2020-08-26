@@ -140,12 +140,14 @@ impl World {
             next_entity: EntityId::default(),
             dt: Duration::zero(),
 
-            logger,
-
             #[cfg(feature = "log_tables")]
             _guard: LogGuard {
                 fname: "./tables.log".to_owned(),
+                logger: logger.clone()
             },
+
+            logger,
+
         }
     }
 

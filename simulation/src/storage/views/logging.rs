@@ -1,5 +1,4 @@
 use lazy_static::lazy_static;
-use serde_derive::{Deserialize, Serialize};
 use serde_json::Value;
 use slog::{error, Logger};
 use std::collections::HashMap;
@@ -8,7 +7,7 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct LogGuard {
     pub fname: String,
     pub logger: Logger,
