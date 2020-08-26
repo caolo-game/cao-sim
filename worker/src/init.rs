@@ -64,7 +64,7 @@ pub fn init_storage(logger: Logger, n_fake_users: usize) -> Pin<Box<World>> {
         .unwrap_or(32);
 
     let radius = width as u32 / 2;
-    assert!(radius > 0);
+    assert!(radius > 6);
     let params = OverworldGenerationParams::builder()
         .with_radius(world_radius as u32)
         .with_room_radius(radius)

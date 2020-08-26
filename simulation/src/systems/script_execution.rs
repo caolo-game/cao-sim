@@ -1,4 +1,4 @@
-use crate::components::{EntityScript, ScriptComponent};
+use crate::components::{EntityScript, OwnedEntity, ScriptComponent};
 use crate::indices::{EntityId, ScriptId, UserId};
 use crate::{intents, intents::*, profile, World};
 use cao_lang::prelude::*;
@@ -28,13 +28,18 @@ pub fn execute_scripts(storage: &mut World) {
 
     let logger = storage.logger.new(o!("tick" => storage.time));
     let scripts_table = storage.view::<EntityId, EntityScript>().reborrow();
+    let owners_table = storage.view::<EntityId, OwnedEntity>().reborrow();
+    let n_scripts = scripts_table.len();
 
     let intents: Option<Vec<BotIntents>> = scripts_table
         .par_iter()
         .fold(
-            || Vec::with_capacity(32), // generally these vectors are fairly short lived
+            || Vec::with_capacity(n_scripts),
             |mut intents, (entity_id, script)| {
-                match execute_single_script(&logger, *entity_id, script.script_id, storage) {
+                let owner = owners_table
+                    .get_by_id(entity_id)
+                    .map(|OwnedEntity { owner_id }| *owner_id);
+                match execute_single_script(&logger, *entity_id, script.script_id, owner, storage) {
                     Ok(ints) => intents.push(ints),
                     Err(err) => {
                         warn!(
@@ -54,7 +59,6 @@ pub fn execute_scripts(storage: &mut World) {
             res
         });
 
-    let n_scripts = scripts_table.len();
     info!(logger, "Executed {} scripts", n_scripts);
     if let Some(intents) = intents {
         info!(logger, "Got {} intents", intents.len());
@@ -66,6 +70,7 @@ pub fn execute_single_script(
     logger: &slog::Logger,
     entity_id: EntityId,
     script_id: ScriptId,
+    user_id: Option<UserId>,
     storage: &World,
 ) -> ExecutionResult {
     let program = storage
@@ -82,13 +87,7 @@ pub fn execute_single_script(
         entity_id,
         ..Default::default()
     };
-    let data = ScriptExecutionData::new(
-        logger.clone(),
-        storage,
-        intents,
-        entity_id,
-        Some(Default::default()), // TODO
-    );
+    let data = ScriptExecutionData::new(logger.clone(), storage, intents, entity_id, user_id);
     let mut vm = VM::new(logger.clone(), data);
     crate::scripting_api::make_import().execute_imports(&mut vm);
 
