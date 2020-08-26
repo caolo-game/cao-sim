@@ -4,6 +4,7 @@ mod sse {
     use std::arch::x86::*;
     #[cfg(target_arch = "x86_64")]
     use std::arch::x86_64::*;
+    use std::i32::MAX;
     use std::mem;
 
     pub const SKIP_LEN: usize = 4;
@@ -15,10 +16,10 @@ mod sse {
         fn default() -> Self {
             unsafe {
                 Self([
-                    _mm_set_epi32(0xefff, 0xefff, 0xefff, 0xefff),
-                    _mm_set_epi32(0xefff, 0xefff, 0xefff, 0xefff),
-                    _mm_set_epi32(0xefff, 0xefff, 0xefff, 0xefff),
-                    _mm_set_epi32(0xefff, 0xefff, 0xefff, 0xefff),
+                    _mm_set_epi32(MAX, MAX, MAX, MAX),
+                    _mm_set_epi32(MAX, MAX, MAX, MAX),
+                    _mm_set_epi32(MAX, MAX, MAX, MAX),
+                    _mm_set_epi32(MAX, MAX, MAX, MAX),
                 ])
             }
         }
@@ -38,14 +39,14 @@ mod sse {
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 mod normal {
     pub const SKIP_LEN: usize = 16;
+    use std::i32::MAX;
 
     #[derive(Debug, Clone)]
     pub struct SkipList(pub [i32; SKIP_LEN]);
     impl Default for SkipList {
         fn default() -> Self {
             Self([
-                0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff,
-                0xefff, 0xefff, 0xefff, 0xefff, 0xefff, 0xefff,
+                MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX,
             ])
         }
     }
