@@ -3,7 +3,7 @@ use crate::indices::{EntityId, ScriptId, UserId};
 use crate::{intents, intents::*, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
-use slog::{info, o, trace, warn};
+use slog::{debug, info, o, trace, warn};
 use std::fmt::{self, Display, Formatter};
 use thiserror::Error;
 
@@ -61,7 +61,7 @@ pub fn execute_scripts(storage: &mut World) {
 
     info!(logger, "Executed {} scripts", n_scripts);
     if let Some(intents) = intents {
-        info!(logger, "Got {} intents", intents.len());
+        debug!(logger, "Got {} intents", intents.len());
         intents::move_into_storage(storage, intents);
     }
 }
