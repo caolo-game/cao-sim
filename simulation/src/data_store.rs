@@ -5,7 +5,7 @@ use crate::components::*;
 use crate::indices::*;
 use crate::intents::*;
 use crate::profile;
-use crate::storage::views::{UnsafeView, View};
+use crate::storage::views::{UnsafeView, UnwrapView, UnwrapViewMut, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
 use crate::Time;
@@ -103,22 +103,16 @@ pub fn init_inmemory_storage(logger: impl Into<Option<slog::Logger>>) -> Pin<Box
     }
 
     let world = World::new(logger);
-    let world = Box::pin(world);
-
     debug!(world.logger, "Init Storage done");
     world
 }
 
 unsafe impl Send for World {}
 
-impl Default for World {
-    fn default() -> Self {
-        Self::new(None)
-    }
-}
-
 impl World {
-    pub fn new(logger: impl Into<Option<slog::Logger>>) -> Self {
+    /// Moving World around in memory would invalidate views, so let's make sure it doesn't
+    /// happen.
+    pub fn new(logger: impl Into<Option<slog::Logger>>) -> Pin<Box<Self>> {
         let logger = logger.into().unwrap_or_else(|| {
             let decorator = slog_term::TermDecorator::new().build();
             let drain = slog_term::FullFormat::new(decorator).build().fuse();
@@ -132,7 +126,7 @@ impl World {
         });
         let store = Storage::default();
         let deferred_deletes = DeferredDeletes::default();
-        Self {
+        Box::pin(Self {
             time: 0,
             store,
             deferred_deletes,
@@ -143,33 +137,50 @@ impl World {
             #[cfg(feature = "log_tables")]
             _guard: LogGuard {
                 fname: "./tables.log".to_owned(),
-                logger: logger.clone()
+                logger: logger.clone(),
             },
 
             logger,
+        })
+    }
 
-        }
+    pub fn resource<C>(&self) -> UnwrapView<C>
+    where
+        C: Component<EmptyKey, Table = crate::tables::unique::UniqueTable<C>> + Default,
+        Storage: storage::HasTable<EmptyKey, C>,
+    {
+        let view = self.view::<EmptyKey, C>();
+        UnwrapView::from_table(view.reborrow())
+    }
+
+    pub fn resource_mut<C>(&mut self) -> UnwrapViewMut<C>
+    where
+        C: Component<EmptyKey, Table = crate::tables::unique::UniqueTable<C>> + Default,
+        Storage: storage::HasTable<EmptyKey, C>,
+    {
+        let mut view = self.unsafe_view::<EmptyKey, C>();
+        UnwrapViewMut::from_table(&mut *view)
     }
 
     pub fn view<Id: TableId, C: Component<Id>>(&self) -> View<Id, C>
     where
         Storage: storage::HasTable<Id, C>,
     {
-        <Self as storage::HasTable::<Id, C>>::view(self)
+        <Self as storage::HasTable<Id, C>>::view(self)
     }
 
     pub fn unsafe_view<Id: TableId, C: Component<Id>>(&mut self) -> UnsafeView<Id, C>
     where
         Storage: storage::HasTable<Id, C>,
     {
-        <Self as storage::HasTable::<Id, C>>::unsafe_view(self)
+        <Self as storage::HasTable<Id, C>>::unsafe_view(self)
     }
 
     pub fn delete<Id: TableId>(&mut self, id: &Id)
     where
         Storage: storage::DeleteById<Id>,
     {
-        <Storage as storage::DeleteById::<Id>>::delete(&mut self.store, id);
+        <Storage as storage::DeleteById<Id>>::delete(&mut self.store, id);
     }
 
     pub fn delta_time(&self) -> Duration {
