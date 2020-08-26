@@ -3,8 +3,7 @@ use crate::indices::{EntityId, ScriptId, UserId};
 use crate::{intents, intents::*, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
-use slog::o;
-use slog::{trace, warn};
+use slog::{info, o, trace, warn};
 use std::fmt::{self, Display, Formatter};
 use thiserror::Error;
 
@@ -29,12 +28,11 @@ pub fn execute_scripts(storage: &mut World) {
 
     let logger = storage.logger.new(o!("tick" => storage.time));
     let scripts_table = storage.view::<EntityId, EntityScript>().reborrow();
-    let n_scripts = scripts_table.len();
 
-    let intents: Vec<BotIntents> = scripts_table
+    let intents: Option<Vec<BotIntents>> = scripts_table
         .par_iter()
         .fold(
-            || Vec::new(), // generally these vectors are fairly short lived
+            || Vec::with_capacity(32), // generally these vectors are fairly short lived
             |mut intents, (entity_id, script)| {
                 match execute_single_script(&logger, *entity_id, script.script_id, storage) {
                     Ok(ints) => intents.push(ints),
@@ -51,15 +49,17 @@ pub fn execute_scripts(storage: &mut World) {
                 intents
             },
         )
-        .reduce(
-            || Vec::with_capacity(n_scripts),
-            |mut res, intermediate| {
-                res.extend(intermediate);
-                res
-            },
-        );
+        .reduce_with(|mut res, intermediate| {
+            res.extend(intermediate);
+            res
+        });
 
-    intents::move_into_storage(storage, intents);
+    let n_scripts = scripts_table.len();
+    info!(logger, "Executed {} scripts", n_scripts);
+    if let Some(intents) = intents {
+        info!(logger, "Got {} intents", intents.len());
+        intents::move_into_storage(storage, intents);
+    }
 }
 
 pub fn execute_single_script(
@@ -78,10 +78,14 @@ pub fn execute_single_script(
         })?;
 
     let logger = logger.new(o!( "entity_id" => entity_id.0 ));
+    let intents = BotIntents {
+        entity_id,
+        ..Default::default()
+    };
     let data = ScriptExecutionData::new(
         logger.clone(),
         storage,
-        BotIntents::default(),
+        intents,
         entity_id,
         Some(Default::default()), // TODO
     );

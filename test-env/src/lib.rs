@@ -1,4 +1,4 @@
-use cao_math::mat::js_mat3::JsMatrix;
+use cao_math::mat::js_mat3::JsMat33;
 use cao_math::vec::vec2::Vec2;
 use caolo_sim::map_generation::generate_full_map;
 use caolo_sim::prelude::*;
@@ -19,7 +19,7 @@ pub struct MapRender {
     props: UniqueTable<RoomProperties>,
     room_connections: MortonTable<Room, RoomConnections>,
     cells: Vec<(Vec2, TileTerrainType)>,
-    transform: JsMatrix,
+    transform: JsMat33,
     bounds: [Vec2; 2],
 }
 

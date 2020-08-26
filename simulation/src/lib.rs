@@ -24,6 +24,7 @@ pub use data_store::{init_inmemory_storage, Storage, World};
 #[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct Time(pub u64);
 
+/// Forward the simulation by 1 tick
 pub fn forward(storage: &mut World) -> anyhow::Result<()> {
     let logger = storage.logger.new(o!("tick" => storage.time()));
 
