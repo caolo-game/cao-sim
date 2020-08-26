@@ -14,8 +14,6 @@ type Const<'a> = (UnwrapView<'a, Intents<DropoffIntent>>, WorldLogger);
 pub fn update((mut energy_table, mut carry_table): Mut, (intents, WorldLogger(logger)): Const) {
     profile!(" DropoffSystem update");
 
-    let carry_table = unsafe { carry_table.as_mut() };
-    let energy_table = unsafe { energy_table.as_mut() };
     for intent in intents.iter() {
         trace!(logger, "Executing dropoff intent {:?}", intent);
         // dropoff amount = min(bot carry , amount , structure capacity)

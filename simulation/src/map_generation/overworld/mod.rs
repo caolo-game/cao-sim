@@ -51,23 +51,19 @@ pub fn generate_room_layout(
     let bounds = Hexagon { center, radius };
 
     // Init the grid
-    unsafe {
-        room_props.as_mut().value = Some(RoomProperties {
-            radius: room_radius as u32,
-            center,
-        });
-        let rooms = rooms.as_mut();
-        rooms.clear();
-        rooms
-            .extend(bounds.iter_points().map(|p| (Room(p), RoomComponent)))
-            .map_err(OverworldGenerationError::ExtendFail)?;
+    room_props.value = Some(RoomProperties {
+        radius: room_radius as u32,
+        center,
+    });
+    rooms.clear();
+    rooms
+        .extend(bounds.iter_points().map(|p| (Room(p), RoomComponent)))
+        .map_err(OverworldGenerationError::ExtendFail)?;
 
-        let connections = connections.as_mut();
-        connections.clear();
-        connections
-            .extend(bounds.iter_points().map(|p| (Room(p), Default::default())))
-            .map_err(OverworldGenerationError::ExtendFail)?;
-    }
+    connections.clear();
+    connections
+        .extend(bounds.iter_points().map(|p| (Room(p), Default::default())))
+        .map_err(OverworldGenerationError::ExtendFail)?;
 
     debug!(logger, "Building connections");
 
@@ -141,31 +137,28 @@ fn update_room_connections(
 
     let current_connections = {
         let to_connect = &mut to_connect[..];
-        unsafe { connections.as_mut() }.update_with(
-            &Room(point),
-            |RoomConnections(ref mut conn)| {
-                for (i, c) in to_connect.iter_mut().enumerate() {
-                    if conn[i].is_none() && c.is_some() {
-                        let bridge_len = rng.gen_range(min_bridge_len, max_bridge_len);
-                        let padding = room_radius - bridge_len;
+        connections.update_with(&Room(point), |RoomConnections(ref mut conn)| {
+            for (i, c) in to_connect.iter_mut().enumerate() {
+                if conn[i].is_none() && c.is_some() {
+                    let bridge_len = rng.gen_range(min_bridge_len, max_bridge_len);
+                    let padding = room_radius - bridge_len;
 
-                        let offset_start = rng.gen_range(0, padding);
-                        let offset_end = padding - offset_start;
+                    let offset_start = rng.gen_range(0, padding);
+                    let offset_end = padding - offset_start;
 
-                        // this is a new connection
-                        conn[i] = c.map(|c| RoomConnection {
-                            direction: c,
-                            offset_start,
-                            offset_end,
-                        });
-                    } else {
-                        // if we don't have to update this posision then set it to None so we don't
-                        // attempt to update the neighbour later.
-                        *c = None;
-                    }
+                    // this is a new connection
+                    conn[i] = c.map(|c| RoomConnection {
+                        direction: c,
+                        offset_start,
+                        offset_end,
+                    });
+                } else {
+                    // if we don't have to update this posision then set it to None so we don't
+                    // attempt to update the neighbour later.
+                    *c = None;
                 }
-            },
-        )
+            }
+        })
     }
     .expect("expected the current room to have connection")
     .clone();
@@ -176,7 +169,7 @@ fn update_room_connections(
         .filter_map(|n| n.as_ref())
         .cloned()
     {
-        unsafe { connections.as_mut() }.update_with(&Room(point + neighbour.direction), |conn| {
+        connections.update_with(&Room(point + neighbour.direction), |conn| {
             let inverse = neighbour.direction * -1;
             let i = Axial::neighbour_index(inverse)
                 .expect("expected neighbour inverse to be a valid neighbour posision");

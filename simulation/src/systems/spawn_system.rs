@@ -22,7 +22,8 @@ pub fn update(
 ) {
     profile!("SpawnSystem update");
     let spawn_views = (spawn_bots, bots, hps, decay, carry, positions, owned);
-    unsafe { spawns.as_mut().iter_mut() }
+    spawns
+        .iter_mut()
         .filter(|(_spawn_id, spawn_component)| spawn_component.spawning.is_some())
         .filter_map(|(spawn_id, spawn_component)| {
             spawn_component.time_to_spawn -= 1;
@@ -34,9 +35,7 @@ pub fn update(
                 None
             }
         })
-        .for_each(|(spawn_id, entity_id)| unsafe {
-            spawn_bot(&logger, spawn_id, entity_id, spawn_views)
-        });
+        .for_each(|(spawn_id, entity_id)| spawn_bot(&logger, spawn_id, entity_id, spawn_views));
 }
 
 type SpawnBotMut = (
@@ -51,7 +50,7 @@ type SpawnBotMut = (
 
 /// Spawns a bot from a spawn.
 /// Removes the spawning bot from the spawn and initializes a bot in the world
-unsafe fn spawn_bot(
+fn spawn_bot(
     logger: &Logger,
     spawn_id: EntityId,
     entity_id: EntityId,
@@ -63,18 +62,17 @@ unsafe fn spawn_bot(
     );
 
     let bot = spawn_bots
-        .as_mut()
         .delete(&entity_id)
         .expect("Spawning bot was not found");
-    bots.as_mut().insert_or_update(entity_id, bot.bot);
-    hps.as_mut().insert_or_update(
+    bots.insert_or_update(entity_id, bot.bot);
+    hps.insert_or_update(
         entity_id,
         components::HpComponent {
             hp: 100,
             hp_max: 100,
         },
     );
-    decay.as_mut().insert_or_update(
+    decay.insert_or_update(
         entity_id,
         components::DecayComponent {
             eta: 20,
@@ -82,7 +80,7 @@ unsafe fn spawn_bot(
             hp_amount: 100,
         },
     );
-    carry.as_mut().insert_or_update(
+    carry.insert_or_update(
         entity_id,
         components::CarryComponent {
             carry: 0,
@@ -91,15 +89,14 @@ unsafe fn spawn_bot(
     );
 
     let pos = positions
-        .as_mut()
         .get_by_id(&spawn_id)
         .cloned()
         .expect("Spawn should have position");
-    positions.as_mut().insert_or_update(entity_id, pos);
+    positions.insert_or_update(entity_id, pos);
 
     let owner = owned.get_by_id(&spawn_id).cloned();
     if let Some(owner) = owner {
-        owned.as_mut().insert_or_update(entity_id, owner);
+        owned.insert_or_update(entity_id, owner);
     }
 
     debug!(

@@ -210,7 +210,6 @@ impl World {
         macro_rules! table {
             ($component: ty) => {
                 let mut table = self.unsafe_view::<WorldPosition, $component>();
-                let table = table.as_mut();
                 table.clear();
                 table.extend_rooms(rooms.iter().cloned())?;
             };

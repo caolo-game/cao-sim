@@ -16,8 +16,8 @@ pub fn update(
     profile!("DecaySystem update");
     debug!(logger, "update decay system called");
 
-    let decays = unsafe { decays.as_mut() }.iter_mut();
-    let hps = unsafe { hps.as_mut() }.iter_mut();
+    let decays = decays.iter_mut();
+    let hps = hps.iter_mut();
     join!([decays, hps]).for_each(
         |(
             _id,

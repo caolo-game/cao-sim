@@ -32,8 +32,8 @@ pub fn update(
         components::Resource::Energy => true,
         _ => false,
     });
-    let entity_positions_it = unsafe { entity_positions.as_mut().iter_mut() };
-    let energy_iter = unsafe { energy.as_mut().iter_mut() };
+    let entity_positions_it = entity_positions.iter_mut();
+    let energy_iter = energy.iter_mut();
 
     // in case of an error we need to clean up the mineral
     // however best not to clean it inside the iterator, hmmm???

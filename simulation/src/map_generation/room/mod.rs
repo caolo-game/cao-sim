@@ -172,7 +172,7 @@ pub fn generate_room(
 
         let q = rng.gen_range(minq, maxq);
         let r = rng.gen_range(minr, maxr);
-        unsafe { terrain.as_mut() }
+        terrain
             .insert_or_update(Axial::new(q, r), TerrainComponent(TileTerrainType::Plain))
             .map_err(|e| {
                 error!(logger, "Failed to update the center point {:?}", e);
@@ -214,9 +214,7 @@ pub fn generate_room(
     // cost of performance.
     // it is the author's opinion that this is a good trade-off
     debug!(logger, "Deduping");
-    unsafe {
-        terrain.as_mut().dedupe();
-    }
+    terrain.dedupe();
     debug!(logger, "Deduping done");
 
     debug!(logger, "Cutting outliers");
@@ -229,9 +227,7 @@ pub fn generate_room(
         .collect();
     debug!(logger, "Deleting {} items from the room", delegates.len());
     for p in delegates.iter() {
-        unsafe {
-            terrain.as_mut().delete(p);
-        }
+        terrain.delete(p);
     }
     debug!(logger, "Cutting outliers done");
 
@@ -339,7 +335,7 @@ fn dilate(
         });
 
         if neighbours_on > threshold as i32 {
-            unsafe { terrain_out.as_mut() }
+            terrain_out
                 .insert_or_update(p, TerrainComponent(TileTerrainType::Plain))
                 .expect("dilate plain update");
         }
@@ -392,7 +388,6 @@ fn connect_chunks(
         if current.hex_distance(closest) <= 1 {
             continue 'chunks;
         }
-        let terrain = unsafe { terrain.as_mut() };
         'connecting: loop {
             let vel = get_next_step(current);
             current += vel;
@@ -449,7 +444,7 @@ fn coastline(
     }
     trace!(logger, "Changing walls to plains {:#?}", changeset);
     for p in changeset.iter() {
-        unsafe { terrain.as_mut() }.update(p, TerrainComponent(TileTerrainType::Plain));
+        terrain.update(p, TerrainComponent(TileTerrainType::Plain));
     }
     debug!(logger, "Building coastline done");
 }
@@ -496,7 +491,7 @@ fn transform_heightmap_into_terrain(
         logger,
         "Calculating points of a hexagon in the height map around center: {:?}", center
     );
-    unsafe { terrain.as_mut() }
+    terrain
         .extend(points.filter_map(|p| {
             trace!(logger, "Computing terrain of gradient point: {:?}", p);
             let mut grad = *gradient.get_by_id(&p).or_else(|| {
@@ -575,7 +570,7 @@ fn fill_edge(
     chunk: &mut HashSet<Axial>,
 ) -> Result<(), RoomGenerationError> {
     debug!(logger, "Filling edge {:?}", edge);
-    unsafe { terrain.as_mut() }
+    terrain
         .extend(iter_edge(center, radius as u32, edge)?.map(move |vertex| {
             chunk.insert(vertex);
             (vertex, TerrainComponent(ty))

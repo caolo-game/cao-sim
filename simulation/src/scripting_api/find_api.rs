@@ -188,61 +188,52 @@ mod tests {
 
         let mut storage = init_inmemory_storage(crate::utils::test_logger());
 
-        unsafe {
-            let mut entity_positions = storage.unsafe_view::<EntityId, PositionComponent>();
-            let mut position_entities = storage.unsafe_view::<WorldPosition, EntityComponent>();
+        let mut entity_positions = storage.unsafe_view::<EntityId, PositionComponent>();
+        let mut position_entities = storage.unsafe_view::<WorldPosition, EntityComponent>();
 
+        position_entities
+            .insert(expected_pos, EntityComponent(expected_id))
+            .expect("Initial insert 2");
+
+        for _ in 0..128 {
+            let id = storage.insert_entity();
+            let pos = loop {
+                let q = rng.gen_range(0, 256);
+                let r = rng.gen_range(0, 256);
+
+                let pos = Axial::new(q, r);
+                if center_pos.pos.hex_distance(pos) > center_pos.pos.hex_distance(expected_pos.pos)
+                {
+                    break pos;
+                }
+            };
             position_entities
-                .as_mut()
-                .insert(expected_pos, EntityComponent(expected_id))
-                .expect("Initial insert 2");
-
-            for _ in 0..128 {
-                let id = storage.insert_entity();
-                let pos = loop {
-                    let q = rng.gen_range(0, 256);
-                    let r = rng.gen_range(0, 256);
-
-                    let pos = Axial::new(q, r);
-                    if center_pos.pos.hex_distance(pos)
-                        > center_pos.pos.hex_distance(expected_pos.pos)
-                    {
-                        break pos;
-                    }
-                };
-                position_entities
-                    .as_mut()
-                    .insert(
-                        WorldPosition {
-                            room: Axial::new(0, 0),
-                            pos,
-                        },
-                        EntityComponent(id),
-                    )
-                    .expect("Initial insert 3");
-            }
-
-            // make every one of these a resource
-            for (_, entity_id) in position_entities.iter() {
-                storage
-                    .unsafe_view::<EntityId, components::ResourceComponent>()
-                    .as_mut()
-                    .insert_or_update(
-                        entity_id.0,
-                        components::ResourceComponent(components::Resource::Energy),
-                    );
-            }
-
-            // the querying entity is not a resource
-
-            entity_positions
-                .as_mut()
-                .insert_or_update(entity_id, PositionComponent(center_pos));
-            position_entities
-                .as_mut()
-                .insert(center_pos, EntityComponent(entity_id))
-                .expect("Initial insert 1");
+                .insert(
+                    WorldPosition {
+                        room: Axial::new(0, 0),
+                        pos,
+                    },
+                    EntityComponent(id),
+                )
+                .expect("Initial insert 3");
         }
+
+        // make every one of these a resource
+        for (_, entity_id) in position_entities.iter() {
+            storage
+                .unsafe_view::<EntityId, components::ResourceComponent>()
+                .insert_or_update(
+                    entity_id.0,
+                    components::ResourceComponent(components::Resource::Energy),
+                );
+        }
+
+        // the querying entity is not a resource
+
+        entity_positions.insert_or_update(entity_id, PositionComponent(center_pos));
+        position_entities
+            .insert(center_pos, EntityComponent(entity_id))
+            .expect("Initial insert 1");
         storage
     }
 
@@ -261,15 +252,12 @@ mod tests {
         };
 
         let mut storage = init_resource_storage(entity_id, center_pos, expected_id, expected_pos);
-        unsafe {
-            storage
-                .unsafe_view::<EntityId, components::ResourceComponent>()
-                .as_mut()
-                .insert_or_update(
-                    entity_id,
-                    components::ResourceComponent(components::Resource::Energy),
-                );
-        }
+        storage
+            .unsafe_view::<EntityId, components::ResourceComponent>()
+            .insert_or_update(
+                entity_id,
+                components::ResourceComponent(components::Resource::Energy),
+            );
         let logger = slog::Logger::root(slog_stdlog::StdLog.fuse(), o!());
         let data = ScriptExecutionData::new(
             logger.clone(),

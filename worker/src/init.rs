@@ -91,22 +91,18 @@ pub fn init_storage(logger: Logger, n_fake_users: usize) -> Pin<Box<World>> {
     .unwrap();
     debug!(logger, "world generation done");
 
-    unsafe {
-        debug!(logger, "Reset position storage");
-        let mut entities_by_pos = storage.unsafe_view::<WorldPosition, EntityComponent>();
-        entities_by_pos.as_mut().clear();
-        entities_by_pos
-            .as_mut()
-            .table
-            .extend(
-                storage
-                    .view::<Room, RoomComponent>()
-                    .iter()
-                    .map(|(Room(roomid), _)| ((roomid, Default::default()))),
-            )
-            .expect("entities_by_pos init");
-    }
-
+    debug!(logger, "Reset position storage");
+    let mut entities_by_pos = storage.unsafe_view::<WorldPosition, EntityComponent>();
+    entities_by_pos.clear();
+    entities_by_pos
+        .table
+        .extend(
+            storage
+                .view::<Room, RoomComponent>()
+                .iter()
+                .map(|(Room(roomid), _)| ((roomid, Default::default()))),
+        )
+        .expect("entities_by_pos init");
     let bounds = Hexagon {
         center: Axial::new(radius as i32, radius as i32),
         radius: radius as i32,
@@ -128,53 +124,49 @@ pub fn init_storage(logger: Logger, n_fake_users: usize) -> Pin<Box<World>> {
         taken_rooms.push(room);
 
         trace!(logger, "initializing room #{} in room {:?}", i, room);
-        unsafe {
-            init_spawn(
-                &logger,
-                &bounds,
-                spawnid,
-                room,
-                &mut rng,
+        init_spawn(
+            &logger,
+            &bounds,
+            spawnid,
+            room,
+            &mut rng,
+            FromWorldMut::new(storage),
+            FromWorld::new(storage),
+        );
+        trace!(logger, "spawning entities");
+        let spawn_pos = storage
+            .view::<EntityId, PositionComponent>()
+            .get_by_id(&spawnid)
+            .expect("spawn should have position")
+            .0;
+        for _ in 0..3 {
+            let botid = storage.insert_entity();
+            init_bot(
+                botid,
+                mining_script_id,
+                spawn_pos,
                 FromWorldMut::new(storage),
-                FromWorld::new(storage),
             );
-            trace!(logger, "spawning entities");
-            let spawn_pos = storage
-                .view::<EntityId, PositionComponent>()
-                .get_by_id(&spawnid)
-                .expect("spawn should have position")
-                .0;
-            for _ in 0..3 {
-                let botid = storage.insert_entity();
-                init_bot(
-                    botid,
-                    mining_script_id,
-                    spawn_pos,
-                    FromWorldMut::new(storage),
-                );
-            }
-            for _ in 0..3 {
-                let botid = storage.insert_entity();
-                init_bot(
-                    botid,
-                    center_walking_script_id,
-                    spawn_pos,
-                    FromWorldMut::new(storage),
-                );
-            }
+        }
+        for _ in 0..3 {
+            let botid = storage.insert_entity();
+            init_bot(
+                botid,
+                center_walking_script_id,
+                spawn_pos,
+                FromWorldMut::new(storage),
+            );
         }
         let id = storage.insert_entity();
-        unsafe {
-            init_resource(
-                &logger,
-                &bounds,
-                id,
-                room,
-                &mut rng,
-                FromWorldMut::new(storage),
-                FromWorld::new(storage),
-            );
-        }
+        init_resource(
+            &logger,
+            &bounds,
+            id,
+            room,
+            &mut rng,
+            FromWorldMut::new(storage),
+            FromWorld::new(storage),
+        );
         trace!(logger, "initializing room #{} done", i);
     }
 
@@ -191,7 +183,7 @@ type InitBotMuts = (
     UnsafeView<WorldPosition, EntityComponent>,
 );
 
-unsafe fn init_bot(
+fn init_bot(
     id: EntityId,
     script_id: ScriptId,
     pos: WorldPosition,
@@ -204,29 +196,24 @@ unsafe fn init_bot(
         mut entities_by_pos,
     ): InitBotMuts,
 ) {
-    entity_scripts
-        .as_mut()
-        .insert_or_update(id, EntityScript { script_id });
-    bots.as_mut().insert_or_update(id, Bot {});
-    carry_component.as_mut().insert_or_update(
+    entity_scripts.insert_or_update(id, EntityScript { script_id });
+    bots.insert_or_update(id, Bot {});
+    carry_component.insert_or_update(
         id,
         CarryComponent {
             carry: 0,
             carry_max: 50,
         },
     );
-    owners.as_mut().insert_or_update(
+    owners.insert_or_update(
         id,
         OwnedEntity {
             owner_id: Default::default(),
         },
     );
 
-    positions
-        .as_mut()
-        .insert_or_update(id, PositionComponent(pos));
+    positions.insert_or_update(id, PositionComponent(pos));
     entities_by_pos
-        .as_mut()
         .table
         .get_by_id_mut(&pos.room)
         .expect("expected bot pos to be in the table")
@@ -243,7 +230,7 @@ type InitSpawnMuts = (
 );
 type InitSpawnConst<'a> = (View<'a, WorldPosition, TerrainComponent>,);
 
-unsafe fn init_spawn(
+fn init_spawn(
     logger: &Logger,
     bounds: &Hexagon,
     id: EntityId,
@@ -253,11 +240,9 @@ unsafe fn init_spawn(
     (terrain,): InitSpawnConst,
 ) {
     debug!(logger, "init_spawn");
-    structures.as_mut().insert_or_update(id, Structure {});
-    spawns
-        .as_mut()
-        .insert_or_update(id, SpawnComponent::default());
-    owners.as_mut().insert_or_update(
+    structures.insert_or_update(id, Structure {});
+    spawns.insert_or_update(id, SpawnComponent::default());
+    owners.insert_or_update(
         id,
         OwnedEntity {
             owner_id: Default::default(),
@@ -266,11 +251,8 @@ unsafe fn init_spawn(
 
     let pos = uncontested_pos(logger, room, bounds, &*entities_by_pos, &*terrain, rng);
 
-    positions
-        .as_mut()
-        .insert_or_update(id, PositionComponent(pos));
+    positions.insert_or_update(id, PositionComponent(pos));
     entities_by_pos
-        .as_mut()
         .table
         .get_by_id_mut(&room.0)
         .expect("expected room to be in entities_by_pos table")
@@ -288,7 +270,7 @@ type InitResourceMuts = (
 
 type InitResourceConst<'a> = (View<'a, WorldPosition, TerrainComponent>,);
 
-unsafe fn init_resource(
+fn init_resource(
     logger: &Logger,
     bounds: &Hexagon,
     id: EntityId,
@@ -297,10 +279,8 @@ unsafe fn init_resource(
     (mut positions_table, mut resources_table, mut energy_table, mut entities_by_pos, ): InitResourceMuts,
     (terrain,): InitResourceConst,
 ) {
-    resources_table
-        .as_mut()
-        .insert_or_update(id, ResourceComponent(Resource::Energy));
-    energy_table.as_mut().insert_or_update(
+    resources_table.insert_or_update(id, ResourceComponent(Resource::Energy));
+    energy_table.insert_or_update(
         id,
         EnergyComponent {
             energy: 250,
@@ -310,11 +290,8 @@ unsafe fn init_resource(
 
     let pos = uncontested_pos(logger, room, bounds, &*entities_by_pos, &*terrain, rng);
 
-    positions_table
-        .as_mut()
-        .insert_or_update(id, PositionComponent(pos));
+    positions_table.insert_or_update(id, PositionComponent(pos));
     entities_by_pos
-        .as_mut()
         .table
         .get_by_id_mut(&room.0)
         .expect("expected room to be in entities_by_pos table")

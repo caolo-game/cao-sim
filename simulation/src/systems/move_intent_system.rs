@@ -38,11 +38,7 @@ pub fn update((mut positions, mut intents): Mut, (bots, pos_entities, WorldLogge
             continue;
         }
 
-        unsafe {
-            positions
-                .as_mut()
-                .insert_or_update(intent.bot, PositionComponent(intent.position));
-        }
+        positions.insert_or_update(intent.bot, PositionComponent(intent.position));
 
         trace!(logger, "Move successful");
     }

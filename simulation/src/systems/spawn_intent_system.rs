@@ -26,7 +26,7 @@ pub fn update(
     for intent in intents.iter() {
         trace!(logger, "Spawning bot from structure {:?}", intent.spawn_id);
 
-        let spawn = match unsafe { spawn_table.as_mut() }.get_by_id_mut(&intent.spawn_id) {
+        let spawn = match spawn_table.get_by_id_mut(&intent.spawn_id) {
             Some(x) => x,
             None => {
                 error!(logger, "structure does not have spawn component");
@@ -54,13 +54,9 @@ pub fn update(
 
         unsafe {
             let bot_id = insert_entity.insert_entity();
-            spawn_bot_table
-                .as_mut()
-                .insert_or_update(bot_id, SpawnBotComponent { bot: Bot {} });
+            spawn_bot_table.insert_or_update(bot_id, SpawnBotComponent { bot: Bot {} });
             if let Some(owner_id) = intent.owner_id {
-                owner_table
-                    .as_mut()
-                    .insert_or_update(bot_id, OwnedEntity { owner_id });
+                owner_table.insert_or_update(bot_id, OwnedEntity { owner_id });
             }
 
             spawn.time_to_spawn = 5;

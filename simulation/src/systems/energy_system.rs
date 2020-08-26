@@ -9,7 +9,7 @@ pub fn update(
     energy_regen: View<EntityId, EnergyRegenComponent>,
 ) {
     profile!("EnergySystem update");
-    let energy_it = unsafe { energy.as_mut().iter_mut() };
+    let energy_it = energy.iter_mut();
     let join = JoinIterator::new(energy_it, energy_regen.iter());
     join.for_each(|(_id, (e, er))| {
         e.energy = (e.energy + er.amount).min(e.energy_max);

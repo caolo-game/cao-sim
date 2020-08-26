@@ -32,21 +32,20 @@ pub fn update(
         );
         match resource_table.get_by_id(&intent.resource) {
             Some(ResourceComponent(Resource::Energy)) => {
-                let resource_energy =
-                    match unsafe { energy_table.as_mut() }.get_by_id_mut(&intent.resource) {
-                        Some(resource_energy) => {
-                            if resource_energy.energy == 0 {
-                                trace!(logger, "Mineral is empty!");
-                                continue;
-                            }
-                            resource_energy
-                        }
-                        None => {
-                            warn!(logger, "MineIntent resource has no energy component!");
+                let resource_energy = match energy_table.get_by_id_mut(&intent.resource) {
+                    Some(resource_energy) => {
+                        if resource_energy.energy == 0 {
+                            trace!(logger, "Mineral is empty!");
                             continue;
                         }
-                    };
-                let carry = match unsafe { carry_table.as_mut() }.get_by_id_mut(&intent.bot) {
+                        resource_energy
+                    }
+                    None => {
+                        warn!(logger, "MineIntent resource has no energy component!");
+                        continue;
+                    }
+                };
+                let carry = match carry_table.get_by_id_mut(&intent.bot) {
                     Some(x) => x,
                     None => {
                         warn!(logger, "MineIntent bot has no carry component");

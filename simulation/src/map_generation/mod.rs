@@ -83,7 +83,8 @@ pub fn generate_full_map(
             Ok(terrain_tables)
         },
     )?;
-    unsafe { &mut terrain.as_mut().table }
+    terrain
+        .table
         .extend(terrain_tables.into_iter())
         .expect("expected to be able to insert the room terrain tables");
     Ok(())

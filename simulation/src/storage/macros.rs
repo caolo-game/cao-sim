@@ -43,9 +43,9 @@ macro_rules! query {
         );*;
         }
     ) => {
-        unsafe {
+        {
             $(
-                $store.unsafe_view::<$id, $row>().as_mut()
+                $store.unsafe_view::<$id, $row>()
                     . $(
                         $op($($args),*)
                     ).*

@@ -49,7 +49,6 @@ macro_rules! intents {
             // reset the intent tables
             $(
                 let mut ints = s.unsafe_view::<EmptyKey, Intents<$type>>();
-                let ints = unsafe {ints.as_mut()};
                 match ints.value.as_mut() {
                     Some(ints) => ints.0.clear(),
                     None => {

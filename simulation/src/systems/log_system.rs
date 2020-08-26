@@ -21,10 +21,7 @@ pub fn update(mut logs: Mut, time: Const) {
             }
         })
         .collect::<Vec<_>>();
-    unsafe {
-        let logs = logs.as_mut();
-        for id in changeset.into_iter() {
-            logs.delete(&id);
-        }
+    for id in changeset.into_iter() {
+        logs.delete(&id);
     }
 }

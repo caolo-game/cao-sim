@@ -17,16 +17,13 @@ pub fn update(mut position_entities: Mut, (positions, WorldLogger(logger)): Cons
         .map(|(id, PositionComponent(pos))| (*pos, EntityComponent(id)))
         .collect::<Vec<_>>();
 
-    unsafe {
-        position_entities.as_mut().clear();
-        position_entities
-            .as_mut()
-            .extend_from_slice(positions.as_mut_slice())
-            .map_err(|e| {
-                error!(logger, "Failed to rebuild position_entities table {:?}", e);
-            })
-            .ok();
-    }
+    position_entities.clear();
+    position_entities
+        .extend_from_slice(positions.as_mut_slice())
+        .map_err(|e| {
+            error!(logger, "Failed to rebuild position_entities table {:?}", e);
+        })
+        .ok();
 
     debug!(logger, "update positions system done");
 }

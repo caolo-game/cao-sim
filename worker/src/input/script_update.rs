@@ -38,12 +38,9 @@ pub fn update_program(
     };
 
     let program = ScriptComponent(program);
-    unsafe {
-        storage
-            .unsafe_view::<ScriptId, ScriptComponent>()
-            .as_mut()
-            .insert_or_update(script_id, program);
-    }
+    storage
+        .unsafe_view::<ScriptId, ScriptComponent>()
+        .insert_or_update(script_id, program);
 
     update_user_bot_scripts(
         script_id,
@@ -62,7 +59,7 @@ fn update_user_bot_scripts(
     mut entity_scripts: UnsafeView<EntityId, EntityScript>,
     owned_entities: View<EntityId, OwnedEntity>,
 ) {
-    let entity_scripts = unsafe { entity_scripts.as_mut().iter_mut() };
+    let entity_scripts = entity_scripts.iter_mut();
     let join = JoinIterator::new(
         owned_entities
             .iter()
@@ -93,10 +90,6 @@ pub fn update_entity_script(storage: &mut World, msg: UpdateEntityScriptCommand)
 
     let mut scripts_table: UnsafeView<EntityId, EntityScript> = storage.unsafe_view();
     let script_id = ScriptId(msg.script_id);
-    unsafe {
-        scripts_table
-            .as_mut()
-            .insert_or_update(entity_id, EntityScript { script_id });
-    }
+    scripts_table.insert_or_update(entity_id, EntityScript { script_id });
     Ok(())
 }
