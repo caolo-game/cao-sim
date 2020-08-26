@@ -256,4 +256,8 @@ where
         let res = unsafe { res.assume_init() };
         Some(res)
     }
+
+    fn get_by_id(&self, id: &Id) -> Option<&Row> {
+        VecTable::get_by_id(self, id)
+    }
 }

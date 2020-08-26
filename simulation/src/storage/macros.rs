@@ -287,7 +287,7 @@ macro_rules! storage {
 
             #[derive(Debug, Serialize, CaoStorage, Default, Deserialize)]
             $(
-                #[cao_storage($id, $name)]
+                #[cao_storage($id, $name, $row)]
             )*
             pub struct Storage {
                 $( $name: <$row as crate::tables::Component<$id>>::Table ),+ ,
@@ -301,7 +301,7 @@ macro_rules! storage {
                 pub fn new(
                     $(
                         $name: <$row as crate::tables::Component<$id>>::Table
-                        ),*
+                    ),*
                 ) -> Self {
                     Self {
                         $( $name ),*

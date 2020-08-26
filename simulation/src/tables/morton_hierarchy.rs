@@ -225,6 +225,10 @@ where
         let room = self.table.get_by_id_mut(&room)?;
         room.delete(&pos)
     }
+
+    fn get_by_id(&self, id: &Self::Id) -> Option<&Row> {
+        RoomMortonTable::get_by_id(self, id)
+    }
 }
 
 #[cfg(test)]

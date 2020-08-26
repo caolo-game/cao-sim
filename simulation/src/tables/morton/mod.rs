@@ -647,4 +647,8 @@ where
 
         Some(val)
     }
+
+    fn get_by_id(&self, id: &Pos) -> Option<&Row> {
+        MortonTable::get_by_id(self, id)
+    }
 }

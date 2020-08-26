@@ -9,11 +9,11 @@ pub trait HasTable<Id: TableId, Row: Component<Id>> {
     fn unsafe_view(&mut self) -> UnsafeView<Id, Row>;
 }
 
-pub trait DeleteById<Id: TableId> {
+pub trait DeleteById<Id> {
     fn delete(&mut self, key: &Id);
 }
 
-pub trait DeferredDeleteById<Id: TableId> {
+pub trait DeferredDeleteById<Id> {
     fn deferred_delete(&mut self, key: Id);
     fn clear_defers(&mut self);
     fn execute<Store: DeleteById<Id>>(&mut self, store: &mut Store);

@@ -67,6 +67,7 @@ pub trait Table {
     type Row: TableRow;
 
     fn delete(&mut self, id: &Self::Id) -> Option<Self::Row>;
+    fn get_by_id(&self, id: &Self::Id) -> Option<&Self::Row>;
 
     fn name() -> &'static str {
         use std::any::type_name;

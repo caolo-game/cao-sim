@@ -92,6 +92,10 @@ where
     fn delete(&mut self, id: &Id) -> Option<Row> {
         self.data.remove(id)
     }
+
+    fn get_by_id(&self, id: &Id) -> Option<&Row> {
+        BTreeTable::get_by_id(self, id)
+    }
 }
 
 impl LogTable for BTreeTable<EntityTime, LogEntry> {

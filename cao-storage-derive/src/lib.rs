@@ -13,6 +13,12 @@ pub fn derive_storage(input: TokenStream) -> TokenStream {
     impl_storage(input)
 }
 
+struct TableMeta {
+    key: TokenTree,
+    fields: Vec<TokenTree>,
+    rows: Vec<TokenTree>,
+}
+
 fn impl_storage(input: DeriveInput) -> TokenStream {
     let name = &input.ident;
     let generics = input.generics;
@@ -24,7 +30,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
             match attr.path.segments.first() {
                 None => continue 'a,
                 Some(segment) => {
-                    if format!("{}", segment.ident) != "cao_storage" {
+                    if segment.ident != "cao_storage" {
                         continue 'a;
                     }
                 }
@@ -36,11 +42,16 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
             let mut tokens = group.stream().into_iter();
             let key = tokens.next().expect("key name");
             tokens.next().expect("delimeter");
-            groups_by_id
+            let entry = groups_by_id
                 .entry(format!("{}", key))
-                .or_insert_with(|| (key, Vec::new()))
-                .1
-                .push(tokens.next().expect("field name"));
+                .or_insert_with(|| TableMeta {
+                    key,
+                    fields: Vec::with_capacity(16),
+                    rows: Vec::with_capacity(16),
+                });
+            entry.fields.push(tokens.next().expect("field name"));
+            tokens.next().expect("delimeter");
+            entry.rows.push(tokens.next().expect("row name"));
         }
     }
     // create a deferrer type, to hold deferred generic updates.
@@ -48,8 +59,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
     let deferrer_by_key = groups_by_id
         .iter()
         .map(|(key, _)| {
-            let kname = key.to_lowercase();
-            let kname = quote::format_ident!("{}", kname);
+            let kname = quote::format_ident!("{}", key.to_lowercase());
             let key = quote::format_ident!("{}", key);
             let tt = quote! {
                 #kname : Vec<#key>
@@ -58,7 +68,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let dbk = deferrer_by_key.as_slice().iter().map(|(_, _, v)| v);
+    let dbk = deferrer_by_key.iter().map(|(_, _, v)| v);
     let implementations = deferrer_by_key.iter().map(|(k, ty, _)| {
         quote! {
             impl DeferredDeleteById<#ty> for DeferredDeletes {
@@ -112,25 +122,35 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
         #(#implementations)*
     };
 
-    // implement the generic delete for all key types
+    // implement the functionality that's generic over the key for all key types
     //
-    let implementations = groups_by_id.into_iter().map(|(_, (key, fields))| {
-        let deletes = fields.as_slice().iter().map(|field| {
+    let implementations = groups_by_id.into_iter().map(
+        |(
+            _key,
+            TableMeta {
+                key: key_token,
+                fields,
+                rows,
+            },
+        )| {
+            assert_eq!(fields.len(), rows.len());
+            let deletes = fields.iter().map(|field| {
+                quote! {
+                    self.#field.delete(id);
+                }
+            });
+
             quote! {
-                self.#field.delete(id);
-            }
-        });
-        quote! {
-            impl #impl_generics DeleteById<#key> for #name #ty_generics #where_clause {
-                fn delete(&mut self, id: &#key) {
-                    #(#deletes);*;
+                impl <#impl_generics> DeleteById<#key_token> for #name #ty_generics #where_clause {
+                    fn delete(&mut self, id: &#key_token) {
+                        #(#deletes)*
+                    }
                 }
             }
-        }
-    });
+        },
+    );
     let result = quote! {
-        #(#implementations)
-        *
+        #(#implementations)*
 
         #deferrer
     };
