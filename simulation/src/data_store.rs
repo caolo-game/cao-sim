@@ -155,22 +155,21 @@ impl World {
     where
         Storage: storage::HasTable<Id, C>,
     {
-        (&self.store as &dyn storage::HasTable<Id, C>).view()
+        <Self as storage::HasTable::<Id, C>>::view(self)
     }
 
     pub fn unsafe_view<Id: TableId, C: Component<Id>>(&mut self) -> UnsafeView<Id, C>
     where
         Storage: storage::HasTable<Id, C>,
     {
-        (&mut self.store as &mut dyn storage::HasTable<Id, C>).unsafe_view()
+        <Self as storage::HasTable::<Id, C>>::unsafe_view(self)
     }
 
     pub fn delete<Id: TableId>(&mut self, id: &Id)
     where
         Storage: storage::DeleteById<Id>,
     {
-        let storage = &mut self.store as &mut dyn storage::DeleteById<Id>;
-        storage.delete(id);
+        <Storage as storage::DeleteById::<Id>>::delete(&mut self.store, id);
     }
 
     pub fn delta_time(&self) -> Duration {
