@@ -4,7 +4,6 @@
 //!
 pub mod bots;
 pub mod find_api;
-pub mod structures;
 use crate::components;
 use crate::geometry::point::Axial;
 use crate::indices::{EntityId, WorldPosition};

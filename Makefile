@@ -1,5 +1,8 @@
 .PHONY: test worker
 
+default:
+	echo Please use a specific command
+
 test:
 	cargo check
 	cargo test-all-features
@@ -12,7 +15,7 @@ bench-save:
 	cargo bench --bench simulation_benchmarks -- --save-baseline master
 
 worker:
-	docker build -t frenetiq/caolo-worker:latest -f worker/dockerfile .
+	docker build -t frenetiq/caolo-worker:latest -f dockerfile .
 
 push: worker
 	docker push frenetiq/caolo-worker:latest

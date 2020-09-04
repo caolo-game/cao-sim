@@ -16,7 +16,6 @@ dotenv = ["dep-dotenv"]
 [dependencies]
 caolo-sim = { path="../simulation", features=["profile"] }
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
-cao-math = { git = "https://github.com/caolo-game/cao-math.git", default-features=false }
 cao-messages = { git = "https://github.com/caolo-game/cao-messages.git" }
 
 jemallocator = { version="0.3", optional=true }

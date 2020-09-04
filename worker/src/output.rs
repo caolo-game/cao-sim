@@ -1,17 +1,12 @@
-use cao_math::vec::vec2::Vec2;
-use cao_math::vec::vec3::Vec3;
 use cao_messages::Bot as BotMsg;
 use cao_messages::LogEntry as LogMsg;
-use cao_messages::{
-    AxialPoint, Point as PointMsg, TerrainType, Tile as TileMsg, WorldPosition as WorldPositionMsg,
-};
+use cao_messages::{AxialPoint, TerrainType, Tile as TileMsg, WorldPosition as WorldPositionMsg};
 use cao_messages::{Resource as ResourceMsg, ResourceType};
 use cao_messages::{
     Structure as StructureMsg, StructurePayload as StructurePayloadMsg,
     StructureSpawn as StructureSpawnMsg,
 };
 use caolo_sim::prelude::*;
-use caolo_sim::tables::traits::SpatialKey2d;
 use caolo_sim::tables::JoinIterator;
 use caolo_sim::terrain::TileTerrainType;
 
@@ -148,38 +143,16 @@ pub fn build_structures<'a>(
 }
 
 fn init_world_pos(
-    conf: View<EmptyKey, RoomProperties>,
+    _conf: View<EmptyKey, RoomProperties>,
 ) -> impl Fn(WorldPosition) -> WorldPositionMsg {
-    let radius = conf.unwrap_value().radius;
-    let mut trans = cao_math::hex::axial_to_pixel_mat_flat().as_mat3f();
-    trans.scalar_mul((radius as f32 + 0.5) * 3.0f32.sqrt());
-    let transform = cao_math::hex::axial_to_pixel_mat_pointy().as_mat3f();
-
-    move |world_pos| {
-        let [x, y] = world_pos.room.as_array();
-        let Vec3 { x, y, z } = trans.right_prod(&Vec3 {
-            x: x as f32,
-            y: y as f32,
-            z: 1.0,
-        });
-        let offset = Vec3::new(x, y, z);
-
-        let [x, y] = world_pos.pos.as_array();
-        let p = Vec2::new(x as f32, y as f32).to_3d_vector();
-        let p = transform.right_prod(&p);
-        let p = p + offset;
-        let [x, y] = [p.x, p.y];
-
-        WorldPositionMsg {
-            room: AxialPoint {
-                q: world_pos.room.q,
-                r: world_pos.room.r,
-            },
-            room_pos: AxialPoint {
-                q: world_pos.pos.q,
-                r: world_pos.pos.r,
-            },
-            absolute_pos: PointMsg { x, y },
-        }
+    move |world_pos| WorldPositionMsg {
+        room: AxialPoint {
+            q: world_pos.room.q,
+            r: world_pos.room.r,
+        },
+        room_pos: AxialPoint {
+            q: world_pos.pos.q,
+            r: world_pos.pos.r,
+        },
     }
 }

@@ -1,9 +1,11 @@
 FROM rust:latest AS build
 
 RUN apt-get update
+RUN apt-get install lld clang -y
 
 WORKDIR /caolo
 
+COPY ./.cargo/ ./.cargo/
 COPY ./rust-toolchain ./rust-toolchain
 # cache the toolchain
 RUN cargo --version
@@ -25,7 +27,7 @@ WORKDIR /caolo
 COPY ./worker/build.sh ./
 COPY ./simulation/ ./simulation/
 COPY ./cao-storage-derive/ ./cao-storage-derive/
-COPY ./worker/ ./worker
+COPY ./worker/ ./worker/
 
 WORKDIR /caolo/worker
 RUN bash ./build.sh
