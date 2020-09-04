@@ -4,9 +4,9 @@ use crate::profile;
 use crate::storage::views::{DeleteEntityView, View, WorldLogger};
 use slog::{debug, trace};
 
-pub fn update<'a>(
+pub fn update(
     mut delete: DeleteEntityView,
-    (hps, WorldLogger(logger)): (View<'a, EntityId, HpComponent>, WorldLogger),
+    (hps, WorldLogger(logger)): (View<EntityId, HpComponent>, WorldLogger),
 ) {
     profile!("DeathSystem update");
     debug!(logger, "update death system called");

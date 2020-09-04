@@ -5,7 +5,6 @@ mod sse {
     #[cfg(target_arch = "x86_64")]
     use std::arch::x86_64::*;
     use std::i32::MAX;
-    use std::mem;
 
     pub const SKIP_LEN: usize = 4;
 
@@ -29,7 +28,7 @@ mod sse {
         pub fn set(&mut self, i: usize, val: i32) {
             unsafe {
                 let ind = i / 4;
-                let vals: &mut [i32; 4] = mem::transmute(&mut self.0[ind]);
+                let vals: &mut [i32; 4] = &mut *(&mut self.0[ind] as *mut _ as *mut [i32; 4]);
                 vals[i - ind] = val;
             }
         }

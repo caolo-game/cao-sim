@@ -52,7 +52,7 @@ fn execute_automated_systems(storage: &mut World) {
 #[inline]
 fn execute_update<'a, M, C, Sys>(sys: Sys, storage: &'a mut World)
 where
-    Sys: Fn(M, C) -> () + 'a,
+    Sys: Fn(M, C) + 'a,
     M: FromWorldMut + Clone + 'a,
     C: FromWorld<'a> + 'a,
 {

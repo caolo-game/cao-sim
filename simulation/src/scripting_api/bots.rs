@@ -288,7 +288,7 @@ fn move_to_pos<'a>(
             let checkresult = check_move_intent(logger, &intent, user_id, FromWorld::new(storage));
             match checkresult {
                 OperationResult::Ok => {
-                    let cache_intent = if path.len() > 0 {
+                    let cache_intent = if !path.is_empty() {
                         // skip >= 0
                         let skip = path.len().max(PATH_CACHE_LEN) - PATH_CACHE_LEN;
 

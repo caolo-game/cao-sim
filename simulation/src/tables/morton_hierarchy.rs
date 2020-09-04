@@ -81,7 +81,7 @@ where
     }
 
     /// Inserts the item at the given position. Creates a table for the room if it's not found
-    pub fn insert<'a>(&'a mut self, id: WorldPosition, val: Row) -> Result<(), ExtendFailure> {
+    pub fn insert(&mut self, id: WorldPosition, val: Row) -> Result<(), ExtendFailure> {
         let mut room = self.table.get_by_id_mut(&id.room);
         if room.is_none() {
             self.table

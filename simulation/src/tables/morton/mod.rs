@@ -255,7 +255,7 @@ where
     /// Return a reference to the new Row if it's in the map or None otherwise
     pub fn update_with<'a, F>(&'a mut self, id: &Pos, f: F) -> Option<&'a Row>
     where
-        F: FnOnce(&mut Row) -> (),
+        F: FnOnce(&mut Row),
     {
         self.find_key(id)
             .map(move |ind| {
@@ -365,7 +365,7 @@ where
 
     pub fn query_range<'a, Op>(&'a self, center: &Pos, radius: u32, op: &mut Op)
     where
-        Op: FnMut(Pos, &'a Row) -> (),
+        Op: FnMut(Pos, &'a Row),
     {
         debug_assert!(
             radius & 0xefff == radius,
@@ -390,7 +390,7 @@ where
         radius: u32,
         min: MortonKey,
         max: MortonKey,
-        op: &mut impl FnMut(Pos, &'a Row) -> (),
+        op: &mut impl FnMut(Pos, &'a Row),
     ) {
         let (imin, pmin) = self
             .find_key_morton(min)

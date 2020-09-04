@@ -125,19 +125,16 @@ pub fn build_structures<'a>(
     );
     let position_tranform = init_world_pos(room_props);
     JoinIterator::new(spawns, position_table.reborrow().iter()).map(
-        move |(id, ((spawn, _structure), pos))| {
-            let msg = StructureMsg {
-                id: id.0,
-                position: position_tranform(pos.0),
-                owner: owner_table
-                    .get_by_id(&id)
-                    .map(|OwnedEntity { owner_id }| owner_id.0),
-                payload: StructurePayloadMsg::Spawn(StructureSpawnMsg {
-                    spawning: spawn.spawning.map(|EntityId(id)| id),
-                    time_to_spawn: spawn.time_to_spawn as i32,
-                }),
-            };
-            msg
+        move |(id, ((spawn, _structure), pos))| StructureMsg {
+            id: id.0,
+            position: position_tranform(pos.0),
+            owner: owner_table
+                .get_by_id(&id)
+                .map(|OwnedEntity { owner_id }| owner_id.0),
+            payload: StructurePayloadMsg::Spawn(StructureSpawnMsg {
+                spawning: spawn.spawning.map(|EntityId(id)| id),
+                time_to_spawn: spawn.time_to_spawn as i32,
+            }),
         },
     )
 }

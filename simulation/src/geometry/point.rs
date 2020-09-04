@@ -1,7 +1,6 @@
 use crate::tables::SpatialKey2d;
 use cao_lang::traits::AutoByteEncodeProperties;
 use serde_derive::{Deserialize, Serialize};
-use std::convert::TryFrom;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// Represents a hex point in axial coordinate space
@@ -118,7 +117,7 @@ impl SpatialKey2d for Axial {
     }
 
     fn dist(&self, other: &Self) -> u32 {
-        u32::try_from(self.hex_distance(*other)).expect("Distance to fit in 32 bits")
+        self.hex_distance(*other)
     }
 }
 

@@ -28,8 +28,6 @@ pub fn find_key_partition(skiplist: &SkipList, key: MortonKey) -> usize {
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[inline]
 unsafe fn find_key_partition_sse2(skiplist: &SkipList, key: MortonKey) -> usize {
-    const PARTITIONS: usize = 4; // SKIP_LEN / 4;
-
     let key = key.0 as i32;
     let keys4 = _mm_set_epi32(key, key, key, key);
 
@@ -50,9 +48,9 @@ unsafe fn find_key_partition_sse2(skiplist: &SkipList, key: MortonKey) -> usize 
     ];
 
     let mut index = 0;
-    for i in 0..PARTITIONS {
+    for mask in &masks {
         // count the number of bits set to 1
-        index += _popcnt32(masks[i]);
+        index += _popcnt32(*mask);
     }
 
     // because the mask was created from 8 bit wide items every key in skip list is counted

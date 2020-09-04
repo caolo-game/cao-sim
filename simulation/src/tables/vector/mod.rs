@@ -65,7 +65,7 @@ where
             .par_iter_mut()
             .enumerate()
             .filter_map(move |(i, k)| unsafe {
-                let id = *keys.as_ptr().offset(i as isize);
+                let id = *keys.as_ptr().add(i);
                 id.map(|id| (id, &mut *k.as_mut_ptr()))
             })
     }
@@ -85,7 +85,7 @@ where
             .par_iter()
             .enumerate()
             .filter_map(move |(i, k)| unsafe {
-                let id = *keys.as_ptr().offset(i as isize);
+                let id = *keys.as_ptr().add(i);
                 id.map(|id| (id, &*k.as_ptr()))
             })
     }
@@ -119,8 +119,7 @@ where
             ids: vec![None; data.len()],
             data: Vec::with_capacity(data.len()),
         };
-        res.data
-            .resize_with(data.len(), || mem::MaybeUninit::uninit());
+        res.data.resize_with(data.len(), mem::MaybeUninit::uninit);
         res.ids[0] = Some(data[0].0);
         unsafe {
             *res.data[0].as_mut_ptr() = data[0].1.clone();
@@ -163,15 +162,14 @@ where
         if i < self.offset {
             let new_len = self.offset - i + len;
             self.ids.resize(new_len, None);
-            self.data
-                .resize_with(new_len, || mem::MaybeUninit::uninit());
+            self.data.resize_with(new_len, mem::MaybeUninit::uninit);
             self.data.rotate_right(self.offset - i);
             self.offset = i;
         }
         let i = i - self.offset;
         if i >= len {
             self.ids.resize(i + 1, None);
-            self.data.resize_with(i + 1, || mem::MaybeUninit::uninit());
+            self.data.resize_with(i + 1, mem::MaybeUninit::uninit);
         }
         if self.ids.get(i).and_then(|x| x.as_ref()).is_some() {
             let _old = mem::replace(&mut self.data[i], mem::MaybeUninit::new(row));

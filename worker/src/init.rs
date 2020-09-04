@@ -100,7 +100,7 @@ pub fn init_storage(logger: Logger, n_fake_users: usize) -> Pin<Box<World>> {
             storage
                 .view::<Room, RoomComponent>()
                 .iter()
-                .map(|(Room(roomid), _)| ((roomid, Default::default()))),
+                .map(|(Room(roomid), _)| (roomid, Default::default())),
         )
         .expect("entities_by_pos init");
     let bounds = Hexagon {

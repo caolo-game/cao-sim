@@ -199,7 +199,7 @@ fn find_path_multiroom(
             logger,
             from.pos,
             p,
-            (positions.clone(), terrain.clone()),
+            (positions, terrain),
             max_steps,
             path,
         ) {
@@ -349,7 +349,7 @@ pub fn find_path_in_room(
                 // End may be in the either tables!
                 *neighbour_pos == end
                     || (!positions.contains_key(neighbour_pos)
-                        && is_walkable(*neighbour_pos, terrain.clone()))
+                        && is_walkable(*neighbour_pos, terrain))
             })
         {
             let node = Node::new(
