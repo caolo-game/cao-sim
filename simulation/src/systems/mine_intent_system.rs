@@ -3,7 +3,7 @@ use crate::indices::EntityId;
 use crate::intents::{Intents, MineIntent};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, View, WorldLogger};
-use slog::{trace, warn};
+use slog::{o, trace, warn};
 
 pub const MINE_AMOUNT: u16 = 10; // TODO: get from bot body
 
@@ -21,15 +21,11 @@ pub fn update(
     (mut energy_table, mut carry_table): Mut,
     (resource_table, intents, WorldLogger(logger)): Const,
 ) {
-    profile!(" MineSystem update");
+    profile!("MineSystem update");
 
     for intent in intents.iter() {
-        trace!(
-            logger,
-            "Bot [{:?}] is mining [{:?}]",
-            intent.bot,
-            intent.resource
-        );
+        let logger = logger.new(o!("bot" => intent.bot.0));
+        trace!(logger, "Bot is mining [{:?}]", intent.resource);
         match resource_table.get_by_id(&intent.resource) {
             Some(ResourceComponent(Resource::Energy)) => {
                 let resource_energy = match energy_table.get_by_id_mut(&intent.resource) {

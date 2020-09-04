@@ -3,7 +3,7 @@ use crate::indices::EntityId;
 use crate::intents::*;
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, WorldLogger};
-use slog::{trace, warn};
+use slog::{o, trace, warn};
 
 type Mut = (
     UnsafeView<EntityId, EnergyComponent>,
@@ -15,6 +15,7 @@ pub fn update((mut energy_table, mut carry_table): Mut, (intents, WorldLogger(lo
     profile!(" DropoffSystem update");
 
     for intent in intents.iter() {
+        let logger = logger.new(o!("entity"=>intent.bot.0));
         trace!(logger, "Executing dropoff intent {:?}", intent);
         // dropoff amount = min(bot carry , amount , structure capacity)
         let carry_component = match carry_table.get_by_id_mut(&intent.bot) {

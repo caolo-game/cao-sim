@@ -3,7 +3,7 @@ use crate::indices::EntityId;
 use crate::intents::{Intents, SpawnIntent};
 use crate::profile;
 use crate::storage::views::{InsertEntityView, UnsafeView, UnwrapView, View, WorldLogger};
-use slog::{error, trace, warn};
+use slog::{debug, o, trace, warn};
 
 type Mut = (
     UnsafeView<EntityId, SpawnBotComponent>,
@@ -22,14 +22,15 @@ pub fn update(
     (mut spawn_bot_table, mut spawn_table, mut owner_table, mut insert_entity): Mut,
     (entity_table, intents, WorldLogger(logger)): Const,
 ) {
-    profile!(" SpawnSystem update");
+    profile!("SpawnSystem update");
     for intent in intents.iter() {
-        trace!(logger, "Spawning bot from structure {:?}", intent.spawn_id);
+        let logger = logger.new(o!("spawn_id"=> intent.spawn_id.0));
+        trace!(logger, "Spawning bot from structure");
 
         let spawn = match spawn_table.get_by_id_mut(&intent.spawn_id) {
             Some(x) => x,
             None => {
-                error!(logger, "structure does not have spawn component");
+                debug!(logger, "structure does not have spawn component");
                 continue;
             }
         };
@@ -42,13 +43,13 @@ pub fn update(
         let energy = match entity_table.get_by_id(&intent.spawn_id) {
             Some(x) => x,
             None => {
-                error!(logger, "structure does not have energy");
+                debug!(logger, "structure does not have energy");
                 continue;
             }
         };
 
         if energy.energy < 200 {
-            error!(logger, "not enough energy");
+            debug!(logger, "not enough energy {:?}", energy);
             continue;
         }
 

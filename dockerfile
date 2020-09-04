@@ -20,17 +20,16 @@ RUN sed -i 's/src\/main.rs/src\/dummy.rs/' Cargo.toml
 # remove 'caolo' dependencies because they change often
 RUN sed -i '/caolo-sim/d' Cargo.toml
 RUN sed -i '/cao-lang/d' Cargo.toml
-RUN cargo build --release
+RUN cargo build --release --features=jemallocator
 
 WORKDIR /caolo
 
-COPY ./worker/build.sh ./
 COPY ./simulation/ ./simulation/
 COPY ./cao-storage-derive/ ./cao-storage-derive/
 COPY ./worker/ ./worker/
 
 WORKDIR /caolo/worker
-RUN bash ./build.sh
+RUN cargo install --path . --root . --no-default-features --features=jemallocator
 
 # ---------- Copy the built binary to a scratch container, to minimize the image size ----------
 
