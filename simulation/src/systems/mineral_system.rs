@@ -1,4 +1,4 @@
-use crate::components;
+use crate::components as comp;
 use crate::geometry::Axial;
 use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
@@ -8,14 +8,14 @@ use rand::Rng;
 use slog::{debug, error, trace, Logger};
 
 type Mut = (
-    UnsafeView<EntityId, components::PositionComponent>,
-    UnsafeView<EntityId, components::EnergyComponent>,
+    UnsafeView<EntityId, comp::PositionComponent>,
+    UnsafeView<EntityId, comp::EnergyComponent>,
     DeferredDeleteEntityView,
 );
 type Const<'a> = (
-    View<'a, WorldPosition, components::EntityComponent>,
-    View<'a, WorldPosition, components::TerrainComponent>,
-    View<'a, EntityId, components::ResourceComponent>,
+    View<'a, WorldPosition, comp::EntityComponent>,
+    View<'a, WorldPosition, comp::TerrainComponent>,
+    View<'a, EntityId, comp::ResourceComponent>,
     WorldLogger,
 );
 
@@ -29,7 +29,7 @@ pub fn update(
     let mut rng = rand::thread_rng();
 
     let minerals_it = resources.iter().filter(|(_, r)| match r.0 {
-        components::Resource::Energy => true,
+        comp::Resource::Energy => true,
         _ => false,
     });
     let entity_positions_it = entity_positions.iter_mut();
@@ -106,24 +106,24 @@ pub fn update(
 
 fn random_uncontested_pos_in_range<'a>(
     logger: &Logger,
-    position_entities_table: View<'a, Axial, components::EntityComponent>,
-    terrain_table: View<'a, Axial, components::TerrainComponent>,
+    position_entities_table: View<'a, Axial, comp::EntityComponent>,
+    terrain_table: View<'a, Axial, comp::TerrainComponent>,
     rng: &mut rand::rngs::ThreadRng,
-    around: Axial,
+    center: Axial,
     range: u16,
     max_tries: u16,
 ) -> Option<Axial> {
     trace!(
         logger,
         "random_uncontested_pos_in_range {:?} range: {}, max_tries: {}",
-        around,
+        center,
         range,
         max_tries
     );
 
     let range = range as i32;
-    let x = around.q as i32;
-    let y = around.r as i32;
+    let cx = center.q as i32;
+    let cy = center.r as i32;
 
     let (bfrom, bto) = position_entities_table.bounds();
 
@@ -132,8 +132,9 @@ fn random_uncontested_pos_in_range<'a>(
         let dx = rng.gen_range(-range, range);
         let dy = rng.gen_range(-range, range);
 
-        let x = (x + dx).max(bfrom.q).min(bto.q);
-        let y = (y + dy).max(bfrom.r).min(bto.r);
+        // clamp x,y to the bounds
+        let x = (cx + dx).max(bfrom.q).min(bto.q);
+        let y = (cy + dy).max(bfrom.r).min(bto.r);
 
         let pos = Axial::new(x, y);
 
@@ -141,7 +142,7 @@ fn random_uncontested_pos_in_range<'a>(
             && position_entities_table.count_in_range(&pos, 1) == 0
             && terrain_table
                 .get_by_id(&pos)
-                .map(|components::TerrainComponent(t)| t.is_walkable())
+                .map(|comp::TerrainComponent(t)| t.is_walkable())
                 .unwrap_or(false)
         {
             result = Some(pos);
