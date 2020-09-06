@@ -104,10 +104,10 @@ pub fn update(
     debug!(logger, "update minerals system done");
 }
 
-fn random_uncontested_pos_in_range<'a>(
+fn random_uncontested_pos_in_range(
     logger: &Logger,
-    position_entities_table: View<'a, Axial, comp::EntityComponent>,
-    terrain_table: View<'a, Axial, comp::TerrainComponent>,
+    position_entities_table: View<Axial, comp::EntityComponent>,
+    terrain_table: View<Axial, comp::TerrainComponent>,
     rng: &mut rand::rngs::ThreadRng,
     center: Axial,
     range: u16,
@@ -122,28 +122,28 @@ fn random_uncontested_pos_in_range<'a>(
     );
 
     let range = range as i32;
-    let cx = center.q as i32;
-    let cy = center.r as i32;
+    let cq = center.q as i32;
+    let cr = center.r as i32;
 
     let (bfrom, bto) = position_entities_table.bounds();
 
     let mut result = None;
     for _ in 0..max_tries {
-        let dx = rng.gen_range(-range, range);
-        let dy = rng.gen_range(-range, range);
+        // deltas
+        let dq = rng.gen_range(-range, range);
+        let dr = rng.gen_range(-range, range);
 
-        // clamp x,y to the bounds
-        let x = (cx + dx).max(bfrom.q).min(bto.q);
-        let y = (cy + dy).max(bfrom.r).min(bto.r);
+        // clamp q, r to the bounds
+        let q = (cq + dq).max(bfrom.q).min(bto.q);
+        let r = (cr + dr).max(bfrom.r).min(bto.r);
 
-        let pos = Axial::new(x, y);
+        let pos = Axial { q, r };
 
-        if position_entities_table.intersects(&pos)
+        if terrain_table
+            .get_by_id(&pos)
+            .map(|comp::TerrainComponent(t)| t.is_walkable())
+            .unwrap_or(false)
             && position_entities_table.count_in_range(&pos, 1) == 0
-            && terrain_table
-                .get_by_id(&pos)
-                .map(|comp::TerrainComponent(t)| t.is_walkable())
-                .unwrap_or(false)
         {
             result = Some(pos);
             break;
