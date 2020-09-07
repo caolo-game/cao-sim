@@ -227,10 +227,38 @@ fn regression_get_by_id_bug1() {
 }
 
 #[test]
-fn get_by_id() {
+fn get_by_id_few_items() {
     let mut rng = rand::thread_rng();
 
-    let mut table = MortonTable::<Axial, usize>::new();
+    let mut points = HashSet::with_capacity(64);
+
+    for i in 0..16 {
+        points.clear();
+
+        for _ in 0..i {
+            let p = Axial {
+                q: rng.gen_range(0, 128),
+                r: rng.gen_range(0, 128),
+            };
+            let i = 1000 * p.q + p.r;
+            points.insert((p, i as usize));
+        }
+        let table = MortonTable::<Axial, usize>::from_iterator(points.iter().cloned())
+            .expect("table build");
+
+        println!("{:?}\n{:?}", table.skiplist, table.keys);
+
+        for p in points.iter() {
+            let found = table.get_by_id(&p.0);
+            let key = MortonKey::new(p.0.q as u16, p.0.r as u16);
+            assert_eq!(found, Some(&p.1), "{:?} {:?}", p.0, key);
+        }
+    }
+}
+
+#[test]
+fn get_by_id() {
+    let mut rng = rand::thread_rng();
 
     let mut points = HashSet::with_capacity(64);
 
@@ -243,9 +271,8 @@ fn get_by_id() {
         points.insert((p, i as usize));
     }
 
-    for (p, e) in points.iter() {
-        table.insert(p.clone(), *e).unwrap();
-    }
+    let table =
+        MortonTable::<Axial, usize>::from_iterator(points.iter().cloned()).expect("table build");
 
     println!("{:?}\n{:?}", table.skiplist, table.keys);
 

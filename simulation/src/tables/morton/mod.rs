@@ -207,15 +207,9 @@ where
         }
 
         let len = self.keys.len();
-        let step = len / SKIP_LEN + 1;
+        let step = (len / SKIP_LEN) + 1;
         self.skipstep = step as u32;
         self.skiplist = SkipList::default();
-        if step == 1 {
-            if let Some(key) = self.keys.last() {
-                self.skiplist.set(0, key.0 as i32)
-            }
-            return;
-        }
         for (i, k) in (0..len).step_by(step).skip(1).take(SKIP_LEN).enumerate() {
             self.skiplist.set(i, self.keys[k].0 as i32);
         }
