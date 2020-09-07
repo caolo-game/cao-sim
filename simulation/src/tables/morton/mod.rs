@@ -51,7 +51,8 @@ where
 {
     keys: Vec<MortonKey>,
     values: Vec<(Pos, Row)>,
-    // metadata
+    // SkipList contains the last item of every bucket
+    // bucket size is skipstep
     skiplist: SkipList,
     skipstep: u32,
 }
@@ -189,9 +190,22 @@ where
     }
 
     fn rebuild_skip_list(&mut self) {
+        #[cfg(debug_assertions)]
+        self.assert_keys_are_sorted();
+
+        let len = self.keys.len();
+        let step = (len / SKIP_LEN) + 1;
+        self.skipstep = step as u32;
+        self.skiplist = SkipList::default();
+        for (i, k) in (0..len).step_by(step).skip(1).take(SKIP_LEN).enumerate() {
+            self.skiplist.set(i, self.keys[k].0 as i32);
+        }
+    }
+
+    #[cfg(debug_assertions)]
+    fn assert_keys_are_sorted(&self) {
         // assert that keys is sorted.
         // at the time of writing is_sorted is still unstable
-        #[cfg(debug_assertions)]
         if self.keys.len() > 2 {
             let mut it = self.keys.iter();
             let mut current = it.next().unwrap();
@@ -204,14 +218,6 @@ where
                 );
                 current = next;
             }
-        }
-
-        let len = self.keys.len();
-        let step = (len / SKIP_LEN) + 1;
-        self.skipstep = step as u32;
-        self.skiplist = SkipList::default();
-        for (i, k) in (0..len).step_by(step).skip(1).take(SKIP_LEN).enumerate() {
-            self.skiplist.set(i, self.keys[k].0 as i32);
         }
     }
 
