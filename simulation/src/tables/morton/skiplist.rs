@@ -6,10 +6,11 @@ mod sse {
     use std::arch::x86_64::*;
     use std::i32::MAX;
 
-    pub const SKIP_LEN: usize = 4;
+    /// Skiplist will hold 16 keys internally
+    pub const SKIP_LEN: usize = 16;
 
     #[derive(Debug, Clone)]
-    pub struct SkipList(pub [__m128i; SKIP_LEN]);
+    pub struct SkipList(pub [__m128i; 4]);
 
     impl Default for SkipList {
         fn default() -> Self {
@@ -29,7 +30,7 @@ mod sse {
             unsafe {
                 let ind = i / 4;
                 let vals: &mut [i32; 4] = &mut *(&mut self.0[ind] as *mut _ as *mut [i32; 4]);
-                vals[i - ind] = val;
+                vals[i % 4] = val;
             }
         }
     }

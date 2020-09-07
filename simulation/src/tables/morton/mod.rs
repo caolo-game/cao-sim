@@ -49,11 +49,11 @@ where
     Pos: SpatialKey2d,
     Row: TableRow,
 {
-    skiplist: SkipList,
-    skipstep: u32,
-    //
     keys: Vec<MortonKey>,
     values: Vec<(Pos, Row)>,
+    // metadata
+    skiplist: SkipList,
+    skipstep: u32,
 }
 
 impl<Pos, Row> std::fmt::Debug for MortonTable<Pos, Row>
@@ -209,7 +209,6 @@ where
         let len = self.keys.len();
         let step = len / SKIP_LEN + 1;
         self.skipstep = step as u32;
-        // leaving items 0 will cause errors in find_key_morton
         self.skiplist = SkipList::default();
         if step == 1 {
             if let Some(key) = self.keys.last() {
