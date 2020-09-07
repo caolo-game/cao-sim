@@ -51,8 +51,6 @@ where
 {
     skiplist: SkipList,
     skipstep: u32,
-    // 15*4 + 4 bytes to fill a full L1 cache line
-    // (fingers crossed...)
     //
     keys: Vec<MortonKey>,
     values: Vec<(Pos, Row)>,
