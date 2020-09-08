@@ -33,9 +33,8 @@ pub const MORTON_POS_MAX: i32 = 0b0111_1111_1111_1111;
 // The original paper counts the garbage items and splits above a threshold.
 // Instead let's speculate if we need a split or if it more beneficial to just scan the
 // range
-// The number I picked is more or less arbitrary, it is a power of two and I ran the basic
-// benchmarks to probe a few numbers.
-const MAX_BRUTE_ITERS: usize = 16;
+// The number I picked is more or less arbitrary, I ran the basic benchmarks to probe a few numbers.
+const MAX_BRUTE_ITERS: usize = 24;
 
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure<Id: SpatialKey2d> {
@@ -52,9 +51,8 @@ where
     keys: Vec<MortonKey>,
     values: Vec<(Pos, Row)>,
     // SkipList contains the last item of every bucket
-    // bucket size is skipstep
     skiplist: SkipList,
-    skipstep: u32,
+    bucket_size: u32,
 }
 
 impl<Pos, Row> std::fmt::Debug for MortonTable<Pos, Row>
@@ -74,7 +72,7 @@ where
 {
     fn default() -> Self {
         Self {
-            skipstep: 0,
+            bucket_size: 0,
             skiplist: Default::default(),
             keys: Default::default(),
             values: Default::default(),
@@ -97,7 +95,7 @@ where
     pub fn new() -> Self {
         Self {
             skiplist: Default::default(),
-            skipstep: 0,
+            bucket_size: 0,
             keys: vec![],
             values: vec![],
         }
@@ -126,7 +124,7 @@ where
     pub fn with_capacity(cap: usize) -> Self {
         Self {
             skiplist: Default::default(),
-            skipstep: 0,
+            bucket_size: 0,
             values: Vec::with_capacity(cap),
             keys: Vec::with_capacity(cap),
         }
@@ -195,7 +193,7 @@ where
 
         let len = self.keys.len();
         let step = (len / SKIP_LEN) + 1;
-        self.skipstep = step as u32;
+        self.bucket_size = step as u32;
         self.skiplist = SkipList::default();
         for (i, k) in (0..len).step_by(step).skip(1).take(SKIP_LEN).enumerate() {
             self.skiplist.set(i, self.keys[k].0 as i32);
@@ -323,7 +321,7 @@ where
     fn find_key_morton(&self, key: MortonKey) -> Result<usize, usize> {
         use find_key_partition::find_key_partition;
 
-        let step = self.skipstep as usize;
+        let step = self.bucket_size as usize;
         if step <= 1 {
             return self.keys.binary_search(&key);
         }
