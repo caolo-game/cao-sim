@@ -53,6 +53,7 @@ where
 
 impl<'a, Id, Row> VecTable<Id, Row>
 where
+    // TODO: this `Sync` requirement is bullshit, get rid of it
     Id: SerialId + Send + Sync,
     Row: TableRow + Send + Sync,
     // if the underlying vector implements par_iter_mut...

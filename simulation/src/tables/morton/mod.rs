@@ -26,6 +26,9 @@ use skiplist::*;
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
+#[cfg(not(feature = "disable-parallelism"))]
+use rayon::prelude::*;
+
 // at most 15 bits long non-negative integers
 // having the 16th bit set might create problems in find_key
 pub const MORTON_POS_MAX: i32 = 0b0111_1111_1111_1111;
@@ -61,14 +64,16 @@ where
     Row: TableRow,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "MortonTable\n{:?}", self.values)
+        f.debug_struct("MortonTable")
+            .field("values", &self.values)
+            .finish()
     }
 }
 
 impl<Pos, Row> Default for MortonTable<Pos, Row>
 where
     Pos: SpatialKey2d + Send,
-    Row: TableRow + Send,
+    Row: TableRow,
 {
     fn default() -> Self {
         Self {
@@ -87,6 +92,32 @@ where
 {
 }
 
+#[cfg(not(feature = "disable-parallelism"))]
+impl<'a, Pos, Row> MortonTable<Pos, Row>
+where
+    Pos: SpatialKey2d + Send,
+    Row: TableRow,
+    (Pos, Row): Send,
+    // if the underlying vector implements par_iter_mut...
+{
+    pub fn par_iter_mut(&'a mut self) -> impl ParallelIterator<Item = (Pos, &'a mut Row)> + 'a {
+        self.values[..].par_iter_mut().map(move |(k, v)| (*k, v))
+    }
+}
+
+// #[cfg(not(feature = "disable-parallelism"))]
+// impl<'a, Pos, Row> MortonTable<Pos, Row>
+// where
+//     Pos: SpatialKey2d + Send,
+//     Row: TableRow + Send ,
+//     // if the underlying vector implements par_iter...
+//     Vec<(Pos, Row)>: rayon::iter::IntoParallelRefIterator<'a, Item = (Pos, Row)>,
+// {
+//     pub fn par_iter(&'a mut self) -> impl ParallelIterator<Item = (Pos, &'a Row)> + 'a {
+//         self.values.par_iter().map(move |(k, v)| (k, v))
+//     }
+// }
+//
 impl<Pos, Row> MortonTable<Pos, Row>
 where
     Pos: SpatialKey2d,
@@ -612,8 +643,8 @@ where
 
 impl<Pos, Row> Table for MortonTable<Pos, Row>
 where
-    Pos: SpatialKey2d + Send + Sync,
-    Row: TableRow + Send + Sync,
+    Pos: SpatialKey2d + Send,
+    Row: TableRow + Send,
 {
     type Id = Pos;
     type Row = Row;

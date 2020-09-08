@@ -6,6 +6,9 @@ use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use thiserror::Error;
 
+#[cfg(not(feature = "disable-parallelism"))]
+use rayon::prelude::*;
+
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure {
     #[error("Failed to extend the room level {0:?}")]
@@ -31,7 +34,7 @@ where
 
 impl<Row> RoomMortonTable<Row>
 where
-    Row: TableRow + Send + Sync,
+    Row: TableRow + Sync,
 {
     pub fn new() -> Self {
         Self {
@@ -61,7 +64,7 @@ where
     }
 
     /// Shallow clear,
-    /// leaves the 'overworld' level intact and clear the rooms.
+    /// leaves the 'overworld' level intact and clears the rooms.
     pub fn clear(&mut self) {
         self.table.iter_mut().for_each(|(_, table)| {
             table.clear();
@@ -123,15 +126,40 @@ where
     pub fn extend_from_slice(
         &mut self,
         values: &mut [(WorldPosition, Row)],
-    ) -> Result<&mut Self, ExtendFailure> {
-        values.sort_unstable_by_key(|(wp, _)| {
-            MortonKey::new(
-                u16::try_from(wp.room.q).unwrap(),
-                u16::try_from(wp.room.r).unwrap(),
-            )
-        });
-        for (room_id, items) in GroupByRooms::new(&values) {
-            if let Some(room) = self.table.get_by_id_mut(&room_id) {
+    ) -> Result<(), ExtendFailure> {
+        {
+            // produce a key list from the rooms of the values
+            let mut keys = values
+                .iter()
+                .map(|(wp, _)| {
+                    MortonKey::new(
+                        u16::try_from(wp.room.q).unwrap(),
+                        u16::try_from(wp.room.r).unwrap(),
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            // use the morton sorting to sort these values by their rooms
+            morton::sorting::sort(keys.as_mut_slice(), values);
+        }
+
+        // values no longer has to be mutable
+        let values = values as &_;
+
+        // collect the groups into a hashmap
+        let groups: std::collections::HashMap<Axial, &[(WorldPosition, Row)]> =
+            GroupByRooms::new(&values).into_iter().collect();
+        let groups = &groups;
+
+        // invidual extends can run in parallel
+        #[cfg(not(feature = "disable-parallelism"))]
+        let iter = self.table.par_iter_mut();
+        #[cfg(feature = "disable-parallelism")]
+        let mut iter = self.table.iter_mut();
+
+        iter.try_for_each(move |(room_id, ref mut room)| {
+            if let Some(items) = groups.get(&room_id) {
+                // extend each group by their corresponding values
                 room.extend(
                     items
                         .iter()
@@ -140,12 +168,13 @@ where
                 .map_err(|error| ExtendFailure::InnerExtendFailure {
                     room: room_id,
                     error,
-                })?;
+                })
             } else {
-                return Err(ExtendFailure::RoomNotExists(room_id));
+                Ok(())
             }
-        }
-        Ok(self)
+        })?;
+
+        Ok(())
     }
 }
 
@@ -214,7 +243,7 @@ impl<'a, Row> GroupByRooms<'a, Row> {
 
 impl<Row> Table for RoomMortonTable<Row>
 where
-    Row: TableRow + Send + Sync,
+    Row: TableRow + Sync,
 {
     type Id = WorldPosition;
     type Row = Row;
