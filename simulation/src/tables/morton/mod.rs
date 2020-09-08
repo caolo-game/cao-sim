@@ -12,7 +12,7 @@ mod litmax_bigmin;
 mod morton_key;
 mod serde;
 mod skiplist;
-mod sorting;
+pub mod sorting;
 #[cfg(test)]
 mod tests;
 

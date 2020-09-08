@@ -129,7 +129,7 @@ fn make_morton_table(c: &mut Criterion) {
 
 fn rebuild_morton_table(c: &mut Criterion) {
     let mut group = c.benchmark_group("morton table rebuild_morton_table");
-    for size in 8..14 {
+    for size in 8..15 {
         let size = 1 << size;
 
         group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, &size| {
