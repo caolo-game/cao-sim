@@ -6,6 +6,7 @@ use cao_messages::{
     Structure as StructureMsg, StructurePayload as StructurePayloadMsg,
     StructureSpawn as StructureSpawnMsg,
 };
+use caolo_sim::join;
 use caolo_sim::prelude::*;
 use caolo_sim::tables::JoinIterator;
 use caolo_sim::terrain::TileTerrainType;
@@ -23,7 +24,8 @@ pub fn build_bots<'a>(
     let bots = bots.reborrow().iter();
     let positions = positions.reborrow().iter();
     let position_tranform = init_world_pos(room_props);
-    JoinIterator::new(bots, positions).map(move |(id, (_bot, pos))| BotMsg {
+
+    join!([bots, positions]).map(move |(id, (_bot, pos))| BotMsg {
         id: id.0,
         position: position_tranform(pos.0),
         owner: owned_entities

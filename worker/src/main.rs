@@ -15,7 +15,8 @@ use thiserror::Error;
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 use cao_messages::{
-    Function, RoomProperties as RoomPropertiesMsg, RoomTerrainMessage, Schema, WorldState,
+    Function, RoomProperties as RoomPropertiesMsg, RoomState, RoomTerrainMessage, Schema,
+    WorldState,
 };
 
 fn init() {
@@ -43,28 +44,36 @@ fn tick(logger: Logger, storage: &mut World) {
 fn send_world(logger: Logger, storage: &World, client: &redis::Client) -> anyhow::Result<()> {
     debug!(logger, "Sending world state");
 
-    let bots: Vec<_> = output::build_bots(FromWorld::new(storage)).collect();
-
-    debug!(logger, "sending {} bots", bots.len());
+    let bots = output::build_bots(FromWorld::new(storage));
+    let resources = output::build_resources(FromWorld::new(storage));
+    let structures = output::build_structures(FromWorld::new(storage));
 
     let logs: Vec<_> = output::build_logs(FromWorld::new(storage)).collect();
-
-    debug!(logger, "sending {} logs", logs.len());
-
-    let resources: Vec<_> = output::build_resources(FromWorld::new(storage)).collect();
-
-    debug!(logger, "sending {} resources", resources.len());
-
-    let structures: Vec<_> = output::build_structures(FromWorld::new(storage)).collect();
-
-    debug!(logger, "sending {} structures", structures.len());
-
-    let world = WorldState {
-        bots,
+    let mut world = WorldState {
+        rooms: Default::default(),
         logs,
-        resources,
-        structures,
     };
+
+    macro_rules! insert {
+        ($it: ident, $field: ident) => {
+            for x in $field {
+                world
+                    .rooms
+                    .entry(x.position.room.clone())
+                    .or_insert_with(|| RoomState {
+                        bots: Vec::with_capacity(512),
+                        structures: Vec::with_capacity(512),
+                        resources: Vec::with_capacity(512),
+                    })
+                    .$field
+                    .push(x);
+            }
+        };
+    };
+
+    insert!(bots, bots);
+    insert!(resources, resources);
+    insert!(structures, structures);
 
     let payload = rmp_serde::to_vec_named(&world)?;
 
