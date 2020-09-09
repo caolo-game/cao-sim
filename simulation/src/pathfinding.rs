@@ -20,21 +20,22 @@ struct Node {
     pub parent: Axial,
     pub h_cost: i32,
     pub g_cost: i32,
+    pub f_cost: i32,
 }
 
 // std::BinaryHeap puts the max value at the top, so the ordering of Node is reversed!!!!
 impl PartialOrd for Node {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let fa = self.f_cost();
-        let fb = other.f_cost();
+        let fa = self.f_cost;
+        let fb = other.f_cost;
         fb.partial_cmp(&fa)
     }
 }
 
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
-        let fa = self.f_cost();
-        let fb = other.f_cost();
+        let fa = self.f_cost;
+        let fb = other.f_cost;
         fb.cmp(&fa)
     }
 }
@@ -45,12 +46,9 @@ impl Node {
             parent,
             h_cost,
             g_cost,
+            f_cost: h_cost + g_cost,
             pos,
         }
-    }
-
-    pub fn f_cost(&self) -> i32 {
-        self.h_cost + self.g_cost
     }
 }
 
@@ -298,15 +296,15 @@ pub fn find_path_overworld(
     Ok(max_steps)
 }
 
-fn is_walkable(p: Axial, terrain: View<Axial, TerrainComponent>) -> bool {
+fn is_walkable(point: Axial, terrain: View<Axial, TerrainComponent>) -> bool {
     terrain
-        .get_by_id(&p)
-        .map(|tile| terrain::is_walkable(tile.0))
+        .get_by_id(&point)
+        .map(|TerrainComponent(tile)| terrain::is_walkable(*tile))
         .unwrap_or(false)
 }
 
-/// return the remaining steps
-/// uses the A* algorithm
+/// Returns the remaining steps.
+/// Uses the A* algorithm
 pub fn find_path_in_room(
     logger: &Logger,
     from: Axial,
