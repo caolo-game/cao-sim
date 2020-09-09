@@ -12,7 +12,7 @@ pub struct Axial {
     pub r: i32,
 }
 
-unsafe impl Send for Axial{}
+unsafe impl Send for Axial {}
 
 impl Axial {
     pub fn new(q: i32, r: i32) -> Self {

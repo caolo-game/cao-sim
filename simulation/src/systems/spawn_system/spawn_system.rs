@@ -1,12 +1,17 @@
+//!
+//!
 use crate::components;
 use crate::indices::EntityId;
+use crate::join;
 use crate::profile;
 use crate::storage::views::{UnsafeView, WorldLogger};
-use crate::tables::Table;
+use crate::tables::{JoinIterator, Table};
 use slog::{debug, Logger};
 
 type SpawnSystemMut = (
     UnsafeView<EntityId, components::SpawnComponent>,
+    UnsafeView<EntityId, components::SpawnQueueComponent>,
+    UnsafeView<EntityId, components::EnergyComponent>,
     UnsafeView<EntityId, components::SpawnBotComponent>,
     UnsafeView<EntityId, components::Bot>,
     UnsafeView<EntityId, components::HpComponent>,
@@ -17,11 +22,23 @@ type SpawnSystemMut = (
 );
 
 pub fn update(
-    (mut spawns, spawn_bots, bots, hps, decay, carry, positions, owned): SpawnSystemMut,
-    WorldLogger(logger): WorldLogger,
+    (
+        mut spawns,
+        mut spawn_queue,
+        mut energy,
+        spawn_bots,
+        bots,
+        hps,
+        decay,
+        carry,
+        positions,
+        owned,
+    ): SpawnSystemMut,
+    (WorldLogger(logger),): (WorldLogger,),
 ) {
     profile!("SpawnSystem update");
     let spawn_views = (spawn_bots, bots, hps, decay, carry, positions, owned);
+
     spawns
         .iter_mut()
         .filter(|(_spawn_id, spawn_component)| spawn_component.spawning.is_some())
@@ -36,6 +53,18 @@ pub fn update(
             }
         })
         .for_each(|(spawn_id, entity_id)| spawn_bot(&logger, spawn_id, entity_id, spawn_views));
+
+    let ss = spawns.iter_mut().filter(|(_, c)| c.spawning.is_none());
+    let en = energy.iter_mut().filter(|(_, e)| e.energy == 500); // TODO: config amount
+    let sq = spawn_queue.iter_mut();
+    join!([ss, en, sq]).for_each(|(_spawn_id, (spawn, energy, queue))| {
+        // spawns with 500 energy and no currently spawning bot
+        if let Some(bot) = queue.queue.pop_back() {
+            energy.energy -= 500;
+            spawn.time_to_spawn = 10;
+            spawn.spawning = Some(bot);
+        }
+    });
 }
 
 type SpawnBotMut = (

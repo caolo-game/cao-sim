@@ -224,8 +224,11 @@ fn init_bot(
 type InitSpawnMuts = (
     UnsafeView<EntityId, OwnedEntity>,
     UnsafeView<EntityId, SpawnComponent>,
+    UnsafeView<EntityId, SpawnQueueComponent>,
     UnsafeView<EntityId, Structure>,
     UnsafeView<EntityId, PositionComponent>,
+    UnsafeView<EntityId, EnergyComponent>,
+    UnsafeView<EntityId, EnergyRegenComponent>,
     UnsafeView<WorldPosition, EntityComponent>,
 );
 type InitSpawnConst<'a> = (View<'a, WorldPosition, TerrainComponent>,);
@@ -236,18 +239,36 @@ fn init_spawn(
     id: EntityId,
     room: Room,
     rng: &mut impl Rng,
-    (mut owners, mut spawns, mut structures, mut positions, mut entities_by_pos): InitSpawnMuts,
+    (
+        mut owners,
+        mut spawns,
+        mut spawn_queues,
+        mut structures,
+        mut positions,
+        mut energies,
+        mut regens,
+        mut entities_by_pos,
+    ): InitSpawnMuts,
     (terrain,): InitSpawnConst,
 ) {
     debug!(logger, "init_spawn");
     structures.insert_or_update(id, Structure {});
     spawns.insert_or_update(id, SpawnComponent::default());
+    spawn_queues.insert_or_update(id, SpawnQueueComponent::default());
     owners.insert_or_update(
         id,
         OwnedEntity {
             owner_id: Default::default(),
         },
     );
+    energies.insert_or_update(
+        id,
+        EnergyComponent {
+            energy: 0,
+            energy_max: 500,
+        },
+    );
+    regens.insert_or_update(id, EnergyRegenComponent { amount: 5 });
 
     let pos = uncontested_pos(logger, room, bounds, &*entities_by_pos, &*terrain, rng);
 

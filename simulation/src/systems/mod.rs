@@ -11,7 +11,6 @@ mod mineral_system;
 mod move_intent_system;
 mod path_cache_intent_system;
 mod positions_system;
-mod spawn_intent_system;
 mod spawn_system;
 
 use crate::profile;
@@ -31,7 +30,7 @@ fn execute_intents(storage: &mut World) {
     execute_update(move_intent_system::update, storage);
     execute_update(mine_intent_system::update, storage);
     execute_update(dropoff_intent_system::update, storage);
-    execute_update(spawn_intent_system::update, storage);
+    execute_update(spawn_system::update_spawn_intents, storage);
     execute_update(log_intent_system::update, storage);
     execute_update(path_cache_intent_system::update, storage);
 }
@@ -43,7 +42,7 @@ fn execute_automated_systems(storage: &mut World) {
     execute_update(decay_system::update, storage);
     execute_update(death_system::update, storage);
     execute_update(energy_system::update, storage);
-    execute_update(spawn_system::update, storage);
+    execute_update(spawn_system::update_spawns, storage);
     execute_update(mineral_system::update, storage);
     execute_update(positions_system::update, storage);
     execute_update(log_system::update, storage);

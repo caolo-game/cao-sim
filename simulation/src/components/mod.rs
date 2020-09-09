@@ -10,6 +10,7 @@ use crate::tables::{
 };
 use arrayvec::ArrayVec;
 use serde_derive::{Deserialize, Serialize};
+use std::collections::VecDeque;
 
 /// For tables that store entity ids as values
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, Default, Ord, PartialOrd, Eq, PartialEq)]
@@ -59,12 +60,25 @@ impl<Id: TableId> Component<Id> for EnergyComponent {
     type Table = BTreeTable<Id, Self>;
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SpawnComponent {
+    /// Time to spawn the current entity
     pub time_to_spawn: i16,
+    /// Currently spawning entity
     pub spawning: Option<EntityId>,
 }
+
 impl<Id: TableId> Component<Id> for SpawnComponent {
+    type Table = BTreeTable<Id, Self>;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SpawnQueueComponent {
+    /// Entities waiting for spawn
+    pub queue: VecDeque<EntityId>,
+}
+
+impl<Id: TableId> Component<Id> for SpawnQueueComponent {
     type Table = BTreeTable<Id, Self>;
 }
 
@@ -101,6 +115,7 @@ impl<Id: TableId> Component<Id> for DecayComponent {
 pub struct SpawnBotComponent {
     pub bot: Bot,
 }
+
 impl<Id: TableId> Component<Id> for SpawnBotComponent {
     type Table = BTreeTable<Id, Self>;
 }

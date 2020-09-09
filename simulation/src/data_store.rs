@@ -33,6 +33,7 @@ storage!(
     key EntityId, table DecayComponent = entitydecay,
     key EntityId, table EntityScript = entityscript,
     key EntityId, table SpawnComponent = entityspawn,
+    key EntityId, table SpawnQueueComponent = entityspawnqueue,
     key EntityId, table OwnedEntity = entityowner,
     key EntityId, table PathCacheComponent = entitypathcache,
 
