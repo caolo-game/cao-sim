@@ -81,6 +81,7 @@ fn impl_litmax_bigmin(a: u32, b: u32, diff_msb: u32) -> [u32; 2] {
 
 /// [See](http://supertech.csail.mit.edu/papers/debruijn.pdf)
 /// calculates the most significant bit that's set
+#[inline]
 pub fn msb_de_bruijn(v: u32) -> u32 {
     const DE_BRUIJN_BIT_POS: &[u32] = &[
         0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7,
@@ -95,6 +96,7 @@ pub fn msb_de_bruijn(v: u32) -> u32 {
     DE_BRUIJN_BIT_POS[ind as usize]
 }
 
+#[inline]
 pub fn round_down_to_one_less_than_pow_two(mut v: u32) -> u32 {
     v |= v >> 1;
     v |= v >> 2;

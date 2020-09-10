@@ -1,86 +1,24 @@
 //! Sort an array of elements by their `MortonKey`
 //!
 use super::morton_key::MortonKey;
-use super::msb_de_bruijn;
+use std::mem::size_of;
 
-const RADIX_MASK_LEN: usize = 8;
+const RADIX_MASK_LEN: usize = 8; // how many bits are considered at a time
 const RADIX_MASK: u32 = (1 << (RADIX_MASK_LEN + 1)) - 1;
 const NUM_BUCKETS: usize = RADIX_MASK as usize + 1;
-const RADIX_MAX_ELEMENTS: usize = 4096;
 
 pub fn sort<T: Send + Clone>(keys: &mut [MortonKey], values: &mut [T]) {
-    // Uses a hybrid scheme. If the array is longer than RADIX_MAX_ELEMENTS we use
-    // (parallel) quicksort. Once the number of elements is within range we switch to radix sort.
     debug_assert!(
         keys.len() == values.len(),
         "{} {}",
         keys.len(),
         values.len()
     );
-    if keys.len() <= RADIX_MAX_ELEMENTS {
-        sort_radix(keys, values);
-        return;
-    }
-    let pivot = sort_partition(keys, values);
-    let (klo, khi) = keys.split_at_mut(pivot);
-    let (vlo, vhi) = values.split_at_mut(pivot);
-
-    #[cfg(not(feature = "disable-parallelism"))]
-    rayon::join(|| sort(klo, vlo), || sort(&mut khi[1..], &mut vhi[1..]));
-    #[cfg(feature = "disable-parallelism")]
-    {
-        sort(klo, vlo);
-        sort(&mut khi[1..], &mut vhi[1..]);
-    }
+    sort_radix(keys, values);
 }
 
-/// Assumes that all 3 slices are equal in size.
-/// Assumes that the slices are not empty
-fn sort_partition<T>(keys: &mut [MortonKey], values: &mut [T]) -> usize {
-    debug_assert!(!keys.is_empty());
-
-    macro_rules! swap {
-        ($i: expr, $j: expr) => {
-            keys.swap($i, $j);
-            values.swap($i, $j);
-        };
-    };
-
-    let len = keys.len();
-    let lim = len - 1;
-
-    let (pivot, pivot_ind) = {
-        use std::mem::swap;
-        // choose the median of the first, middle and last elements as the pivot
-
-        let mut first = 0;
-        let mut last = lim;
-        let mut median = len / 2;
-
-        if keys[last] < keys[median] {
-            swap(&mut median, &mut last);
-        }
-        if keys[last] < keys[first] {
-            swap(&mut last, &mut first);
-        }
-        if keys[median] < keys[first] {
-            swap(&mut median, &mut first);
-        }
-        (keys[median], median)
-    };
-
-    swap!(pivot_ind, lim);
-
-    let mut index = 0; // index of the last item <= pivot
-    for j in 0..lim {
-        if keys[j] < pivot {
-            swap!(index, j);
-            index += 1;
-        }
-    }
-    swap!(index, lim);
-    index
-}
+/// The first bit set to 1
+#[inline]
 
 fn sort_radix<T: Clone>(keys: &mut [MortonKey], values: &mut [T]) {
     debug_assert!(
@@ -89,7 +27,6 @@ fn sort_radix<T: Clone>(keys: &mut [MortonKey], values: &mut [T]) {
         keys.len(),
         values.len()
     );
-    debug_assert!(keys.len() <= RADIX_MAX_ELEMENTS);
     if keys.len() < 2 {
         return;
     }
@@ -98,12 +35,7 @@ fn sort_radix<T: Clone>(keys: &mut [MortonKey], values: &mut [T]) {
     let mut buffb = vec![Default::default(); keys.len()];
     let mut buffind = 0;
 
-    let mut msb = msb_de_bruijn(keys[0].0);
-    for MortonKey(k) in &keys[1..] {
-        msb = msb.max(msb_de_bruijn(*k));
-    }
-    // TODO: optimize using min lsb?
-    for k in (0..=msb).step_by(RADIX_MASK_LEN as usize) {
+    for k in (0..=size_of::<MortonKey>() * 8 - RADIX_MASK_LEN).step_by(RADIX_MASK_LEN) {
         if buffind == 0 {
             radix_pass(k as u8, &buffa[..], &mut buffb);
         } else {
@@ -141,12 +73,13 @@ fn radix_pass(
     // set the output offsets for each bucket
     // this will indicate the 1 after the last index a chunk will occupy
     let mut base = 0;
-    for bucket in buckets.iter_mut().take(NUM_BUCKETS) {
+    for bucket in buckets.iter_mut() {
         *bucket += base;
         base = *bucket;
     }
 
     // write the output
+    //
     debug_assert_eq!(keys.len(), out.len());
 
     keys.iter().rev().for_each(|(id, key)| {
@@ -160,8 +93,7 @@ fn radix_pass(
 
 #[inline(always)]
 fn compute_bucket(k: u8, MortonKey(key): MortonKey) -> usize {
-    let mask = RADIX_MASK << k;
-    let ind = key & mask;
-    let ind = ind >> k;
+    let key = key >> k;
+    let ind = key & RADIX_MASK;
     ind as usize
 }
