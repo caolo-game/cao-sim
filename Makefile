@@ -12,7 +12,7 @@ bench:
 	cargo bench --bench simulation_benchmarks $(benches) -- --baseline master
 
 bench-save:
-	cargo bench --bench simulation_benchmarks -- --save-baseline master
+	cargo bench --bench simulation_benchmarks $(benches) -- --save-baseline master
 
 worker:
 	docker build -t frenetiq/caolo-worker:latest -f dockerfile .

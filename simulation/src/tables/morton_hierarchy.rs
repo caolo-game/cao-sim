@@ -140,7 +140,7 @@ where
                 .collect::<Vec<_>>();
 
             // use the morton sorting to sort these values by their rooms
-            morton::sorting::sort(keys.as_mut_slice(), values);
+            morton::sorting::sort(&mut keys, values);
         }
 
         // values no longer has to be mutable
