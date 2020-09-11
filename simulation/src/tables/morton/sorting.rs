@@ -25,16 +25,16 @@ pub fn sort<T: Send + Clone>(keys: &mut Vec<MortonKey>, values: &mut [T]) {
 fn sort_radix<T: Clone>(keys: &mut Vec<MortonKey>, values: &mut [T]) {
     let mut buffa: Vec<_> = keys.iter().cloned().enumerate().collect();
     let mut buffb = vec![Default::default(); keys.len()];
-    let mut buffind = 0;
+    let mut swapbuffs = false;
 
     for k in (0..=size_of::<MortonKey>() * 8 - RADIX_MASK_LEN).step_by(RADIX_MASK_LEN) {
         radix_pass(k as u8, &buffa[..], &mut buffb);
         debug_assert_eq!(buffa.len(), buffb.len());
         swap(&mut buffa, &mut buffb);
-        buffind = 1 - buffind;
+        swapbuffs = !swapbuffs;
     }
 
-    if buffind == 1 {
+    if swapbuffs {
         swap(&mut buffa, &mut buffb);
     }
 
