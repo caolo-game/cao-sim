@@ -11,9 +11,11 @@ pub enum PlaceStructureError {
     #[error("user {user_id} already has a spawn ({spawn_id:?})!")]
     UserHasSpawn { user_id: Uuid, spawn_id: EntityId },
 
-    #[allow(unused)]
     #[error("position {0:?} is not valid!")]
-    InvalidPoistion(WorldPosition),
+    InvalidPosition(WorldPosition),
+
+    #[error("position {0:?} is taken!")]
+    TakenPosition(WorldPosition),
 }
 
 pub fn place_structure(
@@ -31,7 +33,24 @@ pub fn place_structure(
 
     let position = WorldPosition { room, pos };
 
-    // TODO verify position
+    let is_valid_terrain = storage
+        .view::<WorldPosition, TerrainComponent>()
+        .get_by_id(&position)
+        .map(|TerrainComponent(t)| t.is_walkable())
+        .unwrap_or(false);
+
+    if !is_valid_terrain {
+        return Err(PlaceStructureError::InvalidPosition(position));
+    }
+
+    let is_free = storage
+        .view::<WorldPosition, EntityComponent>()
+        .get_by_id(&position)
+        .is_none();
+
+    if !is_free {
+        return Err(PlaceStructureError::TakenPosition(position));
+    }
 
     match ty {
         StructureType::Spawn => {
