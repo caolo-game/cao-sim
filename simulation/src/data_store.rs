@@ -59,6 +59,7 @@ storage!(
     key EmptyKey, table Intents<CachePathIntent> = update_path_cache_intents,
     key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
 
+    // configurations
     key EmptyKey, table RoomProperties = roomproperties,
 );
 

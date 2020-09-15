@@ -1,3 +1,4 @@
+mod config;
 mod init;
 mod input;
 mod output;
@@ -39,6 +40,36 @@ fn tick(logger: Logger, storage: &mut World) {
             );
         })
         .expect("Failed to forward game state")
+}
+
+fn send_config(
+    logger: Logger,
+    client: &redis::Client,
+    storage: &World,
+    game_conf: &config::GameConfig,
+) -> anyhow::Result<()> {
+    debug!(logger, "Sending config");
+
+    let rooms_props = storage.resource::<RoomProperties>();
+
+    let conf = serde_json::json!({
+        "roomProperties" : *rooms_props,
+        "gameConfig": game_conf
+    });
+
+    let payload = rmp_serde::to_vec_named(&conf)?;
+
+    let mut con = client.get_connection()?;
+    redis::pipe()
+        .cmd("SET")
+        .arg("SIM_CONFIG")
+        .arg(payload)
+        .query(&mut con)
+        .with_context(|| "Failed to send config")?;
+
+    debug!(logger, "Sending config - done");
+
+    Ok(())
 }
 
 fn send_world(logger: Logger, storage: &World, client: &redis::Client) -> anyhow::Result<()> {
@@ -191,6 +222,8 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
 async fn main() -> Result<(), anyhow::Error> {
     init();
 
+    let game_conf = config::GameConfig::load();
+
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_envlogger::new(drain).fuse();
@@ -211,14 +244,9 @@ async fn main() -> Result<(), anyhow::Error> {
             warn!(logger, "Sentry URI was not provided");
         });
 
-    let n_actors = std::env::var("N_ACTORS")
-        .ok()
-        .and_then(|s| s.parse::<usize>().ok())
-        .unwrap_or(100);
+    info!(logger, "Starting with {} actors", game_conf.n_actors);
 
-    info!(logger, "Starting with {} actors", n_actors);
-
-    let mut storage = init::init_storage(logger.clone(), n_actors);
+    let mut storage = init::init_storage(logger.clone(), &game_conf);
 
     let redis_url =
         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
@@ -229,14 +257,19 @@ async fn main() -> Result<(), anyhow::Error> {
     )
     .await?;
 
+    send_config(
+        logger.clone(),
+        &redis_client,
+        &*storage.as_ref(),
+        &game_conf,
+    )
+    .expect("Send config");
+
     send_terrain(&logger, &*storage.as_ref(), &pg_pool)
         .await
         .expect("Send terrain");
 
-    let tick_freq = std::env::var("TARGET_TICK_FREQUENCY_MS")
-        .map(|i| i.parse::<u64>().unwrap())
-        .unwrap_or(200);
-    let tick_freq = Duration::from_millis(tick_freq);
+    let tick_freq = Duration::from_millis(game_conf.target_tick_freq_ms);
 
     send_schema(logger.clone(), &redis_client).expect("Send schema");
 

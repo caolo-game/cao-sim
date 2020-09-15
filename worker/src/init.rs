@@ -1,3 +1,4 @@
+use crate::config::GameConfig;
 use cao_lang::prelude::*;
 use caolo_sim::map_generation::generate_full_map;
 use caolo_sim::map_generation::overworld::OverworldGenerationParams;
@@ -8,9 +9,8 @@ use slog::{debug, trace, Logger};
 use std::pin::Pin;
 use uuid::Uuid;
 
-pub fn init_storage(logger: Logger, n_fake_users: usize) -> Pin<Box<World>> {
+pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
     debug!(logger, "initializing world");
-    assert!(n_fake_users >= 1);
 
     let mut rng = rand::thread_rng();
 
@@ -50,20 +50,8 @@ pub fn init_storage(logger: Logger, n_fake_users: usize) -> Pin<Box<World>> {
         }
     );
 
-    let world_radius = std::env::var("CAO_MAP_OVERWORLD_RADIUS")
-        .map(|w| {
-            w.parse()
-                .expect("expected map overworld radius to be an integer")
-        })
-        .unwrap_or_else(|_| {
-            let a = n_fake_users as f32;
-            ((a * 1.0 / (3.0 * 3.0f32.sqrt())).powf(0.33)).ceil() as usize
-        });
-    let width = std::env::var("CAO_MAP_WIDTH")
-        .map(|w| w.parse().expect("expected map width to be an integer"))
-        .unwrap_or(32);
-
-    let radius = width as u32 / 2;
+    let world_radius = config.world_radius;
+    let radius = config.room_radius;
     assert!(radius > 6);
     let params = OverworldGenerationParams::builder()
         .with_radius(world_radius as u32)
@@ -113,7 +101,8 @@ pub fn init_storage(logger: Logger, n_fake_users: usize) -> Pin<Box<World>> {
         .map(|a| a.0)
         .collect::<Vec<_>>();
 
-    let mut taken_rooms = Vec::with_capacity(n_fake_users);
+    let n_fake_users = config.n_actors;
+    let mut taken_rooms = Vec::with_capacity(n_fake_users as usize);
     for i in 0..n_fake_users {
         trace!(logger, "initializing room #{}", i);
         let storage = &mut storage;
@@ -376,6 +365,6 @@ mod tests {
         let logger = slog::Logger::root(drain, o!());
 
         // smoke test: can the game be even initialized?
-        init_storage(logger, 5);
+        init_storage(logger, &Default::default());
     }
 }
