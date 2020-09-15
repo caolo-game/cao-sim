@@ -7,3 +7,5 @@
 !Cargo.lock
 !build.sh
 !rust-toolchain
+
+**/target/
