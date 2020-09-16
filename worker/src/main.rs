@@ -279,13 +279,24 @@ async fn main() -> Result<(), anyhow::Error> {
     );
     loop {
         let start = Instant::now();
-        input::handle_messages(logger.clone(), &mut storage, &redis_client);
+
         tick(logger.clone(), &mut storage);
+
         send_world(logger.clone(), &storage, &redis_client).expect("Sending world");
-        let t = Instant::now() - start;
-        let sleep_duration = tick_freq
-            .checked_sub(t)
+
+        let mut sleep_duration = tick_freq
+            .checked_sub(Instant::now() - start)
             .unwrap_or_else(|| Duration::from_millis(0));
-        thread::sleep(sleep_duration);
+
+        // use the sleep time to update inputs
+        // this allows faster responses to clients as well as potentially spending less time on
+        // inputs because handling them is built into the sleep cycle  
+        let start = Instant::now();
+        while sleep_duration > Duration::from_millis(0) {
+            input::handle_messages(logger.clone(), &mut storage, &redis_client);
+            sleep_duration = sleep_duration
+                .checked_sub(Instant::now() - start)
+                .unwrap_or_else(|| Duration::from_millis(0));
+        }
     }
 }
