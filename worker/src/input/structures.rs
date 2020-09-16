@@ -89,8 +89,12 @@ pub fn place_structure(
         mutate
         storage
         {
+            EntityId, Structure,
+                .insert_or_update(entity_id, Structure{});
+
             EntityId, PositionComponent,
                 .insert_or_update(entity_id, PositionComponent(position));
+
             EntityId, OwnedEntity,
                 .insert_or_update(entity_id, OwnedEntity{owner_id});
 

@@ -7,7 +7,6 @@ use anyhow::Context;
 use caolo_sim::prelude::*;
 use slog::{debug, error, info, o, trace, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
-use std::thread;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
