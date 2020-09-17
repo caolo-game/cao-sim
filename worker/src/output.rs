@@ -48,7 +48,6 @@ pub fn build_bots<'a>(
         owner: owned_entities
             .get_by_id(&id)
             .map(|OwnedEntity { owner_id }| owner_id.0),
-
         body: json! ({
             "hp": hp_table.get_by_id(&id)
             , "carry": carry_table.get_by_id(&id)
@@ -138,31 +137,49 @@ pub fn build_resources<'a>(
 
 type StructuresInput<'a> = (
     View<'a, EntityId, Structure>,
-    View<'a, EntityId, SpawnComponent>,
     View<'a, EntityId, PositionComponent>,
     View<'a, EntityId, OwnedEntity>,
     View<'a, EmptyKey, RoomProperties>,
+    (
+        View<'a, EntityId, SpawnComponent>,
+        View<'a, EntityId, EnergyComponent>,
+        View<'a, EntityId, EnergyRegenComponent>,
+    ),
 );
 
 pub fn build_structures<'a>(
-    (structure_table, spawn_table, position_table, owner_table, room_props): StructuresInput<'a>,
+    (
+        structure_table,
+        position_table,
+        owner_table,
+        room_props,
+        (spawn_table, energy_table, energy_regen_table),
+    ): StructuresInput<'a>,
 ) -> impl Iterator<Item = StructureMsg> + 'a {
     let spawns = spawn_table.reborrow().iter();
     let structures = structure_table.reborrow().iter();
     let positions = position_table.reborrow().iter();
+    let energy = energy_table.reborrow().iter();
 
     let position_tranform = init_world_pos(room_props);
-    join!([spawns, structures, positions]).map(move |(id, (spawn, _structure, pos))| StructureMsg {
-        id: id.0,
-        position: position_tranform(pos.0),
-        owner: owner_table
-            .get_by_id(&id)
-            .map(|OwnedEntity { owner_id }| owner_id.0),
-        payload: StructurePayloadMsg::Spawn(StructureSpawnMsg {
-            spawning: spawn.spawning.map(|EntityId(id)| id),
-            time_to_spawn: spawn.time_to_spawn as i32,
-        }),
-    })
+    join!([spawns, structures, positions, energy]).map(
+        move |(id, (spawn, _structure, pos, energy))| StructureMsg {
+            id: id.0,
+            position: position_tranform(pos.0),
+            owner: owner_table
+                .get_by_id(&id)
+                .map(|OwnedEntity { owner_id }| owner_id.0),
+            payload: StructurePayloadMsg::Spawn(StructureSpawnMsg {
+                spawning: spawn.spawning.map(|EntityId(id)| id),
+                time_to_spawn: spawn.time_to_spawn as i32,
+                energy: energy.energy as u32,
+                energy_max: energy.energy_max as u32,
+                energy_regen: energy_regen_table
+                    .get_by_id(&id)
+                    .map(|EnergyRegenComponent { amount }| *amount as u32),
+            }),
+        },
+    )
 }
 
 fn init_world_pos(

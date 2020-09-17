@@ -21,34 +21,34 @@ use crate::storage::views::logging::LogGuard;
 storage!(
     module store_impl
 
-    key EntityId, table Bot = entitybot,
-    key EntityId, table PositionComponent = entitypos,
-    key EntityId, table SpawnBotComponent = entityspawnbot,
-    key EntityId, table CarryComponent = entitycarry,
-    key EntityId, table Structure = entitystructure,
-    key EntityId, table HpComponent = entityhp,
-    key EntityId, table EnergyRegenComponent = entityenergyregen,
-    key EntityId, table EnergyComponent = entityenergy,
-    key EntityId, table ResourceComponent = entityresource,
-    key EntityId, table DecayComponent = entitydecay,
-    key EntityId, table EntityScript = entityscript,
-    key EntityId, table SpawnComponent = entityspawn,
-    key EntityId, table SpawnQueueComponent = entityspawnqueue,
-    key EntityId, table OwnedEntity = entityowner,
-    key EntityId, table PathCacheComponent = entitypathcache,
+    key EntityId, table Bot = entity_bot,
+    key EntityId, table PositionComponent = entity_pos,
+    key EntityId, table SpawnBotComponent = entity_spawnbot,
+    key EntityId, table CarryComponent = entity_carry,
+    key EntityId, table Structure = entity_structure,
+    key EntityId, table HpComponent = entity_hp,
+    key EntityId, table EnergyRegenComponent = entity_energyregen,
+    key EntityId, table EnergyComponent = entity_energy,
+    key EntityId, table ResourceComponent = entity_resource,
+    key EntityId, table DecayComponent = entity_decay,
+    key EntityId, table EntityScript = entity_script,
+    key EntityId, table SpawnComponent = entity_spawn,
+    key EntityId, table SpawnQueueComponent = entity_spawnqueue,
+    key EntityId, table OwnedEntity = entity_owner,
+    key EntityId, table PathCacheComponent = entity_pathcache,
 
     key EntityTime, table LogEntry = timelog,
 
-    key UserId, table UserComponent = useruser,
+    key UserId, table UserComponent = user,
 
-    key ScriptId, table ScriptComponent = scriptscript,
+    key ScriptId, table ScriptComponent = scripts,
 
-    key Room, table RoomConnections = roomconnections,
+    key Room, table RoomConnections = room_connections,
     key Room, table RoomComponent = rooms,
 
     // don't forget to implement these in `reset_world_storage`
-    key WorldPosition, table TerrainComponent = pointterrain,
-    key WorldPosition, table EntityComponent = pointentity,
+    key WorldPosition, table TerrainComponent = point_terrain,
+    key WorldPosition, table EntityComponent = point_entity,
 
     // intents
     key EmptyKey, table Intents<MoveIntent> = move_intents,
@@ -60,7 +60,7 @@ storage!(
     key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
 
     // configurations
-    key EmptyKey, table RoomProperties = roomproperties,
+    key EmptyKey, table RoomProperties = room_properties,
 );
 
 #[derive(Debug, Serialize)]

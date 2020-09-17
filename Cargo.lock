@@ -93,11 +93,10 @@ dependencies = [
 
 [[package]]
 name = "async-global-executor"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff49269bc71b7314ea1d2dd6f912ce571ceb4cba13c82e7d529bd4d5484a4237"
+checksum = "c07d34f7bea9658346df5745d5c7b121c475aab7f7ec7c3dc5905d33ddefc899"
 dependencies = [
- "async-channel",
  "async-executor",
  "async-io",
  "futures-lite",
@@ -362,7 +361,7 @@ dependencies = [
 [[package]]
 name = "cao-messages"
 version = "0.1.0"
-source = "git+https://github.com/caolo-game/cao-messages.git#f3227ff983b6172596133c75c2911002366d4950"
+source = "git+https://github.com/caolo-game/cao-messages.git#cc70ac469f1c867e33411d77d30dfa030d797ca8"
 dependencies = [
  "serde",
  "serde_json",
@@ -896,9 +895,9 @@ checksum = "de27142b013a8e869c14957e6d2edeef89e97c289e69d042ee3a49acd8b51789"
 
 [[package]]
 name = "futures-lite"
-version = "1.6.0"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69fcd36beea698b82db5b66b6a6a3053632be70d8455123150b4713e85349618"
+checksum = "5b77e08e656f472d8ea84c472fa8b0a7a917883048e1cf2d4e34a323cd0aaf63"
 dependencies = [
  "fastrand",
  "futures-core",
