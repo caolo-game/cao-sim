@@ -4,6 +4,7 @@ use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 #[derive(Debug, Serialize, Clone, Copy, Deserialize)]
+#[serde(rename_all="camelCase")]
 #[repr(u8)]
 pub enum Resource {
     Empty = 0,
@@ -36,6 +37,7 @@ impl TryFrom<Scalar> for Resource {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all="camelCase")]
 pub struct ResourceComponent(pub Resource);
 impl<Id: TableId> Component<Id> for ResourceComponent {
     type Table = BTreeTable<Id, Self>;
