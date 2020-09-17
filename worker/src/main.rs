@@ -289,9 +289,9 @@ async fn main() -> Result<(), anyhow::Error> {
 
         // use the sleep time to update inputs
         // this allows faster responses to clients as well as potentially spending less time on
-        // inputs because handling them is built into the sleep cycle  
-        let start = Instant::now();
+        // inputs because handling them is built into the sleep cycle
         while sleep_duration > Duration::from_millis(0) {
+            let start = Instant::now();
             input::handle_messages(logger.clone(), &mut storage, &redis_client);
             sleep_duration = sleep_duration
                 .checked_sub(Instant::now() - start)
