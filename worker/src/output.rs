@@ -15,11 +15,15 @@ type BotInput<'a> = (
     View<'a, EntityId, Bot>,
     View<'a, EntityId, PositionComponent>,
     View<'a, EntityId, OwnedEntity>,
-    View<'a, EntityId, CarryComponent>,
-    View<'a, EntityId, HpComponent>,
-    View<'a, EntityId, DecayComponent>,
-    View<'a, EntityId, EnergyComponent>,
-    View<'a, EntityId, EnergyRegenComponent>,
+    // body
+    (
+        View<'a, EntityId, CarryComponent>,
+        View<'a, EntityId, HpComponent>,
+        View<'a, EntityId, DecayComponent>,
+        View<'a, EntityId, EnergyComponent>,
+        View<'a, EntityId, EnergyRegenComponent>,
+        View<'a, EntityId, EntityScript>,
+    ),
     View<'a, EmptyKey, RoomProperties>,
 );
 
@@ -28,11 +32,7 @@ pub fn build_bots<'a>(
         bots,
         positions,
         owned_entities,
-        carry_table,
-        hp_table,
-        decay_table,
-        energy_table,
-        energy_regen_table,
+        (carry_table, hp_table, decay_table, energy_table, energy_regen_table, script_table),
         room_props,
     ): BotInput<'a>,
 ) -> impl Iterator<Item = BotMsg> + 'a {
@@ -55,6 +55,7 @@ pub fn build_bots<'a>(
             , "decay": decay_table.get_by_id(&id)
             , "energy": energy_table.get_by_id(&id)
             , "energyRegen": energy_regen_table.get_by_id(&id)
+            , "script": script_table.get_by_id(&id)
         }),
     })
 }
