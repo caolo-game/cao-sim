@@ -104,8 +104,8 @@ fn spawn_bot(
     decay.insert_or_update(
         entity_id,
         components::DecayComponent {
-            eta: 20,
-            t: 100,
+            interval: 20,
+            time_remaining: 20,
             hp_amount: 100,
         },
     );

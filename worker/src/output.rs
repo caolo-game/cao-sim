@@ -15,12 +15,29 @@ type BotInput<'a> = (
     View<'a, EntityId, Bot>,
     View<'a, EntityId, PositionComponent>,
     View<'a, EntityId, OwnedEntity>,
+    View<'a, EntityId, CarryComponent>,
+    View<'a, EntityId, HpComponent>,
+    View<'a, EntityId, DecayComponent>,
+    View<'a, EntityId, EnergyComponent>,
+    View<'a, EntityId, EnergyRegenComponent>,
     View<'a, EmptyKey, RoomProperties>,
 );
 
 pub fn build_bots<'a>(
-    (bots, positions, owned_entities, room_props): BotInput<'a>,
+    (
+        bots,
+        positions,
+        owned_entities,
+        carry_table,
+        hp_table,
+        decay_table,
+        energy_table,
+        energy_regen_table,
+        room_props,
+    ): BotInput<'a>,
 ) -> impl Iterator<Item = BotMsg> + 'a {
+    use serde_json::json;
+
     let bots = bots.reborrow().iter();
     let positions = positions.reborrow().iter();
     let position_tranform = init_world_pos(room_props);
@@ -31,6 +48,14 @@ pub fn build_bots<'a>(
         owner: owned_entities
             .get_by_id(&id)
             .map(|OwnedEntity { owner_id }| owner_id.0),
+
+        body: json! ({
+            "hp": hp_table.get_by_id(&id)
+            , "carry": carry_table.get_by_id(&id)
+            , "decay": decay_table.get_by_id(&id)
+            , "energy": energy_table.get_by_id(&id)
+            , "energyRegen": energy_regen_table.get_by_id(&id)
+        }),
     })
 }
 

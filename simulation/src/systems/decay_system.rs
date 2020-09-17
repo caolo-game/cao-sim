@@ -24,18 +24,18 @@ pub fn update(
             (
                 DecayComponent {
                     hp_amount,
-                    eta,
-                    ref mut t,
+                    interval,
+                    ref mut time_remaining,
                 },
                 HpComponent { ref mut hp, .. },
             ),
-        )| match t {
+        )| match time_remaining {
             0 => {
                 *hp -= *hp.min(hp_amount);
-                *t = *eta;
+                *time_remaining = *interval;
             }
             _ => {
-                *t -= 1;
+                *time_remaining -= 1;
             }
         },
     );

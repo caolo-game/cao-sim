@@ -104,8 +104,8 @@ impl<Id: TableId> Component<Id> for EnergyRegenComponent {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub struct DecayComponent {
     pub hp_amount: u16,
-    pub eta: u8,
-    pub t: u8,
+    pub interval: u8,
+    pub time_remaining: u8,
 }
 impl<Id: TableId> Component<Id> for DecayComponent {
     type Table = BTreeTable<Id, Self>;
