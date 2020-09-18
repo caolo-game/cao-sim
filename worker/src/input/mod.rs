@@ -46,6 +46,12 @@ pub fn handle_messages(logger: Logger, storage: &mut World, client: &redis::Clie
                     format!("{:?}", e)
                 })
             }
+            InputPayload::SetDefaultScript(update) => {
+                script_update::set_default_script(storage, update).map_err(|e| {
+                    warn!(logger, "Setting dewfault script failed {:?}", e);
+                    format!("{:?}", e)
+                })
+            }
         };
 
         let res = match res {

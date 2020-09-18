@@ -40,6 +40,7 @@ storage!(
     key EntityTime, table LogEntry = timelog,
 
     key UserId, table UserComponent = user,
+    key UserId, table EntityScript = user_default_script,
 
     key ScriptId, table ScriptComponent = scripts,
 

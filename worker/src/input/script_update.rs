@@ -1,4 +1,6 @@
-use cao_messages::command::{UpdateEntityScriptCommand, UpdateScriptCommand};
+use cao_messages::command::{
+    SetDefaultScriptCommand, UpdateEntityScriptCommand, UpdateScriptCommand,
+};
 use caolo_sim::prelude::*;
 use caolo_sim::{self, tables::JoinIterator};
 use slog::{debug, Logger};
@@ -91,5 +93,16 @@ pub fn update_entity_script(storage: &mut World, msg: UpdateEntityScriptCommand)
     let mut scripts_table: UnsafeView<EntityId, EntityScript> = storage.unsafe_view();
     let script_id = ScriptId(msg.script_id);
     scripts_table.insert_or_update(entity_id, EntityScript { script_id });
+    Ok(())
+}
+
+pub fn set_default_script(storage: &mut World, msg: SetDefaultScriptCommand) -> UpdateResult {
+    let user_id = UserId(msg.user_id);
+    let script_id = ScriptId(msg.user_id);
+    let script = EntityScript { script_id };
+
+    let mut user_default_script: UnsafeView<UserId, EntityScript> = storage.unsafe_view();
+    user_default_script.insert_or_update(user_id, script);
+
     Ok(())
 }

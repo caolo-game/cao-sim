@@ -1,43 +1,34 @@
 //!
 //!
-use crate::components;
-use crate::indices::EntityId;
+use crate::components::*;
+use crate::indices::{EntityId, UserId};
 use crate::join;
 use crate::profile;
-use crate::storage::views::{UnsafeView, WorldLogger};
+use crate::storage::views::{UnsafeView, View, WorldLogger};
 use crate::tables::{JoinIterator, Table};
 use slog::{debug, Logger};
 
 type SpawnSystemMut = (
-    UnsafeView<EntityId, components::SpawnComponent>,
-    UnsafeView<EntityId, components::SpawnQueueComponent>,
-    UnsafeView<EntityId, components::EnergyComponent>,
-    UnsafeView<EntityId, components::SpawnBotComponent>,
-    UnsafeView<EntityId, components::Bot>,
-    UnsafeView<EntityId, components::HpComponent>,
-    UnsafeView<EntityId, components::DecayComponent>,
-    UnsafeView<EntityId, components::CarryComponent>,
-    UnsafeView<EntityId, components::PositionComponent>,
-    UnsafeView<EntityId, components::OwnedEntity>,
+    UnsafeView<EntityId, SpawnComponent>,
+    UnsafeView<EntityId, SpawnQueueComponent>,
+    UnsafeView<EntityId, EnergyComponent>,
+    (
+        UnsafeView<EntityId, SpawnBotComponent>,
+        UnsafeView<EntityId, Bot>,
+        UnsafeView<EntityId, HpComponent>,
+        UnsafeView<EntityId, DecayComponent>,
+        UnsafeView<EntityId, CarryComponent>,
+        UnsafeView<EntityId, PositionComponent>,
+        UnsafeView<EntityId, OwnedEntity>,
+        UnsafeView<EntityId, EntityScript>,
+    ),
 );
 
 pub fn update(
-    (
-        mut spawns,
-        mut spawn_queue,
-        mut energy,
-        spawn_bots,
-        bots,
-        hps,
-        decay,
-        carry,
-        positions,
-        owned,
-    ): SpawnSystemMut,
-    (WorldLogger(logger),): (WorldLogger,),
+    (mut spawns, mut spawn_queue, mut energy, spawn_views): SpawnSystemMut,
+    (WorldLogger(logger), user_default_scripts): (WorldLogger, View<UserId, EntityScript>),
 ) {
     profile!("SpawnSystem update");
-    let spawn_views = (spawn_bots, bots, hps, decay, carry, positions, owned);
 
     spawns
         .iter_mut()
@@ -52,7 +43,15 @@ pub fn update(
                 None
             }
         })
-        .for_each(|(spawn_id, entity_id)| spawn_bot(&logger, spawn_id, entity_id, spawn_views));
+        .for_each(|(spawn_id, entity_id)| {
+            spawn_bot(
+                &logger,
+                spawn_id,
+                entity_id,
+                spawn_views,
+                user_default_scripts,
+            )
+        });
 
     let ss = spawns.iter_mut().filter(|(_, c)| c.spawning.is_none());
     let en = energy.iter_mut().filter(|(_, e)| e.energy == 500); // TODO: config amount
@@ -68,13 +67,14 @@ pub fn update(
 }
 
 type SpawnBotMut = (
-    UnsafeView<EntityId, components::SpawnBotComponent>,
-    UnsafeView<EntityId, components::Bot>,
-    UnsafeView<EntityId, components::HpComponent>,
-    UnsafeView<EntityId, components::DecayComponent>,
-    UnsafeView<EntityId, components::CarryComponent>,
-    UnsafeView<EntityId, components::PositionComponent>,
-    UnsafeView<EntityId, components::OwnedEntity>,
+    UnsafeView<EntityId, SpawnBotComponent>,
+    UnsafeView<EntityId, Bot>,
+    UnsafeView<EntityId, HpComponent>,
+    UnsafeView<EntityId, DecayComponent>,
+    UnsafeView<EntityId, CarryComponent>,
+    UnsafeView<EntityId, PositionComponent>,
+    UnsafeView<EntityId, OwnedEntity>,
+    UnsafeView<EntityId, EntityScript>,
 );
 
 /// Spawns a bot from a spawn.
@@ -83,7 +83,17 @@ fn spawn_bot(
     logger: &Logger,
     spawn_id: EntityId,
     entity_id: EntityId,
-    (mut spawn_bots, mut bots, mut hps, mut decay, mut carry, mut positions, mut owned): SpawnBotMut,
+    (
+        mut spawn_bots,
+        mut bots,
+        mut hps,
+        mut decay,
+        mut carry,
+        mut positions,
+        mut owned,
+        mut script_table,
+    ): SpawnBotMut,
+    user_default_scripts: View<UserId, EntityScript>,
 ) {
     debug!(
         logger,
@@ -96,14 +106,14 @@ fn spawn_bot(
     bots.insert_or_update(entity_id, bot.bot);
     hps.insert_or_update(
         entity_id,
-        components::HpComponent {
+        HpComponent {
             hp: 100,
             hp_max: 100,
         },
     );
     decay.insert_or_update(
         entity_id,
-        components::DecayComponent {
+        DecayComponent {
             interval: 20,
             time_remaining: 20,
             hp_amount: 100,
@@ -111,7 +121,7 @@ fn spawn_bot(
     );
     carry.insert_or_update(
         entity_id,
-        components::CarryComponent {
+        CarryComponent {
             carry: 0,
             carry_max: 50,
         },
@@ -125,6 +135,10 @@ fn spawn_bot(
 
     let owner = owned.get_by_id(&spawn_id).cloned();
     if let Some(owner) = owner {
+        if let Some(script) = user_default_scripts.get_by_id(&owner.owner_id) {
+            script_table.insert_or_update(entity_id, script.clone());
+        }
+
         owned.insert_or_update(entity_id, owner);
     }
 
