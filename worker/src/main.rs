@@ -281,7 +281,11 @@ async fn main() -> Result<(), anyhow::Error> {
 
         tick(logger.clone(), &mut storage);
 
-        send_world(logger.clone(), &storage, &redis_client).expect("Sending world");
+        send_world(logger.clone(), &storage, &redis_client)
+            .map_err(|err| {
+                error!(logger, "Failed to send world {:?}", err);
+            })
+            .unwrap_or(());
 
         let mut sleep_duration = tick_freq
             .checked_sub(Instant::now() - start)
@@ -292,7 +296,11 @@ async fn main() -> Result<(), anyhow::Error> {
         // inputs because handling them is built into the sleep cycle
         while sleep_duration > Duration::from_millis(0) {
             let start = Instant::now();
-            input::handle_messages(logger.clone(), &mut storage, &redis_client);
+            input::handle_messages(logger.clone(), &mut storage, &redis_client)
+                .map_err(|err| {
+                    error!(logger, "Failed to handle inputs {:?}", err);
+                })
+                .unwrap_or(());
             sleep_duration = sleep_duration
                 .checked_sub(Instant::now() - start)
                 .unwrap_or_else(|| Duration::from_millis(0));
