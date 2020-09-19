@@ -5,12 +5,13 @@ use cao_messages::{command::CommandResult, InputMsg, InputPayload};
 use caolo_sim::prelude::*;
 use redis::Commands;
 use slog::{debug, error, warn, Logger};
-use anyhow::Context;
 
-pub fn handle_messages(logger: Logger, storage: &mut World, client: &redis::Client) -> anyhow::Result<()>{
+pub fn handle_messages(
+    logger: Logger,
+    storage: &mut World,
+    connection: &mut redis::Connection,
+) -> anyhow::Result<()> {
     debug!(logger, "handling incoming messages");
-    let mut connection = client.get_connection()
-        .with_context(|| "Get redis connection failed")?;
 
     // log errors, but otherwise ignore them, so the loop may continue, retrying later
     while let Ok(Some(message)) = connection

@@ -71,7 +71,11 @@ fn send_config(
     Ok(())
 }
 
-fn send_world(logger: Logger, storage: &World, client: &redis::Client) -> anyhow::Result<()> {
+fn send_world(
+    logger: Logger,
+    storage: &World,
+    connection: &mut redis::Connection,
+) -> anyhow::Result<()> {
     debug!(logger, "Sending world state");
 
     let bots = output::build_bots(FromWorld::new(storage));
@@ -109,12 +113,11 @@ fn send_world(logger: Logger, storage: &World, client: &redis::Client) -> anyhow
 
     debug!(logger, "sending {} bytes", payload.len());
 
-    let mut con = client.get_connection()?;
     redis::pipe()
         .cmd("SET")
         .arg("WORLD_STATE")
         .arg(payload)
-        .query(&mut con)
+        .query(connection)
         .with_context(|| "Failed to send WORLD_STATE")?;
 
     debug!(logger, "Sending world state done");
@@ -276,12 +279,15 @@ async fn main() -> Result<(), anyhow::Error> {
         "Caolo Worker initialization complete! Starting the game loop",
         sentry::Level::Info,
     );
+    let mut redis_connection = redis_client
+        .get_connection()
+        .with_context(|| "Get redis connection failed")?;
     loop {
         let start = Instant::now();
 
         tick(logger.clone(), &mut storage);
 
-        send_world(logger.clone(), &storage, &redis_client)
+        send_world(logger.clone(), &storage, &mut redis_connection)
             .map_err(|err| {
                 error!(logger, "Failed to send world {:?}", err);
             })
@@ -296,7 +302,7 @@ async fn main() -> Result<(), anyhow::Error> {
         // inputs because handling them is built into the sleep cycle
         while sleep_duration > Duration::from_millis(0) {
             let start = Instant::now();
-            input::handle_messages(logger.clone(), &mut storage, &redis_client)
+            input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
                 .map_err(|err| {
                     error!(logger, "Failed to handle inputs {:?}", err);
                 })
