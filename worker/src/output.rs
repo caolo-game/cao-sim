@@ -61,7 +61,8 @@ pub fn build_bots<'a>(
                     "payload": entry.payload,
                     "time": entry.time
                 })
-            });
+            })
+            .unwrap_or_else(|_| serde_json::Value::Null);
         BotMsg {
             id: id.0,
             position: position_tranform(pos.0),
