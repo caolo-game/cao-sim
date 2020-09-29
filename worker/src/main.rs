@@ -292,7 +292,6 @@ async fn main() -> Result<(), anyhow::Error> {
                 error!(logger, "Failed to send world {:?}", err);
             })
             .unwrap_or(());
-
         let mut sleep_duration = tick_freq
             .checked_sub(Instant::now() - start)
             .unwrap_or_else(|| Duration::from_millis(0));

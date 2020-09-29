@@ -5,6 +5,7 @@ use cao_lang::prelude::*;
 use rayon::prelude::*;
 use slog::{debug, info, o, trace, warn};
 use std::fmt::{self, Display, Formatter};
+use std::mem::replace;
 use thiserror::Error;
 
 pub type ExecutionResult = Result<BotIntents, ExecutionError>;
@@ -105,6 +106,7 @@ pub fn execute_single_script(
         }
     })?;
 
+    let history = replace(&mut vm.history, Vec::default());
     let aux = vm.unwrap_aux();
     trace!(
         logger,
@@ -112,7 +114,14 @@ pub fn execute_single_script(
         aux.intents
     );
 
-    Ok(aux.intents)
+    let mut intents = aux.intents;
+    intents.script_history_intent = Some(ScriptHistoryIntent {
+        entity: entity_id,
+        payload: history,
+        time: storage.time,
+    });
+
+    Ok(intents)
 }
 
 #[derive(Debug)]

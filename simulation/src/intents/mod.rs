@@ -5,6 +5,7 @@ mod log_intent;
 mod mine_intent;
 mod move_intent;
 mod pathcache_intent;
+mod script_history_intent;
 mod spawn_intent;
 
 pub use self::dropoff_intent::*;
@@ -12,6 +13,7 @@ pub use self::log_intent::*;
 pub use self::mine_intent::*;
 pub use self::move_intent::*;
 pub use self::pathcache_intent::*;
+pub use self::script_history_intent::*;
 pub use self::spawn_intent::*;
 
 use crate::indices::{EmptyKey, EntityId};
@@ -105,4 +107,5 @@ intents!(
     log_intent: LogIntent,
     update_path_cache_intent: CachePathIntent,
     mut_path_cache_intent: MutPathCacheIntent,
+    script_history_intent: ScriptHistoryIntent,
 );

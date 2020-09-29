@@ -33,7 +33,7 @@ pub fn update_program(
             .labels
             .into_iter()
             .map(|(id, label)| {
-                let label = cao_lang::Label::new(label.block, label.myself);
+                let label = cao_lang::Label::new(label.block);
                 (id, label)
             })
             .collect(),

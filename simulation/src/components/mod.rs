@@ -14,7 +14,7 @@ use std::collections::VecDeque;
 
 /// For tables that store entity ids as values
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, Default, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct EntityComponent(pub EntityId);
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for EntityComponent {
     type Table = MortonTable<Id, Self>;
@@ -24,7 +24,7 @@ impl Component<WorldPosition> for EntityComponent {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct Bot;
 
 impl Component<EntityId> for Bot {
@@ -32,7 +32,7 @@ impl Component<EntityId> for Bot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct Structure {}
 
 impl<Id: TableId> Component<Id> for Structure {
@@ -40,7 +40,7 @@ impl<Id: TableId> Component<Id> for Structure {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct OwnedEntity {
     pub owner_id: UserId,
 }
@@ -50,14 +50,14 @@ impl Component<EntityId> for OwnedEntity {
 }
 
 #[derive(Default, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct PositionComponent(pub WorldPosition);
 impl Component<EntityId> for PositionComponent {
     type Table = VecTable<EntityId, Self>;
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct EnergyComponent {
     pub energy: u16,
     pub energy_max: u16,
@@ -67,7 +67,7 @@ impl<Id: TableId> Component<Id> for EnergyComponent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct SpawnComponent {
     /// Time to spawn the current entity
     pub time_to_spawn: i16,
@@ -80,7 +80,7 @@ impl<Id: TableId> Component<Id> for SpawnComponent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct SpawnQueueComponent {
     /// Entities waiting for spawn
     pub queue: VecDeque<EntityId>,
@@ -91,7 +91,7 @@ impl<Id: TableId> Component<Id> for SpawnQueueComponent {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct HpComponent {
     pub hp: u16,
     pub hp_max: u16,
@@ -101,7 +101,7 @@ impl Component<EntityId> for HpComponent {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct EnergyRegenComponent {
     pub amount: u16,
 }
@@ -112,7 +112,7 @@ impl<Id: TableId> Component<Id> for EnergyRegenComponent {
 /// Represent time to decay of bots
 /// On decay the bot will loose hp
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct DecayComponent {
     pub hp_amount: u16,
     pub interval: u8,
@@ -123,7 +123,7 @@ impl<Id: TableId> Component<Id> for DecayComponent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct SpawnBotComponent {
     pub bot: Bot,
 }
@@ -133,7 +133,7 @@ impl<Id: TableId> Component<Id> for SpawnBotComponent {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct CarryComponent {
     pub carry: u16,
     pub carry_max: u16,
@@ -144,7 +144,7 @@ impl<Id: TableId> Component<Id> for CarryComponent {
 
 /// Entity - Script join table
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct EntityScript {
     pub script_id: ScriptId,
 }
@@ -154,7 +154,7 @@ impl<Id: TableId> Component<Id> for EntityScript {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct LogEntry {
     pub payload: Vec<String>,
 }
@@ -164,14 +164,14 @@ impl<Id: TableId> Component<Id> for LogEntry {
 
 /// Entities with Scripts
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct ScriptComponent(pub cao_lang::CompiledProgram);
 impl<Id: TableId> Component<Id> for ScriptComponent {
     type Table = BTreeTable<Id, Self>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct UserComponent;
 impl<Id: TableId> Component<Id> for UserComponent {
     type Table = BTreeTable<Id, Self>;
@@ -179,7 +179,7 @@ impl<Id: TableId> Component<Id> for UserComponent {
 
 pub const PATH_CACHE_LEN: usize = 64;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct PathCacheComponent {
     pub target: WorldPosition,
     pub path: ArrayVec<[RoomPosition; PATH_CACHE_LEN]>,
