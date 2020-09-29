@@ -1,6 +1,7 @@
 pub mod script_execution;
 
 mod death_system;
+mod script_history_system;
 mod decay_system;
 mod dropoff_intent_system;
 mod energy_system;
@@ -33,6 +34,7 @@ fn execute_intents(storage: &mut World) {
     execute_update(spawn_system::update_spawn_intents, storage);
     execute_update(log_intent_system::update, storage);
     execute_update(path_cache_intent_system::update, storage);
+    execute_update(script_history_system::update, storage);
 }
 
 /// Execute systems that run regardless of player actions

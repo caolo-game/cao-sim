@@ -1,16 +1,32 @@
+pub mod game_config;
+
 mod resources;
 mod rooms;
 pub use resources::*;
 pub use rooms::*;
 
-use crate::indices::{EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
+use crate::indices::{EmptyKey, EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
 use crate::tables::{
-    btree::BTreeTable, morton::MortonTable, vector::VecTable, Component, RoomMortonTable,
-    SpatialKey2d, TableId,
+    btree::BTreeTable, morton::MortonTable, unique::UniqueTable, vector::DenseVecTable, Component,
+    RoomMortonTable, SpatialKey2d, TableId,
 };
 use arrayvec::ArrayVec;
-use serde_derive::{Deserialize, Serialize};
+use cao_lang::vm::HistoryEntry;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ScriptHistoryEntry {
+    pub entity: EntityId,
+    pub payload: Vec<HistoryEntry>,
+    pub time: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ScriptHistory(pub Vec<ScriptHistoryEntry>);
+impl Component<EmptyKey> for ScriptHistory {
+    type Table = UniqueTable<Self>;
+}
 
 /// For tables that store entity ids as values
 #[derive(Debug, Clone, Serialize, Deserialize, Copy, Default, Ord, PartialOrd, Eq, PartialEq)]
@@ -28,7 +44,7 @@ impl Component<WorldPosition> for EntityComponent {
 pub struct Bot;
 
 impl Component<EntityId> for Bot {
-    type Table = VecTable<EntityId, Self>;
+    type Table = DenseVecTable<EntityId, Self>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -46,14 +62,14 @@ pub struct OwnedEntity {
 }
 
 impl Component<EntityId> for OwnedEntity {
-    type Table = VecTable<EntityId, Self>;
+    type Table = DenseVecTable<EntityId, Self>;
 }
 
 #[derive(Default, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PositionComponent(pub WorldPosition);
 impl Component<EntityId> for PositionComponent {
-    type Table = VecTable<EntityId, Self>;
+    type Table = DenseVecTable<EntityId, Self>;
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
@@ -97,7 +113,7 @@ pub struct HpComponent {
     pub hp_max: u16,
 }
 impl Component<EntityId> for HpComponent {
-    type Table = VecTable<EntityId, Self>;
+    type Table = DenseVecTable<EntityId, Self>;
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]

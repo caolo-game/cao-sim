@@ -290,7 +290,7 @@ macro_rules! storage {
                 #[cao_storage($id, $name, $row)]
             )*
             pub struct Storage {
-                $( $name: <$row as crate::tables::Component<$id>>::Table ),+ ,
+                $( pub(crate) $name: <$row as crate::tables::Component<$id>>::Table ),+ ,
             }
 
             storage!(@implement_tables $($name, $id,  $row )*);

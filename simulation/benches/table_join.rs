@@ -1,5 +1,5 @@
 use caolo_sim::indices::EntityId;
-use caolo_sim::tables::{btree::BTreeTable, vector::VecTable, JoinIterator};
+use caolo_sim::tables::{btree::BTreeTable, vector::DenseVecTable, JoinIterator};
 use criterion::{black_box, criterion_group, Criterion};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use serde_derive::{Deserialize, Serialize};
@@ -18,9 +18,9 @@ struct LargeComponent {
     _f: [u8; 10],
 }
 
-fn random_vec_table(len: usize, domain: u32) -> VecTable<EntityId, LargeComponent> {
+fn random_vec_table(len: usize, domain: u32) -> DenseVecTable<EntityId, LargeComponent> {
     let mut rng = get_rand();
-    let mut table = VecTable::with_capacity(domain as usize);
+    let mut table = DenseVecTable::with_capacity(domain as usize);
     for _ in 0..len {
         let mut res = false;
         while !res {

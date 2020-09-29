@@ -1,6 +1,7 @@
 pub use self::store_impl::*;
 
 use super::storage;
+use crate::components::game_config::GameConfig;
 use crate::components::*;
 use crate::indices::*;
 use crate::intents::*;
@@ -59,10 +60,14 @@ storage!(
     key EmptyKey, table Intents<LogIntent> = log_intents,
     key EmptyKey, table Intents<CachePathIntent> = update_path_cache_intents,
     key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
-    key EmptyKey, table Intents<ScriptHistoryIntent> = script_history,
+    key EmptyKey, table Intents<ScriptHistoryEntry> = script_history_intents,
+
+    // globals
+    key EmptyKey, table ScriptHistory = script_history,
 
     // configurations
     key EmptyKey, table RoomProperties = room_properties,
+    key EmptyKey, table GameConfig = game_config,
 );
 
 #[derive(Debug, Serialize)]
@@ -128,8 +133,12 @@ impl World {
                 .fuse();
             slog::Logger::root(drain, o!())
         });
-        let store = Storage::default();
+        let mut store = Storage::default();
+        store.script_history.value = Some(Default::default());
+        store.game_config.value = Some(Default::default());
+
         let deferred_deletes = DeferredDeletes::default();
+
         Box::pin(Self {
             time: 0,
             store,

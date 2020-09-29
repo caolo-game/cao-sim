@@ -5,7 +5,6 @@
 //!
 //! ```
 //! use caolo_sim::prelude::*;
-//! use caolo_sim::tables::{vector::VecTable, btree::BTreeTable, morton::MortonTable};
 //!
 //! fn update_minerals(
 //!     (mut entity_positions, mut energy): (

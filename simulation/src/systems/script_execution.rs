@@ -1,9 +1,12 @@
-use crate::components::{EntityScript, OwnedEntity, ScriptComponent};
+use crate::components::{
+    game_config::GameConfig, EntityScript, OwnedEntity, ScriptComponent, ScriptHistoryEntry,
+};
 use crate::indices::{EntityId, ScriptId, UserId};
 use crate::{intents, intents::*, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
 use slog::{debug, info, o, trace, warn};
+use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter};
 use std::mem::replace;
 use thiserror::Error;
@@ -83,6 +86,8 @@ pub fn execute_single_script(
             ExecutionError::ScriptNotFound(script_id)
         })?;
 
+    let conf = storage.resource::<GameConfig>();
+
     let logger = logger.new(o!( "entity_id" => entity_id.0 ));
     let intents = BotIntents {
         entity_id,
@@ -90,6 +95,9 @@ pub fn execute_single_script(
     };
     let data = ScriptExecutionData::new(logger.clone(), storage, intents, entity_id, user_id);
     let mut vm = VM::new(logger.clone(), data);
+    vm.history.reserve(conf.execution_limit as usize);
+    vm.max_iter =
+        i32::try_from(conf.execution_limit).expect("Expected execution_limit to fit into 31 bits");
     crate::scripting_api::make_import().execute_imports(&mut vm);
 
     trace!(logger, "Starting script execution");
@@ -115,7 +123,7 @@ pub fn execute_single_script(
     );
 
     let mut intents = aux.intents;
-    intents.script_history_intent = Some(ScriptHistoryIntent {
+    intents.script_history_intent = Some(ScriptHistoryEntry {
         entity: entity_id,
         payload: history,
         time: storage.time,

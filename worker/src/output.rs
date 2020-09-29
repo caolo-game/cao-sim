@@ -23,6 +23,7 @@ type BotInput<'a> = (
         View<'a, EntityId, EnergyComponent>,
         View<'a, EntityId, EnergyRegenComponent>,
         View<'a, EntityId, EntityScript>,
+        UnwrapView<'a, ScriptHistory>,
     ),
     View<'a, EmptyKey, RoomProperties>,
 );
@@ -32,7 +33,15 @@ pub fn build_bots<'a>(
         bots,
         positions,
         owned_entities,
-        (carry_table, hp_table, decay_table, energy_table, energy_regen_table, script_table),
+        (
+            carry_table,
+            hp_table,
+            decay_table,
+            energy_table,
+            energy_regen_table,
+            script_table,
+            script_history,
+        ),
         room_props,
     ): BotInput<'a>,
 ) -> impl Iterator<Item = BotMsg> + 'a {
@@ -42,20 +51,33 @@ pub fn build_bots<'a>(
     let positions = positions.reborrow().iter();
     let position_tranform = init_world_pos(room_props);
 
-    join!([bots, positions]).map(move |(id, (_bot, pos))| BotMsg {
-        id: id.0,
-        position: position_tranform(pos.0),
-        owner: owned_entities
-            .get_by_id(&id)
-            .map(|OwnedEntity { owner_id }| owner_id.0),
-        body: json! ({
-            "hp": hp_table.get_by_id(&id)
-            , "carry": carry_table.get_by_id(&id)
-            , "decay": decay_table.get_by_id(&id)
-            , "energy": energy_table.get_by_id(&id)
-            , "energyRegen": energy_regen_table.get_by_id(&id)
-            , "script": script_table.get_by_id(&id)
-        }),
+    join!([bots, positions]).map(move |(id, (_bot, pos))| {
+        let history = script_history
+            .0
+            .binary_search_by_key(&id, |entry| entry.entity)
+            .map(|i| {
+                let entry = &script_history.0[i];
+                json!( {
+                    "payload": entry.payload,
+                    "time": entry.time
+                })
+            });
+        BotMsg {
+            id: id.0,
+            position: position_tranform(pos.0),
+            owner: owned_entities
+                .get_by_id(&id)
+                .map(|OwnedEntity { owner_id }| owner_id.0),
+            body: json! ({
+                "hp": hp_table.get_by_id(&id)
+                , "carry": carry_table.get_by_id(&id)
+                , "decay": decay_table.get_by_id(&id)
+                , "energy": energy_table.get_by_id(&id)
+                , "energyRegen": energy_regen_table.get_by_id(&id)
+                , "script": script_table.get_by_id(&id)
+                , "history":history,
+            }),
+        }
     })
 }
 

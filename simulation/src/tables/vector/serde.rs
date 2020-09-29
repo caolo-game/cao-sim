@@ -1,11 +1,11 @@
 use super::TableRow;
-use super::{SerialId, VecTable};
+use super::{SerialId, DenseVecTable};
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use std::fmt;
 use std::marker::PhantomData;
 
-impl<Id, Row> Serialize for VecTable<Id, Row>
+impl<Id, Row> Serialize for DenseVecTable<Id, Row>
 where
     Id: SerialId,
     Row: TableRow,
@@ -14,7 +14,7 @@ where
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("VecTable", 1)?;
+        let mut state = serializer.serialize_struct("DenseVecTable", 1)?;
 
         let mut data = Vec::with_capacity(self.ids.len());
         for i in 0..self.ids.len() {
@@ -46,7 +46,7 @@ where
     Id: SerialId + Send + Deserialize<'de>,
     Row: TableRow + Send + Deserialize<'de>,
 {
-    type Value = VecTable<Id, Row>;
+    type Value = DenseVecTable<Id, Row>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("'data' field containing a list of [usize, Id, Row] tuples")
@@ -67,13 +67,13 @@ where
         }
         let values = values.ok_or_else(|| de::Error::missing_field("data"))?;
         let len = values.len();
-        VecTable::from_sorted_slice(&values).map_err(|e| {
-            de::Error::invalid_length(len, &format!("Failed to build VecTable {:?}", e).as_str())
+        DenseVecTable::from_sorted_slice(&values).map_err(|e| {
+            de::Error::invalid_length(len, &format!("Failed to build DenseVecTable {:?}", e).as_str())
         })
     }
 }
 
-impl<'de, Id, Row> Deserialize<'de> for VecTable<Id, Row>
+impl<'de, Id, Row> Deserialize<'de> for DenseVecTable<Id, Row>
 where
     Id: SerialId + Send + Deserialize<'de>,
     Row: TableRow + Send + Deserialize<'de>,
@@ -84,7 +84,7 @@ where
     {
         const FIELDS: &[&str] = &["data"];
         deserializer.deserialize_struct(
-            "VecTable",
+            "DenseVecTable",
             FIELDS,
             VecTableVisitor::<Id, Row> {
                 _m: Default::default(),
@@ -113,11 +113,11 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        let table = VecTable::from_sorted_slice(points.as_slice()).unwrap();
+        let table = DenseVecTable::from_sorted_slice(points.as_slice()).unwrap();
 
         let s = serde_json::to_string(&table).unwrap();
         dbg!(&s);
-        let res: VecTable<EntityId, f32> = serde_json::from_str(s.as_str()).unwrap();
+        let res: DenseVecTable<EntityId, f32> = serde_json::from_str(s.as_str()).unwrap();
 
         table
             .iter()

@@ -12,7 +12,7 @@ use std::mem;
 use thiserror::Error;
 
 #[derive(Default, Debug)]
-pub struct VecTable<Id, Row>
+pub struct DenseVecTable<Id, Row>
 where
     Id: SerialId,
     Row: TableRow,
@@ -31,7 +31,7 @@ pub enum VecTableError<Id: std::fmt::Debug> {
     UnsortedValues,
 }
 
-impl<Id, Row> Drop for VecTable<Id, Row>
+impl<Id, Row> Drop for DenseVecTable<Id, Row>
 where
     Id: SerialId,
     Row: TableRow,
@@ -51,7 +51,7 @@ where
     }
 }
 
-impl<'a, Id, Row> VecTable<Id, Row>
+impl<'a, Id, Row> DenseVecTable<Id, Row>
 where
     // TODO: this `Sync` requirement is bullshit, get rid of it
     Id: SerialId + Send + Sync,
@@ -72,7 +72,7 @@ where
     }
 }
 
-impl<'a, Id, Row> VecTable<Id, Row>
+impl<'a, Id, Row> DenseVecTable<Id, Row>
 where
     Id: SerialId + Send + Sync,
     Row: TableRow + Send + Sync,
@@ -92,7 +92,7 @@ where
     }
 }
 
-impl<Id, Row> VecTable<Id, Row>
+impl<Id, Row> DenseVecTable<Id, Row>
 where
     Id: SerialId,
     Row: TableRow,
@@ -236,7 +236,7 @@ where
     }
 }
 
-impl<Id, Row> Table for VecTable<Id, Row>
+impl<Id, Row> Table for DenseVecTable<Id, Row>
 where
     Id: SerialId,
     Row: TableRow,
@@ -257,6 +257,6 @@ where
     }
 
     fn get_by_id(&self, id: &Id) -> Option<&Row> {
-        VecTable::get_by_id(self, id)
+        DenseVecTable::get_by_id(self, id)
     }
 }

@@ -62,7 +62,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
             let kname = quote::format_ident!("{}", key.to_lowercase());
             let key = quote::format_ident!("{}", key);
             let tt = quote! {
-                #kname : Vec<#key>
+                pub(crate) #kname : Vec<#key>
             };
             (kname, key, tt)
         })
