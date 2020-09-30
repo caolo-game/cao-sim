@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::env;
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct GameConfig {
     pub world_radius: u32,
     pub room_radius: u32,

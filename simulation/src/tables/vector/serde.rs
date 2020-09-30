@@ -1,5 +1,5 @@
 use super::TableRow;
-use super::{SerialId, DenseVecTable};
+use super::{DenseVecTable, SerialId};
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use std::fmt;
@@ -68,7 +68,10 @@ where
         let values = values.ok_or_else(|| de::Error::missing_field("data"))?;
         let len = values.len();
         DenseVecTable::from_sorted_slice(&values).map_err(|e| {
-            de::Error::invalid_length(len, &format!("Failed to build DenseVecTable {:?}", e).as_str())
+            de::Error::invalid_length(
+                len,
+                &format!("Failed to build DenseVecTable {:?}", e).as_str(),
+            )
         })
     }
 }

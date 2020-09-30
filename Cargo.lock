@@ -374,7 +374,7 @@ dependencies = [
 [[package]]
 name = "cao-messages"
 version = "0.1.0"
-source = "git+https://github.com/caolo-game/cao-messages.git#28b3023127b1754f6bf9891a9ef140131e490296"
+source = "git+https://github.com/caolo-game/cao-messages.git#61248ca52b01ffa6b1e40c290dc01d4db2d2b4c2"
 dependencies = [
  "serde",
  "serde_json",
@@ -1688,9 +1688,9 @@ dependencies = [
 
 [[package]]
 name = "rayon"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfd016f0c045ad38b5251be2c9c0ab806917f82da4d36b2a327e5166adad9270"
+checksum = "dcf6960dc9a5b4ee8d3e4c5787b4a112a8818e0290a42ff664ad60692fdf2032"
 dependencies = [
  "autocfg",
  "crossbeam-deque",

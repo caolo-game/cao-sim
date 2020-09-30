@@ -1,9 +1,9 @@
-use crate::intents::{Intents};
-use std::ops::DerefMut;
+use crate::intents::Intents;
 use crate::prelude::*;
 use crate::profile;
 use crate::storage::views::UnwrapViewMut;
 use std::mem;
+use std::ops::DerefMut;
 
 type Mut = (
     UnwrapViewMut<Intents<ScriptHistoryEntry>>,
@@ -14,7 +14,10 @@ type Const<'a> = ();
 pub fn update((mut history_intents, mut history_table): Mut, _: Const) {
     profile!("ScriptHistorySystem update");
 
-    mem::swap(&mut history_intents.deref_mut().0, &mut history_table.deref_mut().0);
+    mem::swap(
+        &mut history_intents.deref_mut().0,
+        &mut history_table.deref_mut().0,
+    );
 
     history_table
         .0

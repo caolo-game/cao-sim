@@ -83,9 +83,11 @@ fn send_world(
     let structures = output::build_structures(FromWorld::new(storage));
 
     let logs: Vec<_> = output::build_logs(FromWorld::new(storage)).collect();
+    let history = output::build_script_history(FromWorld::new(storage));
     let mut world = WorldState {
         rooms: Default::default(),
         logs,
+        script_history: history,
     };
 
     macro_rules! insert {

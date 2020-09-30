@@ -14,9 +14,9 @@ pub use self::move_intent::*;
 pub use self::pathcache_intent::*;
 pub use self::spawn_intent::*;
 
+use crate::components::ScriptHistoryEntry;
 use crate::indices::{EmptyKey, EntityId};
 use crate::tables::{unique::UniqueTable, Component};
-use crate::components::ScriptHistoryEntry;
 use crate::World;
 use serde::{Deserialize, Serialize};
 

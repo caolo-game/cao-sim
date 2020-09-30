@@ -3,6 +3,7 @@ use cao_messages::LogEntry as LogMsg;
 use cao_messages::{AxialPoint, TerrainType, Tile as TileMsg, WorldPosition as WorldPositionMsg};
 use cao_messages::{Resource as ResourceMsg, ResourceType};
 use cao_messages::{
+    ScriptHistoryEntry as ScriptHistoryEntryMsg, ScriptHistoryEntryPayload,
     Structure as StructureMsg, StructurePayload as StructurePayloadMsg,
     StructureSpawn as StructureSpawnMsg,
 };
@@ -23,7 +24,6 @@ type BotInput<'a> = (
         View<'a, EntityId, EnergyComponent>,
         View<'a, EntityId, EnergyRegenComponent>,
         View<'a, EntityId, EntityScript>,
-        UnwrapView<'a, ScriptHistory>,
     ),
     View<'a, EmptyKey, RoomProperties>,
 );
@@ -33,15 +33,7 @@ pub fn build_bots<'a>(
         bots,
         positions,
         owned_entities,
-        (
-            carry_table,
-            hp_table,
-            decay_table,
-            energy_table,
-            energy_regen_table,
-            script_table,
-            script_history,
-        ),
+        (carry_table, hp_table, decay_table, energy_table, energy_regen_table, script_table),
         room_props,
     ): BotInput<'a>,
 ) -> impl Iterator<Item = BotMsg> + 'a {
@@ -51,35 +43,47 @@ pub fn build_bots<'a>(
     let positions = positions.reborrow().iter();
     let position_tranform = init_world_pos(room_props);
 
-    join!([bots, positions]).map(move |(id, (_bot, pos))| {
-        let history = script_history
-            .0
-            .binary_search_by_key(&id, |entry| entry.entity)
-            .map(|i| {
-                let entry = &script_history.0[i];
-                json!( {
-                    "payload": entry.payload,
-                    "time": entry.time
-                })
-            })
-            .unwrap_or_else(|_| serde_json::Value::Null);
-        BotMsg {
-            id: id.0,
-            position: position_tranform(pos.0),
-            owner: owned_entities
-                .get_by_id(&id)
-                .map(|OwnedEntity { owner_id }| owner_id.0),
-            body: json! ({
-                "hp": hp_table.get_by_id(&id)
-                , "carry": carry_table.get_by_id(&id)
-                , "decay": decay_table.get_by_id(&id)
-                , "energy": energy_table.get_by_id(&id)
-                , "energyRegen": energy_regen_table.get_by_id(&id)
-                , "script": script_table.get_by_id(&id)
-                , "history":history,
-            }),
-        }
+    join!([bots, positions]).map(move |(id, (_bot, pos))| BotMsg {
+        id: id.0,
+        position: position_tranform(pos.0),
+        owner: owned_entities
+            .get_by_id(&id)
+            .map(|OwnedEntity { owner_id }| owner_id.0),
+        body: json! ({
+            "hp": hp_table.get_by_id(&id)
+            , "carry": carry_table.get_by_id(&id)
+            , "decay": decay_table.get_by_id(&id)
+            , "energy": energy_table.get_by_id(&id)
+            , "energyRegen": energy_regen_table.get_by_id(&id)
+            , "script": script_table.get_by_id(&id)
+        }),
     })
+}
+
+pub fn build_script_history<'a>(
+    script_history: UnwrapView<'a, ScriptHistory>,
+) -> Vec<ScriptHistoryEntryMsg> {
+    use serde_json::to_value;
+
+    script_history
+        .0
+        .iter()
+        .map(|entry| {
+            let entity_id = entry.entity;
+            let payload = entry
+                .payload
+                .iter()
+                .map(|entry| ScriptHistoryEntryPayload {
+                    id: entry.id as i64,
+                    instruction: to_value(&entry.instr).unwrap(),
+                })
+                .collect::<Vec<_>>();
+            ScriptHistoryEntryMsg {
+                entity_id: entity_id.0,
+                payload,
+            }
+        })
+        .collect()
 }
 
 pub fn build_logs<'a>(v: View<'a, EntityTime, LogEntry>) -> impl Iterator<Item = LogMsg> + 'a {

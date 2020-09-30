@@ -1,7 +1,6 @@
 pub mod script_execution;
 
 mod death_system;
-mod script_history_system;
 mod decay_system;
 mod dropoff_intent_system;
 mod energy_system;
@@ -12,6 +11,7 @@ mod mineral_system;
 mod move_intent_system;
 mod path_cache_intent_system;
 mod positions_system;
+mod script_history_system;
 mod spawn_system;
 
 use crate::profile;

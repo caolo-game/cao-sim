@@ -21,14 +21,14 @@ pub struct RoomConnection {
 
 /// Represents connections a room has to their neighbours. At most 6.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct RoomConnections(pub [Option<RoomConnection>; 6]);
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomConnections {
     type Table = MortonTable<Id, Self>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct TerrainComponent(pub TileTerrainType);
 impl Component<WorldPosition> for TerrainComponent {
     type Table = RoomMortonTable<Self>;
@@ -38,7 +38,7 @@ impl<Id: SpatialKey2d + Send + Sync> Component<Id> for TerrainComponent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct RoomProperties {
     pub radius: u32,
     pub center: Axial,
@@ -48,7 +48,7 @@ impl Component<EmptyKey> for RoomProperties {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct RoomComponent;
 
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomComponent {
