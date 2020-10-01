@@ -1,6 +1,7 @@
 mod config;
 mod init;
-mod input;
+// FIXME
+// mod input;
 mod output;
 
 use anyhow::Context;
@@ -14,10 +15,10 @@ use thiserror::Error;
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-use cao_messages::{
-    Function, RoomProperties as RoomPropertiesMsg, RoomState, RoomTerrainMessage, Schema,
-    WorldState,
-};
+// use cao_messages::{
+//     Function, RoomProperties as RoomPropertiesMsg, RoomState, RoomTerrainMessage, Schema,
+//     WorldState,
+// };
 
 fn init() {
     #[cfg(feature = "dotenv")]
@@ -78,52 +79,54 @@ fn send_world(
 ) -> anyhow::Result<()> {
     debug!(logger, "Sending world state");
 
-    let bots = output::build_bots(FromWorld::new(storage));
-    let resources = output::build_resources(FromWorld::new(storage));
-    let structures = output::build_structures(FromWorld::new(storage));
+    unimplemented!()
 
-    let logs: Vec<_> = output::build_logs(FromWorld::new(storage)).collect();
-    let history = output::build_script_history(FromWorld::new(storage));
-    let mut world = WorldState {
-        rooms: Default::default(),
-        logs,
-        script_history: history,
-    };
-
-    macro_rules! insert {
-        ($it: ident, $field: ident) => {
-            for x in $field {
-                world
-                    .rooms
-                    .entry(x.position.room.clone())
-                    .or_insert_with(|| RoomState {
-                        bots: Vec::with_capacity(512),
-                        structures: Vec::with_capacity(512),
-                        resources: Vec::with_capacity(512),
-                    })
-                    .$field
-                    .push(x);
-            }
-        };
-    };
-
-    insert!(bots, bots);
-    insert!(resources, resources);
-    insert!(structures, structures);
-
-    let payload = rmp_serde::to_vec_named(&world)?;
-
-    debug!(logger, "sending {} bytes", payload.len());
-
-    redis::pipe()
-        .cmd("SET")
-        .arg("WORLD_STATE")
-        .arg(payload)
-        .query(connection)
-        .with_context(|| "Failed to send WORLD_STATE")?;
-
-    debug!(logger, "Sending world state done");
-    Ok(())
+    // let bots = output::build_bots(FromWorld::new(storage));
+    // let resources = output::build_resources(FromWorld::new(storage));
+    // let structures = output::build_structures(FromWorld::new(storage));
+    //
+    // let logs: Vec<_> = output::build_logs(FromWorld::new(storage)).collect();
+    // let history = output::build_script_history(FromWorld::new(storage));
+    // let mut world = WorldState {
+    //     rooms: Default::default(),
+    //     logs,
+    //     script_history: history,
+    // };
+    //
+    // macro_rules! insert {
+    //     ($it: ident, $field: ident) => {
+    //         for x in $field {
+    //             world
+    //                 .rooms
+    //                 .entry(x.position.room.clone())
+    //                 .or_insert_with(|| RoomState {
+    //                     bots: Vec::with_capacity(512),
+    //                     structures: Vec::with_capacity(512),
+    //                     resources: Vec::with_capacity(512),
+    //                 })
+    //                 .$field
+    //                 .push(x);
+    //         }
+    //     };
+    // };
+    //
+    // insert!(bots, bots);
+    // insert!(resources, resources);
+    // insert!(structures, structures);
+    //
+    // let payload = rmp_serde::to_vec_named(&world)?;
+    //
+    // debug!(logger, "sending {} bytes", payload.len());
+    //
+    // redis::pipe()
+    //     .cmd("SET")
+    //     .arg("WORLD_STATE")
+    //     .arg(payload)
+    //     .query(connection)
+    //     .with_context(|| "Failed to send WORLD_STATE")?;
+    //
+    // debug!(logger, "Sending world state done");
+    // Ok(())
 }
 
 #[derive(Debug, Clone, Error)]
@@ -188,38 +191,40 @@ async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyh
 }
 
 fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
-    debug!(logger, "Sending schema");
-    let mut con = client.get_connection()?;
-
-    let schema = caolo_sim::scripting_api::make_import();
-    let functions = schema
-        .imports()
-        .iter()
-        .map(|import| {
-            let import = &import.desc;
-            Function::from_str_parts(
-                import.name,
-                import.description,
-                import.input.as_ref(),
-                import.output.as_ref(),
-                import.params.as_ref(),
-            )
-        })
-        .collect::<Vec<_>>();
-
-    let schema = Schema { functions };
-
-    let payload = rmp_serde::to_vec_named(&schema).unwrap();
-
-    redis::pipe()
-        .cmd("SET")
-        .arg("SCHEMA")
-        .arg(payload)
-        .query(&mut con)
-        .with_context(|| "Failed to set SCHEMA")?;
-
-    debug!(logger, "Sending schema done");
-    Ok(())
+    // FIXME
+    unimplemented!()
+    // debug!(logger, "Sending schema");
+    // let mut con = client.get_connection()?;
+    //
+    // let schema = caolo_sim::scripting_api::make_import();
+    // let functions = schema
+    //     .imports()
+    //     .iter()
+    //     .map(|import| {
+    //         let import = &import.desc;
+    //         Function::from_str_parts(
+    //             import.name,
+    //             import.description,
+    //             import.input.as_ref(),
+    //             import.output.as_ref(),
+    //             import.params.as_ref(),
+    //         )
+    //     })
+    //     .collect::<Vec<_>>();
+    //
+    // let schema = Schema { functions };
+    //
+    // let payload = rmp_serde::to_vec_named(&schema).unwrap();
+    //
+    // redis::pipe()
+    //     .cmd("SET")
+    //     .arg("SCHEMA")
+    //     .arg(payload)
+    //     .query(&mut con)
+    //     .with_context(|| "Failed to set SCHEMA")?;
+    //
+    // debug!(logger, "Sending schema done");
+    // Ok(())
 }
 
 #[async_std::main]
@@ -303,11 +308,11 @@ async fn main() -> Result<(), anyhow::Error> {
         // inputs because handling them is built into the sleep cycle
         while sleep_duration > Duration::from_millis(0) {
             let start = Instant::now();
-            input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
-                .map_err(|err| {
-                    error!(logger, "Failed to handle inputs {:?}", err);
-                })
-                .unwrap_or(());
+            // input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
+            //     .map_err(|err| {
+            //         error!(logger, "Failed to handle inputs {:?}", err);
+            //     })
+            //     .unwrap_or(());
             sleep_duration = sleep_duration
                 .checked_sub(Instant::now() - start)
                 .unwrap_or_else(|| Duration::from_millis(0));
