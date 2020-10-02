@@ -1,10 +1,10 @@
 mod config;
 mod init;
-// FIXME
-// mod input;
+mod input;
 mod output;
 
 use anyhow::Context;
+use cao_messages::world_capnp::world_state;
 use caolo_sim::prelude::*;
 use slog::{debug, error, info, o, trace, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
@@ -14,11 +14,6 @@ use thiserror::Error;
 #[cfg(feature = "jemallocator")]
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
-// use cao_messages::{
-//     Function, RoomProperties as RoomPropertiesMsg, RoomState, RoomTerrainMessage, Schema,
-//     WorldState,
-// };
 
 fn init() {
     #[cfg(feature = "dotenv")]
@@ -57,7 +52,7 @@ fn send_config(
         "gameConfig": game_conf
     });
 
-    let payload = rmp_serde::to_vec_named(&conf)?;
+    let payload = serde_json::to_vec(&conf)?;
 
     let mut con = client.get_connection()?;
     redis::pipe()
@@ -79,54 +74,29 @@ fn send_world(
 ) -> anyhow::Result<()> {
     debug!(logger, "Sending world state");
 
-    unimplemented!()
+    let mut msg = capnp::message::Builder::new_default();
+    let mut root = msg.init_root::<world_state::Builder>();
 
-    // let bots = output::build_bots(FromWorld::new(storage));
-    // let resources = output::build_resources(FromWorld::new(storage));
-    // let structures = output::build_structures(FromWorld::new(storage));
-    //
-    // let logs: Vec<_> = output::build_logs(FromWorld::new(storage)).collect();
-    // let history = output::build_script_history(FromWorld::new(storage));
-    // let mut world = WorldState {
-    //     rooms: Default::default(),
-    //     logs,
-    //     script_history: history,
-    // };
-    //
-    // macro_rules! insert {
-    //     ($it: ident, $field: ident) => {
-    //         for x in $field {
-    //             world
-    //                 .rooms
-    //                 .entry(x.position.room.clone())
-    //                 .or_insert_with(|| RoomState {
-    //                     bots: Vec::with_capacity(512),
-    //                     structures: Vec::with_capacity(512),
-    //                     resources: Vec::with_capacity(512),
-    //                 })
-    //                 .$field
-    //                 .push(x);
-    //         }
-    //     };
-    // };
-    //
-    // insert!(bots, bots);
-    // insert!(resources, resources);
-    // insert!(structures, structures);
-    //
-    // let payload = rmp_serde::to_vec_named(&world)?;
-    //
-    // debug!(logger, "sending {} bytes", payload.len());
-    //
-    // redis::pipe()
-    //     .cmd("SET")
-    //     .arg("WORLD_STATE")
-    //     .arg(payload)
-    //     .query(connection)
-    //     .with_context(|| "Failed to send WORLD_STATE")?;
-    //
-    // debug!(logger, "Sending world state done");
-    // Ok(())
+    output::build_bots(FromWorld::new(storage), &mut root);
+    output::build_resources(FromWorld::new(storage), &mut root);
+    output::build_structures(FromWorld::new(storage), &mut root);
+    output::build_script_history(FromWorld::new(storage), &mut root);
+    output::build_logs(FromWorld::new(storage), &mut root);
+
+    let mut payload = Vec::with_capacity(1_000_000);
+    capnp::serialize::write_message(&mut payload, &msg)?;
+
+    debug!(logger, "sending {} bytes", payload.len());
+
+    redis::pipe()
+        .cmd("SET")
+        .arg("WORLD_STATE")
+        .arg(payload)
+        .query(connection)
+        .with_context(|| "Failed to send WORLD_STATE")?;
+
+    debug!(logger, "Sending world state done");
+    Ok(())
 }
 
 #[derive(Debug, Clone, Error)]
@@ -136,6 +106,9 @@ pub enum TerrainSendFail {
 }
 
 async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyhow::Result<()> {
+    use serde_json::json;
+    debug!(logger, "sending terrain ");
+
     let room_properties = storage
         .view::<EmptyKey, RoomProperties>()
         .reborrow()
@@ -150,7 +123,7 @@ async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyh
         .execute(&mut tx)
         .await?;
 
-    for (room, tiles) in output::build_terrain(FromWorld::new(storage)) {
+    for (Room(room), tiles) in output::iter_rooms_terrain(FromWorld::new(storage)) {
         trace!(
             logger,
             "sending room {:?} terrain, len: {}",
@@ -161,17 +134,13 @@ async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyh
         let q = room.q;
         let r = room.r;
 
-        let room_properties = RoomPropertiesMsg {
-            room_radius,
-            room_id: room,
-        };
-
-        let world = RoomTerrainMessage {
-            tiles,
-            room_properties,
-        };
-
-        let payload = serde_json::to_value(&world).unwrap();
+        let payload = json!( {
+            "tiles": tiles,
+            "roomProperties": {
+                "roomRadius": room_radius,
+                "roomId": room,
+            }
+        });
 
         sqlx::query(
             r#"
@@ -191,40 +160,64 @@ async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyh
 }
 
 fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
-    // FIXME
-    unimplemented!()
-    // debug!(logger, "Sending schema");
-    // let mut con = client.get_connection()?;
-    //
-    // let schema = caolo_sim::scripting_api::make_import();
-    // let functions = schema
-    //     .imports()
-    //     .iter()
-    //     .map(|import| {
-    //         let import = &import.desc;
-    //         Function::from_str_parts(
-    //             import.name,
-    //             import.description,
-    //             import.input.as_ref(),
-    //             import.output.as_ref(),
-    //             import.params.as_ref(),
-    //         )
-    //     })
-    //     .collect::<Vec<_>>();
-    //
-    // let schema = Schema { functions };
-    //
-    // let payload = rmp_serde::to_vec_named(&schema).unwrap();
-    //
-    // redis::pipe()
-    //     .cmd("SET")
-    //     .arg("SCHEMA")
-    //     .arg(payload)
-    //     .query(&mut con)
-    //     .with_context(|| "Failed to set SCHEMA")?;
-    //
-    // debug!(logger, "Sending schema done");
-    // Ok(())
+    use cao_messages::script_capnp::schema;
+    debug!(logger, "Sending schema");
+    let schema = caolo_sim::scripting_api::make_import();
+    let imports = schema.imports();
+
+    let mut msg = capnp::message::Builder::new_default();
+    let mut root = msg.init_root::<schema::Builder>();
+
+    let len = imports.len();
+    let mut functions = root.reborrow().init_functions(len as u32);
+    imports.iter().enumerate().for_each(|(i, import)| {
+        let import = &import.desc;
+        let mut func = functions.reborrow().get(i as u32);
+        func.set_name(import.name);
+        func.set_description(import.description);
+        {
+            let len = import.input.len();
+            let mut inputs = func.reborrow().init_input(len as u32);
+            import
+                .input
+                .iter()
+                .enumerate()
+                .for_each(|(i, inp)| inputs.set(i as u32, inp));
+        }
+        {
+            let len = import.output.len();
+            let mut outputs = func.reborrow().init_output(len as u32);
+            import
+                .output
+                .iter()
+                .enumerate()
+                .for_each(|(i, inp)| outputs.set(i as u32, inp));
+        }
+        {
+            let len = import.params.len();
+            let mut params = func.reborrow().init_params(len as u32);
+            import
+                .params
+                .iter()
+                .enumerate()
+                .for_each(|(i, inp)| params.set(i as u32, inp));
+        }
+    });
+
+    let mut payload = Vec::with_capacity(1_000_000);
+    capnp::serialize::write_message(&mut payload, &msg)?;
+
+    let mut con = client.get_connection()?;
+
+    redis::pipe()
+        .cmd("SET")
+        .arg("SCHEMA")
+        .arg(payload)
+        .query(&mut con)
+        .with_context(|| "Failed to set SCHEMA")?;
+
+    debug!(logger, "Sending schema done");
+    Ok(())
 }
 
 #[async_std::main]
@@ -308,11 +301,11 @@ async fn main() -> Result<(), anyhow::Error> {
         // inputs because handling them is built into the sleep cycle
         while sleep_duration > Duration::from_millis(0) {
             let start = Instant::now();
-            // input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
-            //     .map_err(|err| {
-            //         error!(logger, "Failed to handle inputs {:?}", err);
-            //     })
-            //     .unwrap_or(());
+            input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
+                .map_err(|err| {
+                    error!(logger, "Failed to handle inputs {:?}", err);
+                })
+                .unwrap_or(());
             sleep_duration = sleep_duration
                 .checked_sub(Instant::now() - start)
                 .unwrap_or_else(|| Duration::from_millis(0));
