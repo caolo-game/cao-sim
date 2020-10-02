@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Install capnp
-        run: apt-get install capnproto -y
+        run: sudo apt-get install capnproto -y
 
       - name: Check
         run: cargo check
