@@ -1,7 +1,7 @@
 FROM rust:latest AS build
 
 RUN apt-get update
-RUN apt-get install lld clang -y
+RUN apt-get install lld clang capnproto -y --fix-missing
 
 WORKDIR /caolo
 
