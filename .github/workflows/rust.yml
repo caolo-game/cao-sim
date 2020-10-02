@@ -19,6 +19,9 @@ jobs:
           rust-version: ${{ matrix.rust }}
       - uses: actions/checkout@v2
 
+      - name: Install capnp
+        run: apt-get install capnproto -y
+
       - name: Check
         run: cargo check
       - name: Clippy
