@@ -30,7 +30,6 @@ serde_derive = "1"
 redis = "0.15"
 rand="*"
 sentry = "0.19"
-rmp-serde = "0.14"
 anyhow = "1"
 thiserror = "1"
 sqlx = { version="0.3", features=["postgres", "chrono", "uuid", "json", "tls"] }
@@ -38,6 +37,7 @@ async-std = { version = "1.4.0", features = [ "attributes","tokio02" ] }
 
 dep-dotenv = { version="0.14", optional=true, package="dotenv" }
 uuid = { version="0.8", features=["v4"] }
+capnp="0.13"
 
 [dev-dependencies]
 env_logger = { version="*", default-features=false }
