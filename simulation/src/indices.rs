@@ -71,6 +71,7 @@ impl TryFrom<Scalar> for EntityId {
 )]
 pub struct WorldPosition {
     pub room: Axial,
+    #[serde(rename="roomPos")]
     pub pos: Axial,
 }
 impl AutoByteEncodeProperties for WorldPosition {}
