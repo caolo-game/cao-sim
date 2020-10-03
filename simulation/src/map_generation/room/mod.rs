@@ -835,15 +835,4 @@ mod tests {
             }
         }
     }
-
-    #[test]
-    fn produces_the_expected_number_of_chunks() {
-        setup_testing();
-        let terrain: MortonTable<Axial, TerrainComponent> =
-            serde_json::from_str(std::include_str!("./chunk_test_map.json")).unwrap();
-
-        let meta = calculate_plain_chunks(&test_logger(), View::from_table(&terrain));
-
-        assert_eq!(meta.chunks.len(), 2);
-    }
 }
