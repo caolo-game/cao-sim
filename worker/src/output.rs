@@ -129,7 +129,7 @@ pub fn iter_rooms_terrain<'a>(
                     let pos = WorldPosition { room, pos };
                     json!( {
                         "position": pos,
-                        "ty": *tile as i32
+                        "ty": *tile
                     })
                 })
                 .collect(),
