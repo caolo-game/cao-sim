@@ -13,9 +13,9 @@ pub struct GameConfig {
 impl Default for GameConfig {
     fn default() -> Self {
         Self {
-            n_actors: 100,
-            room_radius: 16,
-            world_radius: 16,
+            n_actors: 10,
+            room_radius: 8,
+            world_radius: 8,
             target_tick_freq_ms: 200,
         }
     }

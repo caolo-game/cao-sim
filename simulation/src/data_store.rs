@@ -5,7 +5,6 @@ use crate::components::game_config::GameConfig;
 use crate::components::*;
 use crate::indices::*;
 use crate::intents::*;
-use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, UnwrapViewMut, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
@@ -104,7 +103,6 @@ where
 }
 
 pub fn init_inmemory_storage(logger: impl Into<Option<slog::Logger>>) -> Pin<Box<World>> {
-    profile!("init_inmemory_storage");
     let logger = logger.into();
     match logger {
         Some(ref logger) => debug!(logger, "Init Storage"),
