@@ -113,16 +113,26 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
         taken_rooms.push(room);
 
         trace!(logger, "initializing room #{} in room {:?}", i, room);
+        let user_id = Uuid::new_v4();
         init_spawn(
             &logger,
             &bounds,
             spawnid,
+            user_id,
             room,
             &mut rng,
             FromWorldMut::new(storage),
             FromWorld::new(storage),
         );
         trace!(logger, "spawning entities");
+        storage
+            .unsafe_view::<UserId, EntityScript>()
+            .insert_or_update(
+                UserId(user_id),
+                EntityScript {
+                    script_id: center_walking_script_id,
+                },
+            );
         let spawn_pos = storage
             .view::<EntityId, PositionComponent>()
             .get_by_id(&spawnid)
@@ -226,6 +236,7 @@ fn init_spawn(
     logger: &Logger,
     bounds: &Hexagon,
     id: EntityId,
+    owner_id: Uuid,
     room: Room,
     rng: &mut impl Rng,
     (
@@ -247,7 +258,7 @@ fn init_spawn(
     owners.insert_or_update(
         id,
         OwnedEntity {
-            owner_id: Default::default(),
+            owner_id: UserId(owner_id),
         },
     );
     energies.insert_or_update(
