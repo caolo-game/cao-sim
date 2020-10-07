@@ -24,19 +24,17 @@ pub fn update(
 ) {
     profile!("Continous Spawn System update");
 
+    let spawnq_it = spawn_queues.iter().filter(|(_, q)| q.queue.is_empty());
     let own_it = owners.iter();
-    let spawnq_it = spawn_queues.iter();
 
-    for (spawn_id, (owner, spawn)) in join!([own_it, spawnq_it]) {
-        if spawn.queue.is_empty() {
-            debug!(
-                logger,
-                "Adding a spawn intent to the queue of spawn {:?}", spawn_id
-            );
-            intents.0.push(SpawnIntent {
-                spawn_id,
-                owner_id: Some(owner.owner_id),
-            });
-        }
+    for (spawn_id, (_spawn, owner)) in join!([spawnq_it, own_it]) {
+        debug!(
+            logger,
+            "Adding a spawn intent to the queue of spawn {:?}", spawn_id
+        );
+        intents.0.push(SpawnIntent {
+            spawn_id,
+            owner_id: Some(owner.owner_id),
+        });
     }
 }
