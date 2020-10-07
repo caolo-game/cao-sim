@@ -195,12 +195,12 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
         }
         {
             let len = import.constants.len();
-            let mut params = func.reborrow().init_params(len as u32);
+            let mut constants = func.reborrow().init_constants(len as u32);
             import
                 .constants
                 .iter()
                 .enumerate()
-                .for_each(|(i, inp)| params.set(i as u32, inp));
+                .for_each(|(i, inp)| constants.set(i as u32, inp));
         }
     });
 

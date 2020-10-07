@@ -376,7 +376,7 @@ dependencies = [
 [[package]]
 name = "cao-messages"
 version = "0.1.0"
-source = "git+https://github.com/caolo-game/cao-messages.git#bdd67e31ba95c00ed49d083b6ab6e3f07f517685"
+source = "git+https://github.com/caolo-game/cao-messages.git#5335a40590437bac932a0ae4aa28d8ee325f73c1"
 dependencies = [
  "capnp",
  "capnpc",
