@@ -30,6 +30,18 @@ pub fn update(
 ) {
     profile!("SpawnSystem update");
 
+    let ss = spawns.iter_mut().filter(|(_, c)| c.spawning.is_none());
+    let en = energy.iter_mut().filter(|(_, e)| e.energy == 500); // TODO: config amount
+    let sq = spawn_queue.iter_mut();
+    join!([ss, en, sq]).for_each(|(_spawn_id, (spawn, energy, queue))| {
+        // spawns with 500 energy and no currently spawning bot
+        if let Some(bot) = queue.queue.pop_back() {
+            energy.energy -= 500;
+            spawn.time_to_spawn = 10;
+            spawn.spawning = Some(bot);
+        }
+    });
+
     spawns
         .iter_mut()
         .filter(|(_spawn_id, spawn_component)| spawn_component.spawning.is_some())
@@ -53,17 +65,6 @@ pub fn update(
             )
         });
 
-    let ss = spawns.iter_mut().filter(|(_, c)| c.spawning.is_none());
-    let en = energy.iter_mut().filter(|(_, e)| e.energy == 500); // TODO: config amount
-    let sq = spawn_queue.iter_mut();
-    join!([ss, en, sq]).for_each(|(_spawn_id, (spawn, energy, queue))| {
-        // spawns with 500 energy and no currently spawning bot
-        if let Some(bot) = queue.queue.pop_back() {
-            energy.energy -= 500;
-            spawn.time_to_spawn = 10;
-            spawn.spawning = Some(bot);
-        }
-    });
 }
 
 type SpawnBotMut = (

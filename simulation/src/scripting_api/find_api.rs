@@ -39,7 +39,7 @@ pub fn parse_find_constant(
     trace!(logger, "parse_find_constant");
     let param = vm.get_value_in_place::<&str>(param).ok_or_else(|| {
         trace!(logger, "parse_find_constant called with invalid param");
-        ExecutionError::invalid_argument("parse_find_constant called with invalid param")
+        ExecutionError::invalid_argument("parse_find_constant called with invalid param".to_owned())
     })?;
     let constant = match param {
         "Resource" => FindConstant::Resource,

@@ -30,7 +30,7 @@ pub fn update(
                 continue;
             }
         };
-        if spawn.queue.len() > 20 {
+        if spawn.queue.len() > 20 { // TODO: config
             debug!(logger, "spawn queue is full");
             continue;
         }

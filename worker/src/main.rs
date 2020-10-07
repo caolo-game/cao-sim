@@ -194,10 +194,10 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
                 .for_each(|(i, inp)| outputs.set(i as u32, inp));
         }
         {
-            let len = import.params.len();
+            let len = import.constants.len();
             let mut params = func.reborrow().init_params(len as u32);
             import
-                .params
+                .constants
                 .iter()
                 .enumerate()
                 .for_each(|(i, inp)| params.set(i as u32, inp));

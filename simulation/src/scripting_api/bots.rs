@@ -29,7 +29,7 @@ pub fn unload(
     })?;
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
         warn!(logger, "upload called without a structure");
-        ExecutionError::invalid_argument("upload called without a structure")
+        ExecutionError::invalid_argument("upload called without a structure".to_owned())
     })?;
 
     trace!(

@@ -11,7 +11,6 @@ use crate::profile;
 use crate::systems::script_execution::ScriptExecutionData;
 use cao_lang::prelude::*;
 use cao_lang::scalar::Scalar;
-use cao_lang::traits::ByteEncodeProperties;
 use find_api::FindConstant;
 use serde_derive::{Deserialize, Serialize};
 use slog::trace;
