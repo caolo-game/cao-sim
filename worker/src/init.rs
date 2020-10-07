@@ -143,6 +143,7 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
             init_bot(
                 botid,
                 mining_script_id,
+                user_id,
                 spawn_pos,
                 FromWorldMut::new(storage),
             );
@@ -152,6 +153,7 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
             init_bot(
                 botid,
                 center_walking_script_id,
+                user_id,
                 spawn_pos,
                 FromWorldMut::new(storage),
             );
@@ -185,6 +187,7 @@ type InitBotMuts = (
 fn init_bot(
     id: EntityId,
     script_id: ScriptId,
+    owner_id: Uuid,
     pos: WorldPosition,
     (
         mut entity_scripts,
@@ -207,7 +210,7 @@ fn init_bot(
     owners.insert_or_update(
         id,
         OwnedEntity {
-            owner_id: Default::default(),
+            owner_id: UserId(owner_id),
         },
     );
 

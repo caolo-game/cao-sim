@@ -3,6 +3,7 @@ use cao_messages::world_capnp::world_state;
 use caolo_sim::join;
 use caolo_sim::prelude::*;
 use caolo_sim::tables::JoinIterator;
+use std::convert::TryFrom;
 
 type BotInput<'a> = (
     View<'a, EntityId, Bot>,
@@ -220,6 +221,7 @@ pub fn build_structures<'a>(
 
             let mut body = msg.reborrow().init_spawn();
             if let Some(spawning) = spawn.spawning.map(|EntityId(id)| id) {
+                body.set_time_to_spawn(u32::try_from(spawn.time_to_spawn).unwrap_or(0));
                 body.set_spawning(spawning);
             }
             body.set_energy(energy.energy as u32);
