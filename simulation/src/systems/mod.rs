@@ -28,6 +28,10 @@ pub fn execute_world_update(storage: &mut World) {
 fn execute_intents(storage: &mut World) {
     profile!("execute_intents");
 
+    // pre processing
+    execute_update(spawn_system::update_cont_spawns, storage);
+
+    // main processing
     execute_update(move_intent_system::update, storage);
     execute_update(mine_intent_system::update, storage);
     execute_update(dropoff_intent_system::update, storage);

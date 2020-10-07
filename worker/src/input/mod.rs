@@ -8,7 +8,7 @@ use caolo_sim::prelude::*;
 use capnp::message::{ReaderOptions, TypedReader};
 use capnp::serialize::try_read_message;
 use redis::Commands;
-use slog::{debug, error, o, warn, Logger};
+use slog::{error, o, trace, warn, Logger};
 
 type InputMsg = TypedReader<capnp::serialize::OwnedSegments, input_message::Owned>;
 
@@ -32,7 +32,7 @@ fn handle_single_message(
             .with_context(|| "Failed to get msg id")?,
     )?;
     let logger = logger.new(o!("msg_id" => format!("{}",msg_id)));
-    debug!(logger, "Handling message");
+    trace!(logger, "Handling message");
     let res = match message
         .which()
         .with_context(|| format!("Failed to get msg body of message {}", msg_id))?
@@ -90,7 +90,7 @@ pub fn handle_messages(
     storage: &mut World,
     connection: &mut redis::Connection,
 ) -> anyhow::Result<()> {
-    debug!(logger, "handling incoming messages");
+    trace!(logger, "handling incoming messages");
 
     let mut response = Vec::with_capacity(1_000_000);
 
@@ -128,6 +128,6 @@ pub fn handle_messages(
             }
         }
     }
-    debug!(logger, "handling incoming messages done");
+    trace!(logger, "handling incoming messages done");
     Ok(())
 }

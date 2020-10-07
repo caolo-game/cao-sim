@@ -19,6 +19,7 @@ pub fn update(
     (intents, WorldLogger(logger)): Const,
 ) {
     profile!("SpawnSystem update");
+
     for intent in intents.iter() {
         let logger = logger.new(o!("spawn_id"=> intent.spawn_id.0));
         trace!(logger, "Spawning bot from structure");
@@ -30,7 +31,8 @@ pub fn update(
                 continue;
             }
         };
-        if spawn.queue.len() > 20 { // TODO: config
+        if spawn.queue.len() > 20 {
+            // TODO: config
             debug!(logger, "spawn queue is full");
             continue;
         }

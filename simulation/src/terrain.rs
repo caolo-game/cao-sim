@@ -2,7 +2,7 @@ use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Eq, PartialEq, Copy, Serialize, Deserialize)]
 #[repr(u8)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub enum TileTerrainType {
     Plain,
     /// allows teleporting to new rooms

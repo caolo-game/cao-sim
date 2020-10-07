@@ -64,7 +64,6 @@ pub fn update(
                 user_default_scripts,
             )
         });
-
 }
 
 type SpawnBotMut = (
