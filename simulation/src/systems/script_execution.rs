@@ -40,15 +40,15 @@ pub fn execute_scripts(storage: &mut World) {
         .fold(
             || Vec::with_capacity(n_scripts),
             |mut intents, (entity_id, script)| {
-                let owner = owners_table
+                let owner_id = owners_table
                     .get_by_id(entity_id)
                     .map(|OwnedEntity { owner_id }| *owner_id);
-                match execute_single_script(&logger, *entity_id, script.script_id, owner, storage) {
+                match execute_single_script(&logger, *entity_id, script.script_id, owner_id, storage) {
                     Ok(ints) => intents.push(ints),
                     Err(err) => {
                         warn!(
                             logger,
-                            "Execution failure in {:?} of {:?}:\n{}",
+                            "Execution failure in {:?} of {:?}:\n{:?}",
                             script.script_id,
                             entity_id,
                             err

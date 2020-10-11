@@ -14,7 +14,7 @@ default = ["dotenv"]
 dotenv = ["dep-dotenv"]
 
 [dependencies]
-caolo-sim = { path="../simulation", features=["profile"] }
+caolo-sim = { path="../simulation" } # , features=["cao-profile"] }
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
 cao-messages = { git = "https://github.com/caolo-game/cao-messages.git" }
 

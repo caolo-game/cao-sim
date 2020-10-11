@@ -20,7 +20,7 @@ RUN sed -i 's/src\/main.rs/src\/dummy.rs/' Cargo.toml
 # remove 'caolo' dependencies because they change often
 RUN sed -i '/caolo-sim/d' Cargo.toml
 RUN sed -i '/cao-lang/d' Cargo.toml
-RUN cargo build --release --features=jemallocator
+RUN cargo build --release --all-features
 
 WORKDIR /caolo
 

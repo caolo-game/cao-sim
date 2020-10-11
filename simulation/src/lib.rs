@@ -26,6 +26,8 @@ pub struct Time(pub u64);
 
 /// Forward the simulation by 1 tick
 pub fn forward(world: &mut World) -> anyhow::Result<()> {
+    profile!("world_forward");
+
     let logger = world.logger.new(o!("tick" => world.time()));
 
     info!(logger, "Tick starting");

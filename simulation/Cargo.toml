@@ -8,7 +8,6 @@ edition = "2018"
 
 [features]
 default = []
-profile = ["cao-profile"]
 log_tables = ["lazy_static", "serde_json"]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
@@ -16,7 +15,7 @@ disable-parallelism = []
 [dependencies]
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
 cao_storage_derive = { path = "../cao-storage-derive" }
-cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, default-features=false, features=[] }
+cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, features=["http"] }
 
 slog = { version="2", features=["max_level_trace", "release_max_level_info"] }
 slog-async = "*"
