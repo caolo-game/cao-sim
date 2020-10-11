@@ -1,10 +1,10 @@
 pub use self::store_impl::*;
 
-use crate::storage;
 use crate::components::game_config::GameConfig;
 use crate::components::*;
 use crate::indices::*;
 use crate::intents::*;
+use crate::storage;
 use crate::storage::views::{UnsafeView, UnwrapView, UnwrapViewMut, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
@@ -36,6 +36,7 @@ storage!(
     key EntityId, table SpawnQueueComponent = entity_spawnqueue,
     key EntityId, table OwnedEntity = entity_owner,
     key EntityId, table PathCacheComponent = entity_pathcache,
+    key EntityId, table MeleeAttackComponent = entity_melee,
 
     key EntityTime, table LogEntry = timelog,
 
@@ -59,6 +60,7 @@ storage!(
     key EmptyKey, table Intents<LogIntent> = log_intents,
     key EmptyKey, table Intents<CachePathIntent> = update_path_cache_intents,
     key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
+    key EmptyKey, table Intents<MeleeIntent> = melee_intents,
     key EmptyKey, table Intents<ScriptHistoryEntry> = script_history_intents,
 
     // globals

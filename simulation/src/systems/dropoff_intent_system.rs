@@ -12,7 +12,7 @@ type Mut = (
 type Const<'a> = (UnwrapView<'a, Intents<DropoffIntent>>, WorldLogger);
 
 pub fn update((mut energy_table, mut carry_table): Mut, (intents, WorldLogger(logger)): Const) {
-    profile!(" DropoffSystem update");
+    profile!("DropoffSystem update");
 
     for intent in intents.iter() {
         let logger = logger.new(o!("entity"=>intent.bot.0));

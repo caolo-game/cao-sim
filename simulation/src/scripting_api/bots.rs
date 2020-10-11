@@ -4,8 +4,9 @@ use crate::{
     components::{self, PathCacheComponent, Resource, TerrainComponent, PATH_CACHE_LEN},
     indices::{EntityId, UserId, WorldPosition},
     intents::{
-        check_dropoff_intent, check_mine_intent, check_move_intent, CachePathIntent, DropoffIntent,
-        MineIntent, MoveIntent, MutPathCacheIntent, PathCacheIntentAction,
+        check_dropoff_intent, check_melee_intent, check_mine_intent, check_move_intent,
+        CachePathIntent, DropoffIntent, MeleeIntent, MineIntent, MoveIntent, MutPathCacheIntent,
+        PathCacheIntentAction,
     },
     pathfinding, profile,
     storage::views::FromWorld,
@@ -13,6 +14,39 @@ use crate::{
 };
 use slog::{debug, error, trace, warn};
 use std::convert::TryFrom;
+
+pub fn melee_attack(
+    vm: &mut VM<ScriptExecutionData>,
+    target: TPointer,
+) -> Result<(), ExecutionError> {
+    profile!("melee-attack");
+
+    let aux = vm.get_aux();
+    let logger = &aux.logger;
+    trace!(logger, "melee_attack");
+
+    let target: EntityId = vm.get_value(target).ok_or_else(|| {
+        warn!(logger, "melee_attack called without a target");
+        ExecutionError::invalid_argument("melee_attack called without a target".to_owned())
+    })?;
+
+    let storage = aux.storage();
+    let entity_id = aux.entity_id;
+    let user_id = aux.user_id.expect("user_id to be set");
+
+    let intent = MeleeIntent {
+        attacker: entity_id,
+        defender: target,
+    };
+
+    let res = check_melee_intent(logger, &intent, user_id, FromWorld::new(storage));
+
+    if let OperationResult::Ok = res {
+        vm.get_aux_mut().intents.melee_attack_intent = Some(intent);
+    }
+    vm.stack_push(res)?;
+    Ok(())
+}
 
 pub fn unload(
     vm: &mut VM<ScriptExecutionData>,
@@ -28,8 +62,8 @@ pub fn unload(
         ExecutionError::invalid_argument(format!("unload called with invalid amount: {}", e))
     })?;
     let target: EntityId = vm.get_value(target).ok_or_else(|| {
-        warn!(logger, "upload called without a structure");
-        ExecutionError::invalid_argument("upload called without a structure".to_owned())
+        warn!(logger, "unload called without a structure");
+        ExecutionError::invalid_argument("unload called without a structure".to_owned())
     })?;
 
     trace!(

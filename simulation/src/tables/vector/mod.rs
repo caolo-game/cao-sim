@@ -188,6 +188,18 @@ where
             .and_then(|id| id.map(|_| unsafe { &*self.data[ind].as_ptr() }))
     }
 
+    pub fn get_by_id_mut<'a>(&'a mut self, id: &Id) -> Option<&'a mut Row> {
+        let ind = id.as_usize();
+        if ind < self.offset {
+            return None;
+        }
+        let ind = ind - self.offset;
+        let ptr = self.data.as_mut_ptr();
+        self.ids
+            .get(ind)
+            .and_then(move |id| id.map(move |_| unsafe { &mut *(*ptr.add(ind)).as_mut_ptr() }))
+    }
+
     /// This table might have 'gaps' in the storage
     /// Meaning that a `len` method has to count the non-null elements.
     ///

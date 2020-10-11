@@ -2,6 +2,7 @@ pub mod script_execution;
 
 mod death_system;
 mod decay_system;
+mod attack_system;
 mod dropoff_intent_system;
 mod energy_system;
 mod log_intent_system;
@@ -32,6 +33,7 @@ fn execute_intents(storage: &mut World) {
     execute_update(spawn_system::update_cont_spawns, storage);
 
     // main processing
+    execute_update(attack_system::update, storage);
     execute_update(move_intent_system::update, storage);
     execute_update(mine_intent_system::update, storage);
     execute_update(dropoff_intent_system::update, storage);

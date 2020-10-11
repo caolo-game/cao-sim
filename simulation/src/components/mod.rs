@@ -1,16 +1,18 @@
 pub mod game_config;
 
+mod bot_components;
 mod resources;
 mod rooms;
+pub use bot_components::*;
 pub use resources::*;
 pub use rooms::*;
 
-use crate::indices::{EmptyKey, EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
+use crate::indices::{EmptyKey, EntityId, UserId, WorldPosition};
 use crate::tables::{
     btree::BTreeTable, morton::MortonTable, unique::UniqueTable, vector::DenseVecTable, Component,
     RoomMortonTable, SpatialKey2d, TableId,
 };
-use arrayvec::ArrayVec;
+
 use cao_lang::vm::HistoryEntry;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -37,14 +39,6 @@ impl<Id: SpatialKey2d + Send + Sync> Component<Id> for EntityComponent {
 }
 impl Component<WorldPosition> for EntityComponent {
     type Table = RoomMortonTable<Self>;
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct Bot;
-
-impl Component<EntityId> for Bot {
-    type Table = DenseVecTable<EntityId, Self>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -125,19 +119,6 @@ impl<Id: TableId> Component<Id> for EnergyRegenComponent {
     type Table = BTreeTable<Id, Self>;
 }
 
-/// Represent time to decay of bots
-/// On decay the bot will loose hp
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct DecayComponent {
-    pub hp_amount: u16,
-    pub interval: u8,
-    pub time_remaining: u8,
-}
-impl<Id: TableId> Component<Id> for DecayComponent {
-    type Table = BTreeTable<Id, Self>;
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SpawnBotComponent {
@@ -146,30 +127,6 @@ pub struct SpawnBotComponent {
 
 impl<Id: TableId> Component<Id> for SpawnBotComponent {
     type Table = BTreeTable<Id, Self>;
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CarryComponent {
-    pub carry: u16,
-    pub carry_max: u16,
-}
-impl<Id: TableId> Component<Id> for CarryComponent {
-    type Table = BTreeTable<Id, Self>;
-}
-
-/// Entity - Script join table
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct EntityScript {
-    pub script_id: ScriptId,
-}
-unsafe impl Send for EntityScript {}
-impl Component<EntityId> for EntityScript {
-    type Table = DenseVecTable<EntityId, Self>;
-}
-impl Component<UserId> for EntityScript {
-    type Table = BTreeTable<UserId, Self>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -193,16 +150,5 @@ impl<Id: TableId> Component<Id> for ScriptComponent {
 #[serde(rename_all = "camelCase")]
 pub struct UserComponent;
 impl<Id: TableId> Component<Id> for UserComponent {
-    type Table = BTreeTable<Id, Self>;
-}
-
-pub const PATH_CACHE_LEN: usize = 64;
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct PathCacheComponent {
-    pub target: WorldPosition,
-    pub path: ArrayVec<[RoomPosition; PATH_CACHE_LEN]>,
-}
-impl<Id: TableId> Component<Id> for PathCacheComponent {
     type Table = BTreeTable<Id, Self>;
 }

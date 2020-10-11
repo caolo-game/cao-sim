@@ -1,12 +1,14 @@
 //! Actions, world updates the clients _intend_ to execute.
 //!
 mod dropoff_intent;
+mod attack_intent;
 mod log_intent;
 mod mine_intent;
 mod move_intent;
 mod pathcache_intent;
 mod spawn_intent;
 
+pub use self::attack_intent::*;
 pub use self::dropoff_intent::*;
 pub use self::log_intent::*;
 pub use self::mine_intent::*;
@@ -41,7 +43,9 @@ impl BotIntents {
     }
 }
 
-/// Implements the SOA style intents container
+/// Implements the SOA style intents container.
+///
+/// Assumes that the Intents were registered in World. (see the data_store module)
 macro_rules! intents {
     ($($name: ident : $type: ty),+,) => {
         /// Move the botintents into the world, overriding the existing ones
@@ -107,4 +111,5 @@ intents!(
     update_path_cache_intent: CachePathIntent,
     mut_path_cache_intent: MutPathCacheIntent,
     script_history_intent: ScriptHistoryEntry,
+    melee_attack_intent: MeleeIntent,
 );

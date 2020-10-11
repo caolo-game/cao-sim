@@ -246,6 +246,16 @@ pub fn make_import() -> Schema {
                 ),
                 fo: Procedure::new(FunctionWrapper::new(find_api::parse_find_constant)),
             },
+            FunctionRow {
+                desc: subprogram_description!(
+                    melee_attack,
+                    "Attempts to strike the target entity",
+                    [EntityId],
+                    [OperationResult],
+                    []
+                ),
+                fo: Procedure::new(FunctionWrapper::new(bots::melee_attack)),
+            },
         ],
     }
 }
