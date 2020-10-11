@@ -11,6 +11,7 @@ type BotInput<'a> = (
     View<'a, EntityId, OwnedEntity>,
     // body
     (
+        View<'a, EntityId, MeleeAttackComponent>,
         View<'a, EntityId, CarryComponent>,
         View<'a, EntityId, HpComponent>,
         View<'a, EntityId, DecayComponent>,
@@ -26,7 +27,15 @@ pub fn build_bots<'a>(
         bots,
         positions,
         owned_entities,
-        (carry_table, hp_table, decay_table, energy_table, energy_regen_table, script_table),
+        (
+            melee_table,
+            carry_table,
+            hp_table,
+            decay_table,
+            energy_table,
+            energy_regen_table,
+            script_table,
+        ),
         room_props,
     ): BotInput<'a>,
     world: &mut world_state::Builder,
@@ -54,7 +63,8 @@ pub fn build_bots<'a>(
             }
 
             let body = json! ({
-                "hp": hp_table.get_by_id(&id)
+                "melee": melee_table.get_by_id(&id)
+                , "hp": hp_table.get_by_id(&id)
                 , "carry": carry_table.get_by_id(&id)
                 , "decay": decay_table.get_by_id(&id)
                 , "energy": energy_table.get_by_id(&id)

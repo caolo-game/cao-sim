@@ -176,6 +176,8 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
 }
 
 type InitBotMuts = (
+    UnsafeView<EntityId, MeleeAttackComponent>,
+    UnsafeView<EntityId, HpComponent>,
     UnsafeView<EntityId, EntityScript>,
     UnsafeView<EntityId, Bot>,
     UnsafeView<EntityId, CarryComponent>,
@@ -190,6 +192,8 @@ fn init_bot(
     owner_id: Uuid,
     pos: WorldPosition,
     (
+        mut melee,
+        mut hp,
         mut entity_scripts,
         mut bots,
         mut carry_component,
@@ -221,6 +225,9 @@ fn init_bot(
         .expect("expected bot pos to be in the table")
         .insert(pos.pos, EntityComponent(id))
         .expect("entities_by_pos insert");
+
+    melee.insert_or_update(id, MeleeAttackComponent { strength: 5 });
+    hp.insert_or_update(id, HpComponent { hp: 50, hp_max: 50 });
 }
 
 type InitSpawnMuts = (

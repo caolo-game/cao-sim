@@ -32,6 +32,7 @@ pub fn update((mut hp_table, mut intents): Mut, (attack_table, WorldLogger(logge
                 continue;
             }
         };
+        // hp can not fall below 0
         hp.hp -= hp.hp.min(attack.strength);
     }
 }
@@ -43,7 +44,7 @@ fn pre_process(logger: &Logger, intents: &mut Vec<MeleeIntent>) {
     }
     // dedupe
     intents.par_sort_unstable_by_key(|intent| intent.attacker);
-    for current in (0..len - 2).rev() {
+    for current in (0..=len - 1).rev() {
         let last = current + 1;
         let a = &intents[last];
         let b = &intents[current];
