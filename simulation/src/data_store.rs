@@ -1,6 +1,6 @@
 pub use self::store_impl::*;
 
-use super::storage;
+use crate::storage;
 use crate::components::game_config::GameConfig;
 use crate::components::*;
 use crate::indices::*;

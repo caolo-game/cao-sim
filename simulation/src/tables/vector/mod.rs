@@ -56,9 +56,6 @@ where
     // TODO: this `Sync` requirement is bullshit, get rid of it
     Id: SerialId + Send + Sync,
     Row: TableRow + Send + Sync,
-    // if the underlying vector implements par_iter_mut...
-    Vec<mem::MaybeUninit<Row>>:
-        rayon::iter::IntoParallelRefMutIterator<'a, Item = mem::MaybeUninit<Row>>,
 {
     pub fn par_iter_mut(&'a mut self) -> impl ParallelIterator<Item = (Id, &'a mut Row)> + 'a {
         let keys = self.ids.as_slice();
@@ -76,9 +73,6 @@ impl<'a, Id, Row> DenseVecTable<Id, Row>
 where
     Id: SerialId + Send + Sync,
     Row: TableRow + Send + Sync,
-    // if the underlying vector implements par_iter...
-    Vec<mem::MaybeUninit<Row>>:
-        rayon::iter::IntoParallelRefIterator<'a, Item = mem::MaybeUninit<Row>>,
 {
     pub fn par_iter(&'a self) -> impl ParallelIterator<Item = (Id, &'a Row)> + 'a {
         let keys = self.ids.as_slice();

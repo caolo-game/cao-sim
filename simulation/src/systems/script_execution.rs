@@ -33,26 +33,50 @@ pub fn execute_scripts(storage: &mut World) {
     let logger = storage.logger.new(o!("tick" => storage.time));
     let scripts_table = storage.view::<EntityId, EntityScript>().reborrow();
     let owners_table = storage.view::<EntityId, OwnedEntity>().reborrow();
-    let n_scripts = scripts_table.len();
 
-    let intents: Option<Vec<BotIntents>> = scripts_table
-        .par_iter()
+    let executions = scripts_table.iter().collect::<Vec<_>>();
+    let n_scripts = executions.len();
+    let n_threads = rayon::current_num_threads();
+
+    let intents: Option<Vec<BotIntents>> = executions[..]
+        .par_chunks((n_scripts / n_threads) + 1)
         .fold(
             || Vec::with_capacity(n_scripts),
-            |mut intents, (entity_id, script)| {
-                let owner_id = owners_table
-                    .get_by_id(entity_id)
-                    .map(|OwnedEntity { owner_id }| *owner_id);
-                match execute_single_script(&logger, *entity_id, script.script_id, owner_id, storage) {
-                    Ok(ints) => intents.push(ints),
-                    Err(err) => {
-                        warn!(
-                            logger,
-                            "Execution failure in {:?} of {:?}:\n{:?}",
-                            script.script_id,
-                            entity_id,
-                            err
-                        );
+            |mut intents, entity_scripts| {
+                let data = ScriptExecutionData::unsafe_default(logger.clone());
+
+                let conf = storage.resource::<GameConfig>();
+                let mut vm = VM::new(None, data);
+                vm.history.reserve(conf.execution_limit as usize);
+                vm.max_iter = i32::try_from(conf.execution_limit)
+                    .expect("Expected execution_limit to fit into 31 bits");
+                crate::scripting_api::make_import().execute_imports(&mut vm);
+
+                for (entity_id, script) in entity_scripts {
+                    let owner_id = owners_table
+                        .get_by_id(&entity_id)
+                        .map(|OwnedEntity { owner_id }| *owner_id);
+
+                    vm.clear();
+
+                    match execute_single_script(
+                        &logger,
+                        *entity_id,
+                        script.script_id,
+                        owner_id,
+                        storage,
+                        &mut vm,
+                    ) {
+                        Ok(ints) => intents.push(ints),
+                        Err(err) => {
+                            warn!(
+                                logger,
+                                "Execution failure in {:?} of {:?}:\n{:?}",
+                                script.script_id,
+                                entity_id,
+                                err
+                            );
+                        }
                     }
                 }
                 intents
@@ -70,12 +94,27 @@ pub fn execute_scripts(storage: &mut World) {
     }
 }
 
+fn make_data(
+    logger: &slog::Logger,
+    entity_id: EntityId,
+    user_id: Option<UserId>,
+    storage: &World,
+) -> ScriptExecutionData {
+    let logger = logger.new(o!( "entity_id" => entity_id.0 ));
+    let intents = BotIntents {
+        entity_id,
+        ..Default::default()
+    };
+    ScriptExecutionData::new(logger.clone(), storage, intents, entity_id, user_id)
+}
+
 pub fn execute_single_script(
     logger: &slog::Logger,
     entity_id: EntityId,
     script_id: ScriptId,
     user_id: Option<UserId>,
     storage: &World,
+    vm: &mut VM<ScriptExecutionData>,
 ) -> ExecutionResult {
     let program = storage
         .view::<ScriptId, ScriptComponent>()
@@ -86,19 +125,10 @@ pub fn execute_single_script(
             ExecutionError::ScriptNotFound(script_id)
         })?;
 
-    let conf = storage.resource::<GameConfig>();
-
     let logger = logger.new(o!( "entity_id" => entity_id.0 ));
-    let intents = BotIntents {
-        entity_id,
-        ..Default::default()
-    };
-    let data = ScriptExecutionData::new(logger.clone(), storage, intents, entity_id, user_id);
-    let mut vm = VM::new(logger.clone(), data);
-    vm.history.reserve(conf.execution_limit as usize);
-    vm.max_iter =
-        i32::try_from(conf.execution_limit).expect("Expected execution_limit to fit into 31 bits");
-    crate::scripting_api::make_import().execute_imports(&mut vm);
+    vm.logger = logger.clone();
+    let data = make_data(&logger, entity_id, user_id, storage);
+    vm.auxiliary_data = data;
 
     trace!(logger, "Starting script execution");
 
@@ -115,7 +145,10 @@ pub fn execute_single_script(
     })?;
 
     let history = replace(&mut vm.history, Vec::default());
-    let aux = vm.unwrap_aux();
+    let aux = std::mem::replace(
+        &mut vm.auxiliary_data,
+        ScriptExecutionData::unsafe_default(logger.clone()),
+    );
     trace!(
         logger,
         "Script execution completed, intents:{:?}",
@@ -152,6 +185,17 @@ impl Display for ScriptExecutionData {
 }
 
 impl ScriptExecutionData {
+    /// To be used as a placeholder, do not consume
+    pub fn unsafe_default(logger: slog::Logger) -> Self {
+        Self {
+            entity_id: Default::default(),
+            user_id: None,
+            intents: Default::default(),
+            storage: std::ptr::null(),
+            logger,
+        }
+    }
+
     pub fn new(
         logger: slog::Logger,
         storage: &World,

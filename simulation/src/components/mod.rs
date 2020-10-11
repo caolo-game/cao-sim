@@ -165,8 +165,11 @@ pub struct EntityScript {
     pub script_id: ScriptId,
 }
 unsafe impl Send for EntityScript {}
-impl<Id: TableId> Component<Id> for EntityScript {
-    type Table = BTreeTable<Id, Self>;
+impl Component<EntityId> for EntityScript {
+    type Table = DenseVecTable<EntityId, Self>;
+}
+impl Component<UserId> for EntityScript {
+    type Table = BTreeTable<UserId, Self>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
