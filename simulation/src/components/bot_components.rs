@@ -47,9 +47,8 @@ impl<Id: TableId> Component<Id> for CarryComponent {
 /// Entity - Script join table
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct EntityScript {
-    pub script_id: ScriptId,
-}
+pub struct EntityScript(pub ScriptId);
+
 unsafe impl Send for EntityScript {}
 impl Component<EntityId> for EntityScript {
     type Table = DenseVecTable<EntityId, Self>;

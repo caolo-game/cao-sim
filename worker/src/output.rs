@@ -61,6 +61,9 @@ pub fn build_bots<'a>(
                 let mut ow = msg.reborrow().init_owner();
                 ow.set_data(&owner_id.as_bytes()[..]);
             }
+            msg.set_id(id.0);
+            let mut position = msg.reborrow().init_position();
+            position_tranform(pos.0, &mut position);
 
             let body = json! ({
                 "melee": melee_table.get_by_id(&id)
@@ -72,10 +75,6 @@ pub fn build_bots<'a>(
                 , "script": script_table.get_by_id(&id)
             });
             let body = serde_json::to_string(&body).unwrap();
-
-            msg.set_id(id.0);
-            let mut position = msg.reborrow().init_position();
-            position_tranform(pos.0, &mut position);
             let mut js = msg.init_body();
             js.set_value(body.as_str());
         });

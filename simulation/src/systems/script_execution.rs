@@ -62,7 +62,7 @@ pub fn execute_scripts(storage: &mut World) {
                     match execute_single_script(
                         &logger,
                         *entity_id,
-                        script.script_id,
+                        script.0,
                         owner_id,
                         storage,
                         &mut vm,
@@ -72,7 +72,7 @@ pub fn execute_scripts(storage: &mut World) {
                             warn!(
                                 logger,
                                 "Execution failure in {:?} of {:?}:\n{:?}",
-                                script.script_id,
+                                script,
                                 entity_id,
                                 err
                             );

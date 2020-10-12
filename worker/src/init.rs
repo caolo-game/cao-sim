@@ -127,12 +127,7 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
         trace!(logger, "spawning entities");
         storage
             .unsafe_view::<UserId, EntityScript>()
-            .insert_or_update(
-                UserId(user_id),
-                EntityScript {
-                    script_id: center_walking_script_id,
-                },
-            );
+            .insert_or_update(UserId(user_id), EntityScript(center_walking_script_id));
         let spawn_pos = storage
             .view::<EntityId, PositionComponent>()
             .get_by_id(&spawnid)
@@ -202,7 +197,7 @@ fn init_bot(
         mut entities_by_pos,
     ): InitBotMuts,
 ) {
-    entity_scripts.insert_or_update(id, EntityScript { script_id });
+    entity_scripts.insert_or_update(id, EntityScript(script_id));
     bots.insert_or_update(id, Bot {});
     carry_component.insert_or_update(
         id,

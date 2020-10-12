@@ -110,7 +110,7 @@ fn update_user_bot_scripts(
         entity_scripts,
     );
     for (_id, (_owner, entity_script)) in join {
-        entity_script.script_id = script_id;
+        entity_script.0 = script_id;
     }
 }
 
@@ -151,7 +151,7 @@ pub fn update_entity_script(
     let script_id = ScriptId(script_id);
 
     let mut scripts_table: UnsafeView<EntityId, EntityScript> = storage.unsafe_view();
-    scripts_table.insert_or_update(entity_id, EntityScript { script_id });
+    scripts_table.insert_or_update(entity_id, EntityScript(script_id));
     Ok(())
 }
 
@@ -178,7 +178,7 @@ pub fn set_default_script(
     let user_id = UserId(user_id);
     let script_id = ScriptId(script_id);
 
-    let script = EntityScript { script_id };
+    let script = EntityScript(script_id);
 
     let mut user_default_script: UnsafeView<UserId, EntityScript> = storage.unsafe_view();
     user_default_script.insert_or_update(user_id, script);
