@@ -3,6 +3,7 @@ use cao_messages::world_capnp::world_state;
 use caolo_sim::join;
 use caolo_sim::prelude::*;
 use caolo_sim::tables::JoinIterator;
+use serde::Serialize;
 use std::convert::TryFrom;
 
 type BotInput<'a> = (
@@ -22,6 +23,23 @@ type BotInput<'a> = (
     View<'a, EmptyKey, RoomProperties>,
 );
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BotBody<'a> {
+    pub melee: Option<&'a MeleeAttackComponent>,
+    #[serde(flatten)]
+    pub carry: Option<&'a CarryComponent>,
+    #[serde(flatten)]
+    pub hp: Option<&'a HpComponent>,
+    #[serde(flatten)]
+    pub decay: Option<&'a DecayComponent>,
+    #[serde(flatten)]
+    pub energy: Option<&'a EnergyComponent>,
+    #[serde(flatten)]
+    pub energy_regen: Option<&'a EnergyRegenComponent>,
+    pub script_id: Option<&'a EntityScript>,
+}
+
 pub fn build_bots<'a>(
     (
         bots,
@@ -40,8 +58,6 @@ pub fn build_bots<'a>(
     ): BotInput<'a>,
     world: &mut world_state::Builder,
 ) {
-    use serde_json::json;
-
     let len = bots.count_set();
     let bots = bots.reborrow().iter();
     let positions = positions.reborrow().iter();
@@ -65,15 +81,16 @@ pub fn build_bots<'a>(
             let mut position = msg.reborrow().init_position();
             position_tranform(pos.0, &mut position);
 
-            let body = json! ({
-                "melee": melee_table.get_by_id(&id)
-                , "hp": hp_table.get_by_id(&id)
-                , "carry": carry_table.get_by_id(&id)
-                , "decay": decay_table.get_by_id(&id)
-                , "energy": energy_table.get_by_id(&id)
-                , "energyRegen": energy_regen_table.get_by_id(&id)
-                , "script": script_table.get_by_id(&id)
-            });
+            let body = BotBody {
+                melee: melee_table.get_by_id(&id),
+                hp: hp_table.get_by_id(&id),
+                carry: carry_table.get_by_id(&id),
+                decay: decay_table.get_by_id(&id),
+                energy: energy_table.get_by_id(&id),
+                energy_regen: energy_regen_table.get_by_id(&id),
+                script_id: script_table.get_by_id(&id),
+            };
+
             let body = serde_json::to_string(&body).unwrap();
             let mut js = msg.init_body();
             js.set_value(body.as_str());
