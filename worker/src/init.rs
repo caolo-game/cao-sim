@@ -237,6 +237,7 @@ type InitSpawnMuts = (
 );
 type InitSpawnConst<'a> = (View<'a, WorldPosition, TerrainComponent>,);
 
+#[allow(clippy::too_many_arguments)] // its just a helper function let it be
 fn init_spawn(
     logger: &Logger,
     bounds: &Hexagon,

@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use slog::{debug, info, o, trace, warn};
 use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter};
-use std::mem::replace;
+use std::mem::{replace, take};
 use thiserror::Error;
 
 pub type ExecutionResult = Result<BotIntents, ExecutionError>;
@@ -144,8 +144,8 @@ pub fn execute_single_script(
         }
     })?;
 
-    let history = replace(&mut vm.history, Vec::default());
-    let aux = std::mem::replace(
+    let history = take(&mut vm.history);
+    let aux = replace(
         &mut vm.auxiliary_data,
         ScriptExecutionData::unsafe_default(logger.clone()),
     );

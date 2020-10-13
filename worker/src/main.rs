@@ -114,7 +114,7 @@ async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyh
         .reborrow()
         .value
         .as_ref()
-        .ok_or_else(|| TerrainSendFail::RoomPropertiesNotSet)?;
+        .ok_or(TerrainSendFail::RoomPropertiesNotSet)?;
 
     let room_radius = room_properties.radius;
 
