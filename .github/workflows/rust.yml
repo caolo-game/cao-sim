@@ -11,11 +11,11 @@ jobs:
         rust: [stable, nightly]
 
     steps:
-      - uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: ${{ matrix.rust }}
       - uses: actions/checkout@v2
-
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: ${{ matrix.rust }}
       - name: Install capnp
         run: sudo apt-get install capnproto -y
 
