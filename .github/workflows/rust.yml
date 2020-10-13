@@ -55,7 +55,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   clippy_check:
-    needs: [test]
     runs-on: ubuntu-latest
     name: Clippy check
     steps:
