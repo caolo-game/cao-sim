@@ -132,7 +132,7 @@ pub fn update_entity_script(
 
     owned_entities_table
         .get_by_id(&entity_id)
-        .ok_or_else(|| UpdateProgramError::Unauthorized)
+        .ok_or(UpdateProgramError::Unauthorized)
         .and_then(|owner| {
             if owner.owner_id.0 != user_id {
                 Err(UpdateProgramError::Unauthorized)

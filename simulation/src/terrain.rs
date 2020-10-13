@@ -23,8 +23,5 @@ impl TileTerrainType {
 }
 
 pub fn is_walkable(tile: TileTerrainType) -> bool {
-    match tile {
-        TileTerrainType::Plain | TileTerrainType::Bridge => true,
-        _ => false,
-    }
+    matches!(tile, TileTerrainType::Plain | TileTerrainType::Bridge)
 }

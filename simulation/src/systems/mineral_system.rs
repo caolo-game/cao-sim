@@ -28,10 +28,9 @@ pub fn update(
 
     let mut rng = rand::thread_rng();
 
-    let minerals_it = resources.iter().filter(|(_, r)| match r.0 {
-        comp::Resource::Energy => true,
-        _ => false,
-    });
+    let minerals_it = resources
+        .iter()
+        .filter(|(_, r)| matches!(r.0, comp::Resource::Energy));
     let entity_positions_it = entity_positions.iter_mut();
     let energy_iter = energy.iter_mut();
 

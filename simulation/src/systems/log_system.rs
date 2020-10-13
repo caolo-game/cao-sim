@@ -21,7 +21,10 @@ pub fn update(mut logs: Mut, time: Const) {
             }
         })
         .collect::<Vec<_>>();
-    for id in changeset.into_iter() {
+
+    // we delete in the same table we iterated on above
+    // so we can't actually call delete before collecting
+    for id in changeset {
         logs.delete(&id);
     }
 }

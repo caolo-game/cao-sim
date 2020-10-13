@@ -12,7 +12,7 @@ pub fn update(
     debug!(logger, "update death system called");
 
     hps.iter().for_each(|(id, hp)| {
-        if hp.hp <= 0 {
+        if hp.hp == 0 {
             trace!(logger, "Entity {:?} has died, deleting", id);
             unsafe {
                 delete.delete_entity(id);
