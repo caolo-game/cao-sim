@@ -169,11 +169,11 @@ where
         self.keys.len()
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = (Pos, &'a mut Row)> + 'a {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (Pos, &mut Row)> {
         self.values.iter_mut().map(|(p, v)| (*p, v))
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (Pos, &'a Row)> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = (Pos, &Row)> {
         self.values.iter().map(|(p, v)| (*p, v))
     }
 
@@ -491,7 +491,7 @@ where
     }
 
     /// Count in AABB
-    pub fn count_in_range<'a>(&'a self, center: &Pos, radius: u32) -> u32 {
+    pub fn count_in_range(&self, center: &Pos, radius: u32) -> u32 {
         let r = i32::try_from(radius).expect("radius to fit into 31 bits");
         let min = *center + Pos::new(-r, -r);
         let max = *center + Pos::new(r, r);
@@ -507,7 +507,7 @@ where
     }
 
     /// Count in AABB
-    pub fn count_in_range_if<'a, Query>(&'a self, center: &Pos, radius: u32, query: Query) -> u32
+    pub fn count_in_range_if<Query>(&self, center: &Pos, radius: u32, query: Query) -> u32
     where
         Query: Fn(&Pos, &Row) -> bool,
     {

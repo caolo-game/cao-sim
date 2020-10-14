@@ -207,7 +207,7 @@ where
         self.iter().count()
     }
 
-    pub fn iter<'a>(&'a self) -> impl TableIterator<Id, &'a Row> + 'a {
+    pub fn iter(&self) -> impl TableIterator<Id, &Row> {
         let data = &self.data;
         self.ids
             .iter()
@@ -219,7 +219,7 @@ where
             })
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> impl TableIterator<Id, &'a mut Row> + 'a {
+    pub fn iter_mut(&mut self) -> impl TableIterator<Id, &mut Row> {
         let data = &mut self.data;
         self.ids
             .iter()

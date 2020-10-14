@@ -54,9 +54,11 @@ impl Drop for LogGuard {
     }
 }
 
+type History = Box<[(usize, Value)]>;
+
 #[derive(Debug)]
 pub struct TableLog {
-    history: Mutex<Pin<Box<[(usize, Value)]>>>,
+    history: Mutex<Pin<History>>,
     next: AtomicUsize,
 }
 
@@ -78,7 +80,7 @@ impl TableLog {
     /// # Safety
     /// as long as MAX_LOG_HISTORY is larger than the number of threads accessing this table
     /// we're most likely fine, but this is pretty unsafe
-    pub unsafe fn inserter<'a>(&'a self) -> impl FnOnce(Value) -> () + 'a {
+    pub unsafe fn inserter(&self) -> impl FnOnce(Value) {
         let i = self.next.fetch_add(1, Ordering::AcqRel);
         let history = &self.history;
         move |value| {

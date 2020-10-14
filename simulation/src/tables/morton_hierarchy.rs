@@ -56,7 +56,7 @@ where
         self.len() == 0
     }
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (WorldPosition, &'a Row)> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = (WorldPosition, &Row)> {
         self.table.iter().flat_map(|(room, t)| {
             t.iter()
                 .map(move |(pos, value)| (WorldPosition { room, pos }, value))

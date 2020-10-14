@@ -39,11 +39,11 @@ where
         }
     }
 
-    pub fn iter<'a>(&'a self) -> impl TableIterator<Id, &'a Row> + 'a {
+    pub fn iter(&self) -> impl TableIterator<Id, &Row> {
         self.data.iter().map(|(id, row)| (*id, row))
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> impl TableIterator<Id, &'a mut Row> + 'a {
+    pub fn iter_mut(&mut self) -> impl TableIterator<Id, &mut Row> {
         self.data.iter_mut().map(|(id, row)| (*id, row))
     }
 
