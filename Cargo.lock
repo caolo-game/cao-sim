@@ -364,7 +364,7 @@ checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
 [[package]]
 name = "cao-lang"
 version = "0.1.4"
-source = "git+https://github.com/caolo-game/cao-lang.git#ed37afab420151aa6fd04b6768752824598ba2d8"
+source = "git+https://github.com/caolo-game/cao-lang.git#68864d1163f786fc0ce688cb17b22fb08c9b86fe"
 dependencies = [
  "arrayvec",
  "serde",
@@ -734,9 +734,9 @@ dependencies = [
 
 [[package]]
 name = "curl-sys"
-version = "0.4.37+curl-7.72.0"
+version = "0.4.38+curl-7.73.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a67fd8165f81261fcd71a9d793fe0993b4f38687fbeb6ef2ad5f5b56edd5ccf"
+checksum = "498ecfb4f59997fd40023d62a9f1e506e768b2baeb59a1d311eb9751cdcd7e3f"
 dependencies = [
  "cc",
  "libc",
