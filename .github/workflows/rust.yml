@@ -23,8 +23,11 @@ jobs:
       - name: Run tests
         run: cargo test --all-features
         env:
-          RUST_BACKTRACE: 1
           RUST_LOG: caolo_sim=trace
+          RUST_BACKTRACE: 1
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests"
+          RUSTDOCFLAGS: "-Cpanic=abort"
 
       - name: Test benches
         run: cargo test --benches
@@ -39,15 +42,8 @@ jobs:
       - name: Generate coverage report
         if: ${{ matrix.rust == 'nightly' }}
         run: |
-          cargo +nightly test --all-features
           mkdir ./coverage
           ./grcov ./target/debug -s . --token ${{ secrets.COVERALLS_TOKEN }} --ignore="/*" > ./coverage/lcov.info
-
-        env:
-          RUST_BACKTRACE: 1
-          CARGO_INCREMENTAL: 0
-          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests"
-          RUSTDOCFLAGS: "-Cpanic=abort"
 
       - name: Coveralls
         if: ${{ matrix.rust == 'nightly' }}
