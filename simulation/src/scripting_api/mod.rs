@@ -9,10 +9,9 @@ use crate::geometry::point::Axial;
 use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
 use crate::systems::script_execution::ScriptExecutionData;
-use cao_lang::prelude::*;
-use cao_lang::scalar::Scalar;
+use cao_lang::{prelude::*, scalar::Scalar, traits::AutoByteEncodeProperties};
 use find_api::FindConstant;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use slog::trace;
 use std::convert::TryFrom;
 
@@ -20,14 +19,14 @@ use std::convert::TryFrom;
 #[repr(i32)]
 pub enum OperationResult {
     Ok = 0,
-    NotOwner = -1,
-    InvalidInput = -2,
-    OperationFailed = -3,
-    NotInRange = -4,
-    InvalidTarget = -5,
-    Empty = -6,
-    Full = -7,
-    PathNotFound = -8,
+    NotOwner = 1,
+    InvalidInput = 2,
+    OperationFailed = 3,
+    NotInRange = 4,
+    InvalidTarget = 5,
+    Empty = 6,
+    Full = 7,
+    PathNotFound = 8,
 }
 
 impl TryFrom<Scalar> for OperationResult {
@@ -36,14 +35,14 @@ impl TryFrom<Scalar> for OperationResult {
     fn try_from(i: Scalar) -> Result<OperationResult, Scalar> {
         let op = match i {
             Scalar::Integer(0) => OperationResult::Ok,
-            Scalar::Integer(-1) => OperationResult::NotOwner,
-            Scalar::Integer(-2) => OperationResult::InvalidInput,
-            Scalar::Integer(-3) => OperationResult::OperationFailed,
-            Scalar::Integer(-4) => OperationResult::NotInRange,
-            Scalar::Integer(-5) => OperationResult::InvalidTarget,
-            Scalar::Integer(-6) => OperationResult::Empty,
-            Scalar::Integer(-7) => OperationResult::Full,
-            Scalar::Integer(-8) => OperationResult::PathNotFound,
+            Scalar::Integer(1) => OperationResult::NotOwner,
+            Scalar::Integer(2) => OperationResult::InvalidInput,
+            Scalar::Integer(3) => OperationResult::OperationFailed,
+            Scalar::Integer(4) => OperationResult::NotInRange,
+            Scalar::Integer(5) => OperationResult::InvalidTarget,
+            Scalar::Integer(6) => OperationResult::Empty,
+            Scalar::Integer(7) => OperationResult::Full,
+            Scalar::Integer(8) => OperationResult::PathNotFound,
             _ => {
                 return Err(i);
             }
@@ -52,7 +51,7 @@ impl TryFrom<Scalar> for OperationResult {
     }
 }
 
-impl cao_lang::traits::AutoByteEncodeProperties for OperationResult {}
+impl AutoByteEncodeProperties for OperationResult {}
 
 impl Into<Scalar> for OperationResult {
     fn into(self) -> Scalar {

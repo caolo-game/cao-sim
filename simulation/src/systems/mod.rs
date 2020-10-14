@@ -1,8 +1,8 @@
 pub mod script_execution;
 
+mod attack_system;
 mod death_system;
 mod decay_system;
-mod attack_system;
 mod dropoff_intent_system;
 mod energy_system;
 mod log_intent_system;

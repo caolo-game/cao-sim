@@ -60,21 +60,13 @@ pub fn execute_scripts(storage: &mut World) {
                     vm.clear();
 
                     match execute_single_script(
-                        &logger,
-                        *entity_id,
-                        script.0,
-                        owner_id,
-                        storage,
-                        &mut vm,
+                        &logger, *entity_id, script.0, owner_id, storage, &mut vm,
                     ) {
                         Ok(ints) => intents.push(ints),
                         Err(err) => {
                             warn!(
                                 logger,
-                                "Execution failure in {:?} of {:?}:\n{:?}",
-                                script,
-                                entity_id,
-                                err
+                                "Execution failure in {:?} of {:?}:\n{:?}", script, entity_id, err
                             );
                         }
                     }

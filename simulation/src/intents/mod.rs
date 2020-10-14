@@ -1,7 +1,7 @@
 //! Actions, world updates the clients _intend_ to execute.
 //!
-mod dropoff_intent;
 mod attack_intent;
+mod dropoff_intent;
 mod log_intent;
 mod mine_intent;
 mod move_intent;
