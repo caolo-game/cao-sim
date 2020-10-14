@@ -364,7 +364,7 @@ checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
 [[package]]
 name = "cao-lang"
 version = "0.1.4"
-source = "git+https://github.com/caolo-game/cao-lang.git#68864d1163f786fc0ce688cb17b22fb08c9b86fe"
+source = "git+https://github.com/caolo-game/cao-lang.git#4d754356e4a52aa932989c2641ace512f398d247"
 dependencies = [
  "arrayvec",
  "serde",
