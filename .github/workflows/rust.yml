@@ -10,27 +10,30 @@ jobs:
     strategy:
       matrix:
         rust: [stable, nightly]
+        include:
+          - rust: nightly
+            flags: "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests"
 
     steps:
       - uses: actions/checkout@v2
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: ${{ matrix.rust }}
+          toolchain: ${{ matrix.rust }}
       - name: Install capnp
         run: sudo apt-get install capnproto -y
 
       - name: Run tests
-        run: cargo test --all-features
+        run: cargo +${{ matrix.rust }} test --all-features
         env:
           RUST_LOG: caolo_sim=trace
           RUST_BACKTRACE: 1
           CARGO_INCREMENTAL: 0
-          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests"
+          RUSTFLAGS: ${{ matrix.flags }}
           RUSTDOCFLAGS: "-Cpanic=abort"
 
       - name: Test benches
-        run: cargo test --benches
+        run: cargo +${{ matrix.rust }} test --benches
         env:
           RUST_BACKTRACE: 1
           RUST_LOG: caolo_sim=trace
@@ -58,9 +61,9 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly
-            components: clippy
-            override: true
+          toolchain: nightly
+          components: clippy
+          override: true
       - name: Install capnp
         run: sudo apt-get install capnproto -y
       - uses: actions-rs/clippy-check@v1

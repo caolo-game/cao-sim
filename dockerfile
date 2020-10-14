@@ -6,8 +6,6 @@ RUN apt-get install lld clang capnproto -y --fix-missing
 WORKDIR /caolo
 
 COPY ./.cargo/ ./.cargo/
-COPY ./rust-toolchain ./rust-toolchain
-# cache the toolchain
 RUN cargo --version
 
 # ============= cache dependencies =============
