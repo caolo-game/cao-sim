@@ -175,7 +175,7 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
         let mut func = functions.reborrow().get(i as u32);
         func.set_name(import.name);
         func.set_description(import.description);
-        func.set_ty(serde_json::to_string(&import.ty).unwrap());
+        func.set_ty(serde_json::to_string(&import.ty).unwrap().as_str());
         {
             let len = import.input.len();
             let mut inputs = func.reborrow().init_input(len as u32);
