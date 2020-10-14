@@ -158,17 +158,32 @@ pub fn make_import() -> Schema {
     Schema {
         imports: vec![
             FunctionRow {
-                desc: subprogram_description!(console_log, "Log a string", [String], [], []),
+                desc: subprogram_description!(
+                    "console_log",
+                    "Log a string",
+                    SubProgramType::Function,
+                    [String],
+                    [],
+                    []
+                ),
                 fo: Procedure::new(FunctionWrapper::new(console_log)),
             },
             FunctionRow {
-                desc: subprogram_description!(log_scalar, "Log a scalar value", [Scalar], [], []),
+                desc: subprogram_description!(
+                    "log_scalar",
+                    "Log a scalar value",
+                    SubProgramType::Function,
+                    [Scalar],
+                    [],
+                    []
+                ),
                 fo: Procedure::new(FunctionWrapper::new(log_scalar)),
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    mine_resource,
+                    "mine_resource",
                     "Move the bot to the given Axial",
+                    SubProgramType::Function,
                     [EntityId],
                     [OperationResult],
                     []
@@ -177,8 +192,9 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    approach_entity,
+                    "approach_entity",
                     "Move the bot to the given Entity",
+                    SubProgramType::Function,
                     [EntityId],
                     [OperationResult],
                     []
@@ -187,8 +203,9 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    move_bot_to_position,
+                    "move_bot_to_position",
                     "Move the bot to the given Axial",
+                    SubProgramType::Function,
                     [Axial],
                     [OperationResult],
                     []
@@ -197,8 +214,9 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    make_point,
+                    "make_point",
                     "Create a point from x and y coordinates",
+                    SubProgramType::Function,
                     [i32, i32],
                     [Axial],
                     []
@@ -207,8 +225,9 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    world_position,
+                    "world_position",
                     "Create a WorldPosition from coordinates: [room.x, room.y, x, y]",
+                    SubProgramType::Function,
                     [i32, i32, i32, i32],
                     [Axial],
                     []
@@ -217,8 +236,9 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    find_closest_by_range,
+                    "find_closest_by_range",
                     "Find an object of type `FindConstant`, closest to the current entity",
+                    SubProgramType::Function,
                     [FindConstant],
                     [OperationResult, EntityId],
                     []
@@ -227,8 +247,9 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    unload,
+                    "unload",
                     "Unload resources",
+                    SubProgramType::Function,
                     [u16, components::Resource, EntityId],
                     [OperationResult],
                     []
@@ -237,8 +258,9 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    parse_find_constant,
+                    "parse_find_constant",
                     "Converts string literal to a find constant",
+                    SubProgramType::Function,
                     [String],
                     [FindConstant],
                     []
@@ -247,8 +269,9 @@ pub fn make_import() -> Schema {
             },
             FunctionRow {
                 desc: subprogram_description!(
-                    melee_attack,
+                    "melee_attack",
                     "Attempts to strike the target entity",
+                    SubProgramType::Function,
                     [EntityId],
                     [OperationResult],
                     []
