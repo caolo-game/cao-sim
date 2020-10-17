@@ -169,16 +169,16 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
     let mut root = msg.init_root::<schema::Builder>();
 
     let len = imports.len();
-    let mut functions = root.reborrow().init_functions(len as u32);
+    let mut cards = root.reborrow().init_cards(len as u32);
     imports.iter().enumerate().for_each(|(i, import)| {
         let import = &import.desc;
-        let mut func = functions.reborrow().get(i as u32);
-        func.set_name(import.name);
-        func.set_description(import.description);
-        func.set_ty(serde_json::to_string(&import.ty).unwrap().as_str());
+        let mut card = cards.reborrow().get(i as u32);
+        card.set_name(import.name);
+        card.set_description(import.description);
+        card.set_ty(serde_json::to_string(&import.ty).unwrap().as_str());
         {
             let len = import.input.len();
-            let mut inputs = func.reborrow().init_input(len as u32);
+            let mut inputs = card.reborrow().init_input(len as u32);
             import
                 .input
                 .iter()
@@ -187,7 +187,7 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
         }
         {
             let len = import.output.len();
-            let mut outputs = func.reborrow().init_output(len as u32);
+            let mut outputs = card.reborrow().init_output(len as u32);
             import
                 .output
                 .iter()
@@ -196,7 +196,7 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
         }
         {
             let len = import.constants.len();
-            let mut constants = func.reborrow().init_constants(len as u32);
+            let mut constants = card.reborrow().init_constants(len as u32);
             import
                 .constants
                 .iter()

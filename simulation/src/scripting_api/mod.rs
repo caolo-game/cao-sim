@@ -89,7 +89,7 @@ pub fn world_position(
 
 pub fn console_log(
     vm: &mut VM<ScriptExecutionData>,
-    message: TPointer,
+    message: Pointer,
 ) -> Result<(), ExecutionError> {
     profile!("console_log");
     let logger = &vm.get_aux().logger;

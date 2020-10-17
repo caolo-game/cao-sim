@@ -107,9 +107,9 @@ dependencies = [
 
 [[package]]
 name = "async-global-executor"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fefeb39da249f4c33af940b779a56723ce45809ef5c54dad84bb538d4ffb6d9e"
+checksum = "0659b83a146398616883aa5199cdd1b055ec088a83c9a338eab3534f33f0622e"
 dependencies = [
  "async-compat",
  "async-executor",
@@ -364,7 +364,7 @@ checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
 [[package]]
 name = "cao-lang"
 version = "0.1.4"
-source = "git+https://github.com/caolo-game/cao-lang.git#4d754356e4a52aa932989c2641ace512f398d247"
+source = "git+https://github.com/caolo-game/cao-lang.git#1638187157ba9a983cc67442d12429842c3df5c9"
 dependencies = [
  "arrayvec",
  "serde",
@@ -376,7 +376,7 @@ dependencies = [
 [[package]]
 name = "cao-messages"
 version = "0.1.0"
-source = "git+https://github.com/caolo-game/cao-messages.git#0bbbafff00e753ee11a128edd6403ee45ac013ee"
+source = "git+https://github.com/caolo-game/cao-messages.git#160e48fb50ddacebb1e0297239e47b23f7f349ce"
 dependencies = [
  "capnp",
  "capnpc",
@@ -415,7 +415,7 @@ dependencies = [
  "cao_storage_derive",
  "chrono",
  "criterion",
- "env_logger",
+ "env_logger 0.7.1",
  "lazy_static",
  "rand",
  "rayon",
@@ -443,7 +443,7 @@ dependencies = [
  "capnp",
  "chrono",
  "dotenv 0.14.1",
- "env_logger",
+ "env_logger 0.8.1",
  "jemallocator",
  "rand",
  "redis",
@@ -462,9 +462,9 @@ dependencies = [
 
 [[package]]
 name = "capnp"
-version = "0.13.4"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1970924a7ab254a5fff25b1146398a024d1ea878a7f71c5f00613b437faacf67"
+checksum = "394f9ad87764d43d41c8d3ea270fd03def2f455011f3ada86c9f01d88592105d"
 
 [[package]]
 name = "capnpc"
@@ -830,6 +830,15 @@ name = "env_logger"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
+dependencies = [
+ "log 0.4.11",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54532e3223c5af90a6a757c90b5c5521564b07e5e7a958681bcd2afad421cdcd"
 dependencies = [
  "log 0.4.11",
 ]
@@ -2089,9 +2098,9 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.116"
+version = "1.0.117"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96fe57af81d28386a513cbc6858332abc6117cfdb5999647c6444b8f43a370a5"
+checksum = "b88fa983de7720629c9387e9f517353ed404164b1e482c970a90c1a4aaf7dc1a"
 dependencies = [
  "serde_derive",
 ]
@@ -2108,9 +2117,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.116"
+version = "1.0.117"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f630a6370fd8e457873b4bd2ffdae75408bc291ba72be773772a4c2a065d9ae8"
+checksum = "cbd1ae72adb44aab48f325a02444a5fc079349a8d804c1fc922aed3f7454c74e"
 dependencies = [
  "proc-macro2",
  "quote",

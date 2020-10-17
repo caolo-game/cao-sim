@@ -32,7 +32,7 @@ impl AutoByteEncodeProperties for FindConstant {}
 
 pub fn parse_find_constant(
     vm: &mut VM<ScriptExecutionData>,
-    param: TPointer,
+    param: Pointer,
 ) -> Result<(), ExecutionError> {
     profile!("parse_find_constant");
     let logger = &vm.get_aux().logger;

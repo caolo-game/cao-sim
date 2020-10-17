@@ -17,7 +17,7 @@ use std::convert::TryFrom;
 
 pub fn melee_attack(
     vm: &mut VM<ScriptExecutionData>,
-    target: TPointer,
+    target: Pointer,
 ) -> Result<(), ExecutionError> {
     profile!("melee-attack");
 
@@ -50,7 +50,7 @@ pub fn melee_attack(
 
 pub fn unload(
     vm: &mut VM<ScriptExecutionData>,
-    (amount, ty, target): (i32, Resource, TPointer),
+    (amount, ty, target): (i32, Resource, Pointer),
 ) -> Result<(), ExecutionError> {
     profile!("unload");
     let aux = vm.get_aux();
@@ -97,7 +97,7 @@ pub fn unload(
 
 pub fn mine_resource(
     vm: &mut VM<ScriptExecutionData>,
-    target: TPointer,
+    target: Pointer,
 ) -> Result<(), ExecutionError> {
     profile!("mine_resource");
     let aux = vm.get_aux();
@@ -128,7 +128,7 @@ pub fn mine_resource(
 
 pub fn approach_entity(
     vm: &mut VM<ScriptExecutionData>,
-    target: TPointer,
+    target: Pointer,
 ) -> Result<(), ExecutionError> {
     profile!("approach_entity");
 
@@ -187,7 +187,7 @@ pub fn approach_entity(
 
 pub fn move_bot_to_position(
     vm: &mut VM<ScriptExecutionData>,
-    point: TPointer,
+    point: Pointer,
 ) -> Result<(), ExecutionError> {
     profile!("move_bot_to_position");
 
