@@ -205,7 +205,7 @@ impl World {
     }
 
     /// Perform post-tick cleanup on the storage
-    pub fn signal_done(&mut self) {
+    pub fn post_process(&mut self) {
         self.deferred_deletes.execute_all(&mut self.store);
         self.deferred_deletes.clear();
 

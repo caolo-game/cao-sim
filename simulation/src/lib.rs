@@ -39,7 +39,7 @@ pub fn forward(world: &mut World) -> anyhow::Result<()> {
     execute_world_update(world);
 
     debug!(logger, "Executing signaling");
-    world.signal_done();
+    world.post_process();
 
     info!(logger, "Tick done");
     Ok(())

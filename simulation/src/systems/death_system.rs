@@ -64,7 +64,7 @@ mod tests {
         assert_eq!(entities, vec![entity_1, entity_2]);
 
         update(FromWorldMut::new(&mut *store), FromWorld::new(&mut *store));
-        store.signal_done();
+        store.post_process();
 
         let entities: Vec<_> = store
             .view::<EntityId, HpComponent>()
