@@ -26,8 +26,12 @@ pub fn update(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::{setup_testing, test_logger};
-    use crate::{forward, init_inmemory_storage, query};
+    use crate::{init_inmemory_storage, query};
+    use crate::{
+        storage::views::FromWorld,
+        storage::views::FromWorldMut,
+        utils::{setup_testing, test_logger},
+    };
 
     #[test]
     fn test_dead_entity_is_deleted() {
@@ -59,7 +63,8 @@ mod tests {
 
         assert_eq!(entities, vec![entity_1, entity_2]);
 
-        forward(&mut *store).expect("Failed to execute update");
+        update(FromWorldMut::new(&mut *store), FromWorld::new(&mut *store));
+        store.signal_done();
 
         let entities: Vec<_> = store
             .view::<EntityId, HpComponent>()
