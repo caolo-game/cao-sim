@@ -13,6 +13,7 @@ use crate::tables::{
     RoomMortonTable, SpatialKey2d, TableId,
 };
 
+use cao_lang::prelude::CompiledProgram;
 use cao_lang::vm::HistoryEntry;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -141,7 +142,7 @@ impl<Id: TableId> Component<Id> for LogEntry {
 /// Entities with Scripts
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct ScriptComponent(pub cao_lang::CompiledProgram);
+pub struct ScriptComponent(pub CompiledProgram);
 impl<Id: TableId> Component<Id> for ScriptComponent {
     type Table = BTreeTable<Id, Self>;
 }

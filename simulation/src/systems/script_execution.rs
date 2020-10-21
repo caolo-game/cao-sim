@@ -58,7 +58,6 @@ pub fn execute_scripts(storage: &mut World) {
                         .map(|OwnedEntity { owner_id }| *owner_id);
 
                     vm.clear();
-
                     match execute_single_script(
                         &logger, *entity_id, script.0, owner_id, storage, &mut vm,
                     ) {
@@ -100,13 +99,13 @@ fn make_data(
     ScriptExecutionData::new(logger.clone(), storage, intents, entity_id, user_id)
 }
 
-pub fn execute_single_script(
+pub fn execute_single_script<'a>(
     logger: &slog::Logger,
     entity_id: EntityId,
     script_id: ScriptId,
     user_id: Option<UserId>,
-    storage: &World,
-    vm: &mut VM<ScriptExecutionData>,
+    storage: &'a World,
+    vm: &mut VM<'a, ScriptExecutionData>,
 ) -> ExecutionResult {
     let program = storage
         .view::<ScriptId, ScriptComponent>()

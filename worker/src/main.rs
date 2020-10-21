@@ -81,7 +81,8 @@ fn send_world(
     output::build_resources(FromWorld::new(storage), &mut root);
     output::build_structures(FromWorld::new(storage), &mut root);
     output::build_script_history(FromWorld::new(storage), &mut root);
-    output::build_logs(FromWorld::new(storage), &mut root);
+    // FIXME: causes panic
+    // output::build_logs(FromWorld::new(storage), &mut root);
 
     let mut payload = Vec::with_capacity(1_000_000);
     capnp::serialize::write_message(&mut payload, &msg)?;

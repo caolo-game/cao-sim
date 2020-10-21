@@ -110,8 +110,10 @@ pub fn build_script_history<'a>(
         item.set_entity_id(entry.entity.0);
         let mut list = item.init_payload(entry.payload.len() as u32);
 
-        entry.payload.iter().enumerate().for_each(|(i, entry)| {
-            list.set(i as u32, entry.id as i64);
+        entry.payload.iter().enumerate().for_each(|(i, node)| {
+            let mut entry = list.reborrow().get(i as u32);
+            entry.set_lane(node.id.lane);
+            entry.set_pos(node.id.pos);
         });
     });
 }
@@ -119,8 +121,7 @@ pub fn build_script_history<'a>(
 pub fn build_logs<'a>(v: View<'a, EntityTime, LogEntry>, world: &mut world_state::Builder) {
     let len = v.len();
     let mut list = world.reborrow().init_logs(len as u32);
-    v.reborrow()
-        .iter()
+    v.iter()
         .enumerate()
         .for_each(|(i, (EntityTime(EntityId(eid), time), entries))| {
             let mut msg = list.reborrow().get(i as u32);
@@ -128,11 +129,18 @@ pub fn build_logs<'a>(v: View<'a, EntityTime, LogEntry>, world: &mut world_state
             msg.set_time(time);
             let len = entries.payload.len();
             let mut payload = msg.reborrow().init_payload(len as u32);
-            for (i, entry) in entries.payload.iter().enumerate() {
+            for (i, entry) in entries
+                .payload
+                .iter()
+                .enumerate()
+                .filter(|(_, e)| !e.is_empty())
+            {
                 let mut a = payload
                     .reborrow()
                     .get(i as u32)
                     .expect("log entry payload get");
+                // FIXME
+                // this panics
                 a.push_str(entry.as_str());
             }
         });

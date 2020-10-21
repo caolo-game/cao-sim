@@ -1,5 +1,5 @@
 use crate::config::GameConfig;
-use cao_lang::prelude::*;
+use cao_lang::{compiler::CompileOptions, prelude::*};
 use caolo_sim::map_generation::generate_full_map;
 use caolo_sim::map_generation::overworld::OverworldGenerationParams;
 use caolo_sim::map_generation::room::RoomGenerationParams;
@@ -21,7 +21,8 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
         serde_json::from_str(include_str!("./programs/mining_program.json"))
             .expect("deserialize example program");
     debug!(logger, "compiling default program");
-    let compiled = compile(None, script).expect("failed to compile example program");
+    let compiled = compile(None, script, CompileOptions::new().with_breadcrumbs(false))
+        .expect("failed to compile example program");
     debug!(logger, "compilation done");
 
     caolo_sim::query!(
@@ -38,7 +39,8 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
         serde_json::from_str(include_str!("./programs/center_walking_program.json"))
             .expect("deserialize example program");
     debug!(logger, "compiling default program");
-    let compiled = compile(None, script).expect("failed to compile example program");
+    let compiled = compile(None, script, CompileOptions::new().with_breadcrumbs(false))
+        .expect("failed to compile example program");
     debug!(logger, "compilation done");
 
     caolo_sim::query!(
@@ -257,7 +259,7 @@ fn init_spawn(
     ): InitSpawnMuts,
     (terrain,): InitSpawnConst,
 ) {
-    debug!(logger, "init_spawn");
+    trace!(logger, "init_spawn");
     structures.insert_or_update(id, Structure {});
     spawns.insert_or_update(id, SpawnComponent::default());
     spawn_queues.insert_or_update(id, SpawnQueueComponent::default());
@@ -285,7 +287,7 @@ fn init_spawn(
         .expect("expected room to be in entities_by_pos table")
         .insert(pos.pos, EntityComponent(id))
         .expect("entities_by_pos insert");
-    debug!(logger, "init_spawn done");
+    trace!(logger, "init_spawn done");
 }
 
 type InitResourceMuts = (

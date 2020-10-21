@@ -14,6 +14,8 @@ pub enum UpdateProgramError {
     Unauthorized,
     #[error("Failed to perform the operation {0:?}")]
     Internal(anyhow::Error),
+    #[error("Invalid message {0:?}")]
+    BadMessage(anyhow::Error),
 }
 type UpdateResult = Result<(), UpdateProgramError>;
 
@@ -48,37 +50,23 @@ pub fn update_program(
     let user_id = UserId(user_id);
     let script_id = ScriptId(script_id);
 
-    let program = msg
-        .get_compiled_script()
-        .with_context(|| "Failed to get compiled script")
-        .map_err(UpdateProgramError::Internal)?;
+    let cu = msg
+        .get_compilation_unit()
+        .with_context(|| "Failed to get script")
+        .map_err(UpdateProgramError::BadMessage)?;
 
-    let bytecode = program
-        .reborrow()
-        .get_bytecode()
-        .with_context(|| "Failed to get bytecode")
-        .map_err(UpdateProgramError::Internal)?;
+    let compilation_unit = cu
+        .get_compilation_unit()
+        .with_context(|| "Failed to get script internal")
+        .map_err(UpdateProgramError::BadMessage)?;
 
-    let program = cao_lang::CompiledProgram {
-        bytecode: bytecode.to_vec(),
-        labels: program
-            .get_labels()
-            .with_context(|| "Failed to get bytecode")
-            .map_err(UpdateProgramError::Internal)?
-            .iter()
-            .filter_map(|kv| {
-                let id = kv.get_key();
-                let label = kv
-                    .get_val()
-                    .map_err(|err| {
-                        error!(logger, "Failed to get value {:?}", err);
-                    })
-                    .ok()?;
-                let label = cao_lang::Label::new(label.get_block() as u32);
-                Some((id, label))
-            })
-            .collect(),
-    };
+    let compilation_unit = serde_json::from_slice(compilation_unit.get_value().unwrap())
+        .with_context(|| "Failed to deserialize CU")
+        .map_err(UpdateProgramError::BadMessage)?;
+
+    let program = cao_lang::prelude::compile(logger.clone(), compilation_unit, None)
+        .with_context(|| "Failed to compile script")
+        .map_err(UpdateProgramError::BadMessage)?;
 
     let program = ScriptComponent(program);
     storage
