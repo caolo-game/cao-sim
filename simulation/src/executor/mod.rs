@@ -1,6 +1,6 @@
 use slog::{debug, info, o};
 
-use crate::data_store::World;
+use crate::{data_store::World, intents};
 use crate::{profile, systems::execute_world_update, systems::script_execution::execute_scripts};
 
 /// Execute world state updates
@@ -22,7 +22,10 @@ impl Executor for SimpleExecutor {
         info!(logger, "Tick starting");
 
         debug!(logger, "Executing scripts");
-        execute_scripts(world);
+        let intents = execute_scripts(world);
+
+        debug!(logger, "Got {} intents", intents.len());
+        intents::move_into_storage(world, intents);
 
         debug!(logger, "Executing systems update");
         execute_world_update(world);

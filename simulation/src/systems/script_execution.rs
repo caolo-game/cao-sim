@@ -2,10 +2,10 @@ use crate::components::{
     game_config::GameConfig, EntityScript, OwnedEntity, ScriptComponent, ScriptHistoryEntry,
 };
 use crate::indices::{EntityId, ScriptId, UserId};
-use crate::{intents, intents::*, profile, World};
+use crate::{intents::*, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
-use slog::{debug, info, o, trace, warn};
+use slog::{info, o, trace, warn};
 use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter};
 use std::mem::{replace, take};
@@ -25,9 +25,7 @@ pub enum ExecutionError {
     },
 }
 
-/// Must be called from a tokio runtime!
-/// Returns the intents that are expected to be executed
-pub fn execute_scripts(storage: &mut World) {
+pub fn execute_scripts(storage: &mut World) -> Vec<BotIntents>{
     profile!("execute_scripts");
 
     let logger = storage.logger.new(o!("tick" => storage.time));
@@ -79,10 +77,7 @@ pub fn execute_scripts(storage: &mut World) {
         });
 
     info!(logger, "Executed {} scripts", n_scripts);
-    if let Some(intents) = intents {
-        debug!(logger, "Got {} intents", intents.len());
-        intents::move_into_storage(storage, intents);
-    }
+    intents.unwrap_or_else(Vec::default)
 }
 
 fn make_data(
