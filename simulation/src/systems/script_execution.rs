@@ -5,7 +5,7 @@ use crate::indices::{EntityId, ScriptId, UserId};
 use crate::{intents::*, profile, World};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
-use slog::{info, o, trace, warn};
+use slog::{debug, info, o, trace, warn};
 use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter};
 use std::mem::{replace, take};
@@ -36,11 +36,22 @@ pub fn execute_scripts(
 
     let n_scripts = workload.len();
     let n_threads = rayon::current_num_threads();
+    // the +1 handles edge cases, where n_script < n_threads
+    // this way in practice 1 thread will have a bit less work to perform than the others,
+    // but it should be fine.
+    // Also if the programs call engine functions that have internal parallelisation, then
+    // load balancing should be even less of a problem...
+    let chunk_size = (n_scripts / n_threads) + 1;
+
+    info!(
+        logger,
+        "Executing {} scripts on {} threads in chunks of {}", n_scripts, n_threads, chunk_size
+    );
 
     let intents: Option<Vec<BotIntents>> = workload
-        .par_chunks((n_scripts / n_threads) + 1)
+        .par_chunks(chunk_size)
         .fold(
-            || Vec::with_capacity(n_scripts),
+            || Vec::with_capacity(chunk_size),
             |mut intents, entity_scripts| {
                 let data = ScriptExecutionData::unsafe_default(logger.clone());
 
@@ -77,7 +88,11 @@ pub fn execute_scripts(
             res
         });
 
-    info!(logger, "Executed {} scripts", n_scripts);
+    debug!(
+        logger,
+        "Executing scripts done. Returning {:?} intents",
+        intents.as_ref().map(|i| i.len())
+    );
     intents.unwrap_or_else(Vec::default)
 }
 
