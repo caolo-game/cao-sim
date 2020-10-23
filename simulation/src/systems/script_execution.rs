@@ -56,7 +56,7 @@ pub fn execute_scripts(
                 let data = ScriptExecutionData::unsafe_default(logger.clone());
 
                 let conf = storage.resource::<GameConfig>();
-                let mut vm = VM::new(None, data);
+                let mut vm = VM::new(logger.clone(), data);
                 vm.history.reserve(conf.execution_limit as usize);
                 vm.max_iter = i32::try_from(conf.execution_limit)
                     .expect("Expected execution_limit to fit into 31 bits");
