@@ -25,18 +25,19 @@ pub enum ExecutionError {
     },
 }
 
-pub fn execute_scripts(storage: &mut World) -> Vec<BotIntents>{
+pub fn execute_scripts(
+    workload: &[(EntityId, EntityScript)],
+    storage: &mut World,
+) -> Vec<BotIntents> {
     profile!("execute_scripts");
 
     let logger = storage.logger.new(o!("tick" => storage.time));
-    let scripts_table = storage.view::<EntityId, EntityScript>().reborrow();
     let owners_table = storage.view::<EntityId, OwnedEntity>().reborrow();
 
-    let executions = scripts_table.iter().collect::<Vec<_>>();
-    let n_scripts = executions.len();
+    let n_scripts = workload.len();
     let n_threads = rayon::current_num_threads();
 
-    let intents: Option<Vec<BotIntents>> = executions[..]
+    let intents: Option<Vec<BotIntents>> = workload
         .par_chunks((n_scripts / n_threads) + 1)
         .fold(
             || Vec::with_capacity(n_scripts),

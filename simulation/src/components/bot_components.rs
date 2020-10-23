@@ -45,7 +45,7 @@ impl<Id: TableId> Component<Id> for CarryComponent {
 }
 
 /// Entity - Script join table
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Copy)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityScript(pub ScriptId);
 
