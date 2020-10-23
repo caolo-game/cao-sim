@@ -116,8 +116,6 @@ pub fn init_inmemory_storage(logger: impl Into<Option<slog::Logger>>) -> Pin<Box
     world
 }
 
-unsafe impl Send for World {}
-
 impl World {
     /// Moving World around in memory would invalidate views, so let's make sure it doesn't
     /// happen.

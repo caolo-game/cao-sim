@@ -9,6 +9,7 @@ use crate::geometry::point::Axial;
 use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
 use crate::systems::script_execution::ScriptExecutionData;
+use arrayvec::ArrayString;
 use cao_lang::{prelude::*, scalar::Scalar, traits::AutoByteEncodeProperties};
 use find_api::FindConstant;
 use serde::{Deserialize, Serialize};
@@ -166,7 +167,10 @@ pub fn make_import() -> Schema {
                     [],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(console_log)),
+                fo: Procedure::new(
+                    ArrayString::from("console_log").unwrap(),
+                    FunctionWrapper::new(console_log),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -177,7 +181,10 @@ pub fn make_import() -> Schema {
                     [],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(log_scalar)),
+                fo: Procedure::new(
+                    ArrayString::from("log_scalar").unwrap(),
+                    FunctionWrapper::new(log_scalar),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -188,7 +195,10 @@ pub fn make_import() -> Schema {
                     [OperationResult],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(bots::mine_resource)),
+                fo: Procedure::new(
+                    ArrayString::from("bots::mine_resource").unwrap(),
+                    FunctionWrapper::new(bots::mine_resource),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -199,7 +209,10 @@ pub fn make_import() -> Schema {
                     [OperationResult],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(bots::approach_entity)),
+                fo: Procedure::new(
+                    ArrayString::from("bots::approach_entity").unwrap(),
+                    FunctionWrapper::new(bots::approach_entity),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -210,7 +223,10 @@ pub fn make_import() -> Schema {
                     [OperationResult],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(bots::move_bot_to_position)),
+                fo: Procedure::new(
+                    ArrayString::from("bots::move_bot_to_position").unwrap(),
+                    FunctionWrapper::new(bots::move_bot_to_position),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -221,7 +237,10 @@ pub fn make_import() -> Schema {
                     [Axial],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(make_point)),
+                fo: Procedure::new(
+                    ArrayString::from("make_point").unwrap(),
+                    FunctionWrapper::new(make_point),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -232,7 +251,10 @@ pub fn make_import() -> Schema {
                     [Axial],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(world_position)),
+                fo: Procedure::new(
+                    ArrayString::from("world_position").unwrap(),
+                    FunctionWrapper::new(world_position),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -243,7 +265,10 @@ pub fn make_import() -> Schema {
                     [OperationResult, EntityId],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(find_api::find_closest_by_range)),
+                fo: Procedure::new(
+                    ArrayString::from("find_api::find_closest_by_range").unwrap(),
+                    FunctionWrapper::new(find_api::find_closest_by_range),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -254,7 +279,10 @@ pub fn make_import() -> Schema {
                     [OperationResult],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(bots::unload)),
+                fo: Procedure::new(
+                    ArrayString::from("bots::unload").unwrap(),
+                    FunctionWrapper::new(bots::unload),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -265,7 +293,10 @@ pub fn make_import() -> Schema {
                     [FindConstant],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(find_api::parse_find_constant)),
+                fo: Procedure::new(
+                    ArrayString::from("find_api::parse_find_constant").unwrap(),
+                    FunctionWrapper::new(find_api::parse_find_constant),
+                ),
             },
             FunctionRow {
                 desc: subprogram_description!(
@@ -276,7 +307,10 @@ pub fn make_import() -> Schema {
                     [OperationResult],
                     []
                 ),
-                fo: Procedure::new(FunctionWrapper::new(bots::melee_attack)),
+                fo: Procedure::new(
+                    ArrayString::from("bots::melee_attack").unwrap(),
+                    FunctionWrapper::new(bots::melee_attack),
+                ),
             },
         ],
     }

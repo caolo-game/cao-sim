@@ -5,7 +5,7 @@ mod output;
 
 use anyhow::Context;
 use cao_messages::world_capnp::world_state;
-use caolo_sim::prelude::*;
+use caolo_sim::{executor::Executor, executor::SimpleExecutor, prelude::*};
 use slog::{debug, error, info, o, trace, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
 use std::time::{Duration, Instant};
@@ -23,7 +23,8 @@ fn init() {
 fn tick(logger: Logger, storage: &mut World) {
     let start = chrono::Utc::now();
 
-    caolo_sim::forward(storage)
+    let mut exc = SimpleExecutor;
+    exc.forward(storage)
         .map(|_| {
             let duration = chrono::Utc::now() - start;
 

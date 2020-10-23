@@ -1,4 +1,5 @@
 pub mod components;
+pub mod executor;
 pub mod geometry;
 pub mod indices;
 pub mod map_generation;
@@ -14,33 +15,8 @@ mod intents;
 mod systems;
 mod utils;
 
-use serde_derive::{Deserialize, Serialize};
-use slog::{debug, info, o};
-use systems::execute_world_update;
-use systems::script_execution::execute_scripts;
-
 pub use data_store::{init_inmemory_storage, Storage, World};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct Time(pub u64);
-
-/// Forward the simulation by 1 tick
-pub fn forward(world: &mut World) -> anyhow::Result<()> {
-    profile!("world_forward");
-
-    let logger = world.logger.new(o!("tick" => world.time()));
-
-    info!(logger, "Tick starting");
-
-    debug!(logger, "Executing scripts");
-    execute_scripts(world);
-
-    debug!(logger, "Executing systems update");
-    execute_world_update(world);
-
-    debug!(logger, "Executing signaling");
-    world.post_process();
-
-    info!(logger, "Tick done");
-    Ok(())
-}
