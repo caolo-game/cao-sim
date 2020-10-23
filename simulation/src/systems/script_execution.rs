@@ -96,7 +96,7 @@ pub fn execute_scripts(
     intents.unwrap_or_else(Vec::default)
 }
 
-fn make_data(
+fn prepare_script_data(
     logger: &slog::Logger,
     entity_id: EntityId,
     user_id: Option<UserId>,
@@ -129,7 +129,7 @@ pub fn execute_single_script<'a>(
 
     let logger = logger.new(o!( "entity_id" => entity_id.0 ));
     vm.logger = logger.clone();
-    let data = make_data(&logger, entity_id, user_id, storage);
+    let data = prepare_script_data(&logger, entity_id, user_id, storage);
     vm.auxiliary_data = data;
 
     trace!(logger, "Starting script execution");
