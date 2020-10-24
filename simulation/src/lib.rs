@@ -17,3 +17,8 @@ mod utils;
 
 #[derive(Clone, Debug, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Time(pub u64);
+
+#[cfg(feature = "mp_executor")]
+pub mod job_capnp {
+    include!(concat!(env!("OUT_DIR"), "/cpnp/job_capnp.rs"));
+}

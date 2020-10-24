@@ -1,3 +1,6 @@
+#[cfg(feature="mp_executor")]
+pub mod mp_executor;
+
 use std::pin::Pin;
 
 use slog::{debug, info, o, Logger};
