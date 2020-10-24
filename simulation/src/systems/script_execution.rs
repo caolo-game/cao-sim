@@ -34,7 +34,7 @@ pub fn execute_scripts(
 ) -> Vec<BotIntents> {
     profile!("execute_scripts");
 
-    let logger = storage.logger.new(o!("tick" => storage.time));
+    let logger = storage.logger.new(o!("tick" => storage.time()));
     let owners_table = storage.view::<EntityId, OwnedEntity>().reborrow();
 
     let n_scripts = workload.len();
@@ -164,7 +164,7 @@ pub fn execute_single_script<'a>(
     intents.script_history_intent = Some(ScriptHistoryEntry {
         entity: entity_id,
         payload: history,
-        time: storage.time,
+        time: storage.time(),
     });
 
     Ok(intents)

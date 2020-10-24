@@ -10,7 +10,7 @@ build="build.rs"
 
 [features]
 default = ["mp_executor"]
-mp_executor = ["capnpc", "capnp", "redis"]
+mp_executor = ["capnpc", "capnp", "redis", "serde_json", "rmp-serde"]
 log_tables = ["lazy_static", "serde_json"]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
@@ -30,7 +30,7 @@ slog-envlogger = "*"
 
 rand = { version= "0.7", features=["small_rng"] }
 chrono = { version= "0.4", features=["serde"] }
-uuid = { version="0.8", features=["serde"] }
+uuid = { version="0.8", features=["serde", "v4"] }
 rayon = { version="1" }
 arrayvec = { version="0.5", features=["serde", "array-sizes-33-128"] }
 serde = "1"
@@ -40,6 +40,7 @@ anyhow = "1"
 
 lazy_static = { version="1", optional=true }
 serde_json = { version="1", optional=true }
+rmp-serde = { version="0.14", optional=true }
 capnp = { version="0.13", optional=true }
 redis = { version= "0.15", optional=true }
 

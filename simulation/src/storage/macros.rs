@@ -13,7 +13,7 @@
 /// use caolo_sim::query;
 /// use caolo_sim::prelude::*;
 ///
-/// let mut store = SimpleExecutor.initialize(None);
+/// let mut store = SimpleExecutor.initialize(None).unwrap();
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();
@@ -64,7 +64,7 @@ macro_rules! query {
 /// use caolo_sim::join;
 /// use caolo_sim::tables::JoinIterator;
 ///
-/// let mut store = SimpleExecutor.initialize(None);
+/// let mut store = SimpleExecutor.initialize(None).unwrap();
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();
@@ -123,7 +123,7 @@ macro_rules! query {
 /// use caolo_sim::join;
 /// use caolo_sim::tables::JoinIterator;
 ///
-/// let mut store = SimpleExecutor.initialize(None);
+/// let mut store = SimpleExecutor.initialize(None).unwrap();
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();
@@ -282,7 +282,7 @@ macro_rules! storage {
             use cao_storage_derive::CaoStorage;
             use crate::tables::Table;
 
-            #[derive(Debug, Serialize, CaoStorage, Default, Deserialize)]
+            #[derive(Debug, CaoStorage, Default, Serialize, Deserialize)]
             $(
                 #[cao_storage($id, $name, $row)]
             )*

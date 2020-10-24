@@ -6,16 +6,12 @@ use caolo_sim::map_generation::room::RoomGenerationParams;
 use caolo_sim::prelude::*;
 use rand::Rng;
 use slog::{debug, trace, Logger};
-use std::pin::Pin;
 use uuid::Uuid;
 
-pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
+pub fn init_storage(logger: Logger, storage: &mut World, config: &GameConfig) {
     debug!(logger, "initializing world");
 
     let mut rng = rand::thread_rng();
-
-    let mut exc = SimpleExecutor;
-    let mut storage = exc.initialize(Some(logger.clone()));
 
     let mining_script_id = ScriptId(Uuid::new_v4());
     let script: CompilationUnit =
@@ -108,7 +104,6 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
     let mut taken_rooms = Vec::with_capacity(n_fake_users as usize);
     for i in 0..n_fake_users {
         trace!(logger, "initializing room #{}", i);
-        let storage = &mut storage;
         let spawnid = storage.insert_entity();
 
         let room = rng.gen_range(0, rooms.len());
@@ -170,7 +165,6 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
     }
 
     debug!(logger, "init done");
-    storage
 }
 
 type InitBotMuts = (
@@ -384,7 +378,10 @@ mod tests {
             .fuse();
         let logger = slog::Logger::root(drain, o!());
 
+        let mut exc = SimpleExecutor;
+        let mut world = exc.initialize(Some(logger.clone())).unwrap();
+
         // smoke test: can the game be even initialized?
-        init_storage(logger, &Default::default());
+        init_storage(logger, &mut *world, &Default::default());
     }
 }

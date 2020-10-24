@@ -1,0 +1,15 @@
+{
+  "lanes": [
+    {
+      "name": "main",
+      "cards": [
+        {
+          "StringLiteral": "hellloooo boiiiiis"
+        },
+        {
+          "Call": "console_log"
+        }
+      ]
+    }
+  ]
+}

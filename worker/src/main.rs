@@ -5,7 +5,8 @@ mod output;
 
 use anyhow::Context;
 use cao_messages::world_capnp::world_state;
-use caolo_sim::{executor::Executor, executor::SimpleExecutor, prelude::*};
+use caolo_sim::{executor::Executor, prelude::*};
+use mp_executor::MpExecutor;
 use slog::{debug, error, info, o, trace, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
 use std::time::{Duration, Instant};
@@ -20,10 +21,8 @@ fn init() {
     dep_dotenv::dotenv().unwrap_or_default();
 }
 
-fn tick(logger: Logger, storage: &mut World) {
+fn tick(logger: Logger, exc: &mut impl Executor, storage: &mut World) {
     let start = chrono::Utc::now();
-
-    let mut exc = SimpleExecutor;
     exc.forward(storage)
         .map(|_| {
             let duration = chrono::Utc::now() - start;
@@ -249,12 +248,24 @@ async fn main() -> Result<(), anyhow::Error> {
             warn!(logger, "Sentry URI was not provided");
         });
 
-    info!(logger, "Starting with {} actors", game_conf.n_actors);
-
-    let mut storage = init::init_storage(logger.clone(), &game_conf);
-
     let redis_url =
         std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
+
+    let mut executor = MpExecutor::new(
+        logger.clone(),
+        mp_executor::ExecutorOptions {
+            redis_url: redis_url.clone(),
+            primary_mutex_expiry_ms: 2000,
+        },
+    )
+    .unwrap();
+    let mut storage = executor.initialize(None).unwrap();
+    info!(logger, "Starting with {} actors", game_conf.n_actors);
+
+    if executor.is_primary() {
+        init::init_storage(logger.clone(), &mut storage, &game_conf);
+    }
+
     let redis_client = redis::Client::open(redis_url.as_str()).expect("Redis client");
     let pg_pool = PgPool::new(
         &std::env::var("DATABASE_URL")
@@ -262,21 +273,23 @@ async fn main() -> Result<(), anyhow::Error> {
     )
     .await?;
 
-    send_config(
-        logger.clone(),
-        &redis_client,
-        &*storage.as_ref(),
-        &game_conf,
-    )
-    .expect("Send config");
+    if executor.is_primary() {
+        send_config(
+            logger.clone(),
+            &redis_client,
+            &*storage.as_ref(),
+            &game_conf,
+        )
+        .expect("Send config");
 
-    send_terrain(&logger, &*storage.as_ref(), &pg_pool)
-        .await
-        .expect("Send terrain");
+        send_terrain(&logger, &*storage.as_ref(), &pg_pool)
+            .await
+            .expect("Send terrain");
+
+        send_schema(logger.clone(), &redis_client).expect("Send schema");
+    }
 
     let tick_freq = Duration::from_millis(game_conf.target_tick_freq_ms);
-
-    send_schema(logger.clone(), &redis_client).expect("Send schema");
 
     sentry::capture_message(
         "Caolo Worker initialization complete! Starting the game loop",
@@ -288,7 +301,7 @@ async fn main() -> Result<(), anyhow::Error> {
     loop {
         let start = Instant::now();
 
-        tick(logger.clone(), &mut storage);
+        tick(logger.clone(), &mut executor, &mut storage);
 
         send_world(logger.clone(), &storage, &mut redis_connection)
             .map_err(|err| {
