@@ -1,3 +1,6 @@
+use prelude::{Component, EmptyKey, World};
+use tables::unique::UniqueTable;
+
 pub mod components;
 pub mod executor;
 pub mod geometry;
@@ -15,10 +18,20 @@ mod intents;
 mod systems;
 mod utils;
 
-#[derive(Clone, Debug, Copy, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, Default, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Time(pub u64);
 
 #[cfg(feature = "mp_executor")]
 pub mod job_capnp {
     include!(concat!(env!("OUT_DIR"), "/cpnp/job_capnp.rs"));
+}
+
+impl<'a> storage::views::FromWorld<'a> for Time {
+    fn new(w: &'a World) -> Self {
+        Time(w.time())
+    }
+}
+
+impl Component<EmptyKey> for Time {
+    type Table = UniqueTable<Time>;
 }

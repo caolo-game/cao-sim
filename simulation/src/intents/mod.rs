@@ -94,7 +94,7 @@ macro_rules! intents {
         }
 
         /// Possible intents of a single bot
-        #[derive(Debug, Clone, Default)]
+        #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
         pub struct BotIntents {
             pub entity_id: EntityId,
             $(pub $name: Option<$type>),*

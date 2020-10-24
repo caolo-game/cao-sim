@@ -1,7 +1,7 @@
-#[cfg(feature="mp_executor")]
+#[cfg(feature = "mp_executor")]
 pub mod mp_executor;
 
-use std::pin::Pin;
+use std::{fmt::Debug, pin::Pin};
 
 use slog::{debug, info, o, Logger};
 
@@ -13,10 +13,12 @@ use crate::{profile, systems::execute_world_update, systems::script_execution::e
 
 /// Execute world state updates
 pub trait Executor {
+    type Error: Debug;
+
     /// Initialize this executor's state and return the initial world state
-    fn initialize(&mut self, logger: Option<Logger>) -> Pin<Box<World>>;
+    fn initialize(&mut self, logger: Option<Logger>) -> Result<Pin<Box<World>>, Self::Error>;
     /// Forward the world state by 1 tick
-    fn forward(&mut self, world: &mut World) -> anyhow::Result<()>;
+    fn forward(&mut self, world: &mut World) -> Result<(), Self::Error>;
 }
 
 /// The simplest executor.
@@ -25,6 +27,8 @@ pub trait Executor {
 pub struct SimpleExecutor;
 
 impl Executor for SimpleExecutor {
+    type Error = anyhow::Error;
+
     fn forward(&mut self, world: &mut World) -> anyhow::Result<()> {
         profile!("world_forward");
 
@@ -52,7 +56,7 @@ impl Executor for SimpleExecutor {
         Ok(())
     }
 
-    fn initialize(&mut self, logger: Option<Logger>) -> Pin<Box<World>> {
-        init_inmemory_storage(logger)
+    fn initialize(&mut self, logger: Option<Logger>) -> Result<Pin<Box<World>>, Self::Error> {
+        Ok(init_inmemory_storage(logger))
     }
 }

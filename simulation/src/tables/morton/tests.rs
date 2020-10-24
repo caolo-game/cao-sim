@@ -103,7 +103,6 @@ fn test_range_query_all_by_rng(rng: &mut impl rand::Rng) {
         .map(|(p, i)| (p, *i))
         .collect::<HashSet<_>>();
     let exp = points;
-
     let reslen = res.len();
 
     let diff = res.symmetric_difference(&exp).collect::<Vec<_>>();

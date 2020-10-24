@@ -9,10 +9,8 @@ use crate::storage::views::{UnsafeView, UnwrapView, UnwrapViewMut, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
 use crate::Time;
-use chrono::{DateTime, Duration, Utc};
 use serde_derive::Serialize;
-use slog::debug;
-use slog::{o, Drain};
+use slog::{debug, o, Drain};
 use std::pin::Pin;
 
 #[cfg(feature = "log_tables")]
@@ -65,6 +63,7 @@ storage!(
 
     // globals
     key EmptyKey, table ScriptHistory = script_history,
+    key EmptyKey, table Time = time,
 
     // configurations
     key EmptyKey, table RoomProperties = room_properties,
@@ -77,11 +76,7 @@ pub struct World {
     #[serde(skip)]
     pub deferred_deletes: DeferredDeletes,
 
-    pub time: u64,
     pub next_entity: EntityId,
-    pub last_tick: DateTime<Utc>,
-    #[serde(skip)]
-    pub dt: Duration,
 
     #[serde(skip)]
     pub logger: slog::Logger,
@@ -127,16 +122,14 @@ impl World {
             let mut store = Storage::default();
             store.script_history.value = Some(Default::default());
             store.game_config.value = Some(Default::default());
+            store.time.value = Some(Time(0));
 
             let deferred_deletes = DeferredDeletes::default();
 
             Box::pin(World {
-                time: 0,
                 store,
                 deferred_deletes,
-                last_tick: Utc::now(),
                 next_entity: EntityId::default(),
-                dt: Duration::zero(),
 
                 #[cfg(feature = "log_tables")]
                 _guard: LogGuard {
@@ -202,12 +195,9 @@ impl World {
         <Storage as storage::DeleteById<Id>>::delete(&mut self.store, id);
     }
 
-    pub fn delta_time(&self) -> Duration {
-        self.dt
-    }
-
     pub fn time(&self) -> u64 {
-        self.time
+        let view = &self.store.time.value;
+        view.map(|Time(t)| t).unwrap_or(0)
     }
 
     /// Perform post-tick cleanup on the storage
@@ -215,10 +205,12 @@ impl World {
         self.deferred_deletes.execute_all(&mut self.store);
         self.deferred_deletes.clear();
 
-        let now = Utc::now();
-        self.dt = now - self.last_tick;
-        self.last_tick = now;
-        self.time += 1;
+        self.store.time.value = self
+            .store
+            .time
+            .value
+            .map(|x| Time(x.0 + 1))
+            .or(Some(Time(1)));
     }
 
     pub fn insert_entity(&mut self) -> EntityId {
@@ -268,12 +260,6 @@ where
 
     fn execute<Store: storage::DeleteById<Id>>(&mut self, store: &mut Store) {
         self.deferred_deletes.execute(store);
-    }
-}
-
-impl<'a> storage::views::FromWorld<'a> for Time {
-    fn new(w: &'a World) -> Self {
-        Time(w.time())
     }
 }
 

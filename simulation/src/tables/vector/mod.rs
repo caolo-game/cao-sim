@@ -7,6 +7,7 @@ mod serde;
 pub use self::serde::*;
 
 use super::*;
+use mem::MaybeUninit;
 use rayon::prelude::*;
 use std::mem;
 use thiserror::Error;
@@ -44,7 +45,7 @@ where
             .enumerate()
             .filter_map(|(i, id)| id.map(|_| i))
         {
-            let data = mem::replace(&mut self.data[i], mem::MaybeUninit::uninit());
+            let data = mem::replace(&mut self.data[i], MaybeUninit::uninit());
             // drop the data
             let _data = unsafe { data.assume_init() };
         }
@@ -109,21 +110,23 @@ where
             return Ok(Self::new());
         }
         let offset = data[0].0.as_usize();
+        let last = data.last().unwrap().0;
+        let len = last.as_usize() - offset + 1;
         let mut res = Self {
             offset,
-            ids: vec![None; data.len()],
-            data: Vec::with_capacity(data.len()),
+            ids: vec![None; len],
+            data: Vec::with_capacity(len),
         };
-        res.data.resize_with(data.len(), mem::MaybeUninit::uninit);
+        res.data.resize_with(len, MaybeUninit::uninit);
         res.ids[0] = Some(data[0].0);
         unsafe {
             *res.data[0].as_mut_ptr() = data[0].1.clone();
         }
-        if data.len() == 1 {
+        if len == 1 {
             return Ok(res);
         }
         let mut last = data[0].0;
-        for (id, row) in data[1..].iter() {
+        for (id, row) in data[1..].into_iter() {
             if id == &last {
                 return Err(VecTableError::DuplicateEntry(last));
             }
@@ -133,9 +136,7 @@ where
             last = *id;
             let i = id.as_usize() - offset;
             res.ids[i] = Some(*id);
-            unsafe {
-                *res.data[i].as_mut_ptr() = row.clone();
-            }
+            res.data[i] = MaybeUninit::new(row.clone());
         }
         Ok(res)
     }
@@ -157,17 +158,17 @@ where
         if i < self.offset {
             let new_len = self.offset - i + len;
             self.ids.resize(new_len, None);
-            self.data.resize_with(new_len, mem::MaybeUninit::uninit);
+            self.data.resize_with(new_len, MaybeUninit::uninit);
             self.data.rotate_right(self.offset - i);
             self.offset = i;
         }
         let i = i - self.offset;
         if i >= len {
             self.ids.resize(i + 1, None);
-            self.data.resize_with(i + 1, mem::MaybeUninit::uninit);
+            self.data.resize_with(i + 1, MaybeUninit::uninit);
         }
         if self.ids.get(i).and_then(|x| x.as_ref()).is_some() {
-            let _old = mem::replace(&mut self.data[i], mem::MaybeUninit::new(row));
+            let _old = mem::replace(&mut self.data[i], MaybeUninit::new(row));
         } else {
             unsafe {
                 *self.data[i].as_mut_ptr() = row;
@@ -257,7 +258,7 @@ where
         let ind = id.as_usize() - self.offset;
 
         self.ids[ind] = None;
-        let res = mem::replace(&mut self.data[ind], mem::MaybeUninit::uninit());
+        let res = mem::replace(&mut self.data[ind], MaybeUninit::uninit());
         let res = unsafe { res.assume_init() };
         Some(res)
     }
