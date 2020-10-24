@@ -146,7 +146,7 @@ fn spawn_bot(
     let owner = owned.get_by_id(&spawn_id).cloned();
     if let Some(owner) = owner {
         if let Some(script) = user_default_scripts.get_by_id(&owner.owner_id) {
-            script_table.insert_or_update(entity_id, script.clone());
+            script_table.insert_or_update(entity_id, *script);
         }
 
         owned.insert_or_update(entity_id, owner);

@@ -105,21 +105,49 @@ where
 }
 
 pub fn init_inmemory_storage(logger: impl Into<Option<slog::Logger>>) -> Pin<Box<World>> {
-    let logger = logger.into();
-    match logger {
-        Some(ref logger) => debug!(logger, "Init Storage"),
-        None => println!("Init Storage"),
+    fn _init(logger: Option<slog::Logger>) -> Pin<Box<World>> {
+        match logger {
+            Some(ref logger) => debug!(logger, "Init Storage"),
+            None => println!("Init Storage"),
+        }
+        let world = World::new(logger);
+        debug!(world.logger, "Init Storage done");
+        world
     }
 
-    let world = World::new(logger);
-    debug!(world.logger, "Init Storage done");
-    world
+    let logger = logger.into();
+    _init(logger)
 }
 
 impl World {
     /// Moving World around in memory would invalidate views, so let's make sure it doesn't
     /// happen.
     pub fn new(logger: impl Into<Option<slog::Logger>>) -> Pin<Box<Self>> {
+        fn _new(logger: slog::Logger) -> Pin<Box<World>> {
+            let mut store = Storage::default();
+            store.script_history.value = Some(Default::default());
+            store.game_config.value = Some(Default::default());
+
+            let deferred_deletes = DeferredDeletes::default();
+
+            Box::pin(World {
+                time: 0,
+                store,
+                deferred_deletes,
+                last_tick: Utc::now(),
+                next_entity: EntityId::default(),
+                dt: Duration::zero(),
+
+                #[cfg(feature = "log_tables")]
+                _guard: LogGuard {
+                    fname: "./tables.log".to_owned(),
+                    logger: logger.clone(),
+                },
+
+                logger,
+            })
+        }
+
         let logger = logger.into().unwrap_or_else(|| {
             let decorator = slog_term::TermDecorator::new().build();
             let drain = slog_term::FullFormat::new(decorator).build().fuse();
@@ -131,28 +159,8 @@ impl World {
                 .fuse();
             slog::Logger::root(drain, o!())
         });
-        let mut store = Storage::default();
-        store.script_history.value = Some(Default::default());
-        store.game_config.value = Some(Default::default());
 
-        let deferred_deletes = DeferredDeletes::default();
-
-        Box::pin(Self {
-            time: 0,
-            store,
-            deferred_deletes,
-            last_tick: Utc::now(),
-            next_entity: EntityId::default(),
-            dt: Duration::zero(),
-
-            #[cfg(feature = "log_tables")]
-            _guard: LogGuard {
-                fname: "./tables.log".to_owned(),
-                logger: logger.clone(),
-            },
-
-            logger,
-        })
+        _new(logger)
     }
 
     pub fn resource<C>(&self) -> UnwrapView<C>

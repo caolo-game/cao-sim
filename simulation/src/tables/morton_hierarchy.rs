@@ -148,7 +148,7 @@ where
 
         // collect the groups into a hashmap
         let groups: std::collections::HashMap<Axial, &[(WorldPosition, Row)]> =
-            GroupByRooms::new(&values).into_iter().collect();
+            GroupByRooms::new(&values).collect();
         let groups = &groups;
 
         // invidual extends can run in parallel

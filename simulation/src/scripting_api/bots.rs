@@ -1,5 +1,4 @@
 use super::*;
-use crate::terrain::TileTerrainType;
 use crate::{
     components::{self, PathCacheComponent, Resource, TerrainComponent, PATH_CACHE_LEN},
     indices::{EntityId, UserId, WorldPosition},
@@ -10,8 +9,8 @@ use crate::{
     },
     pathfinding, profile,
     storage::views::FromWorld,
-    World,
 };
+use crate::{prelude::World, terrain::TileTerrainType};
 use slog::{debug, error, trace, warn};
 use std::convert::TryFrom;
 
@@ -406,11 +405,10 @@ fn move_to_pos<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_inmemory_storage;
-    use crate::map_generation::room::iter_edge;
     use crate::prelude::*;
     use crate::query;
     use crate::terrain::TileTerrainType;
+    use crate::{data_store::init_inmemory_storage, map_generation::room::iter_edge};
 
     #[test]
     fn can_move_to_another_room() {

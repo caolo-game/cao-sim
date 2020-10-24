@@ -15,9 +15,8 @@ mod positions_system;
 mod script_history_system;
 mod spawn_system;
 
-use crate::profile;
 use crate::storage::views::{FromWorld, FromWorldMut};
-use crate::World;
+use crate::{prelude::World, profile};
 
 pub fn execute_world_update(storage: &mut World) {
     profile!("execute_systems_update");

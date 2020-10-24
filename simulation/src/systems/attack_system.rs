@@ -44,7 +44,7 @@ fn pre_process(logger: &Logger, intents: &mut Vec<MeleeIntent>) {
     }
     // dedupe
     intents.par_sort_unstable_by_key(|intent| intent.attacker);
-    for current in (0..=len - 1).rev() {
+    for current in (0..len).rev() {
         let last = current + 1;
         let a = &intents[last];
         let b = &intents[current];

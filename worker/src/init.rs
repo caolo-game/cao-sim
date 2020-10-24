@@ -14,7 +14,8 @@ pub fn init_storage(logger: Logger, config: &GameConfig) -> Pin<Box<World>> {
 
     let mut rng = rand::thread_rng();
 
-    let mut storage = caolo_sim::init_inmemory_storage(logger.clone());
+    let mut exc = SimpleExecutor;
+    let mut storage = exc.initialize(Some(logger.clone()));
 
     let mining_script_id = ScriptId(Uuid::new_v4());
     let script: CompilationUnit =

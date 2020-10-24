@@ -11,10 +11,9 @@
 ///
 /// ```
 /// use caolo_sim::query;
-/// use caolo_sim::init_inmemory_storage;
 /// use caolo_sim::prelude::*;
 ///
-/// let mut store = init_inmemory_storage(None);
+/// let mut store = SimpleExecutor.initialize(None);
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();
@@ -60,13 +59,12 @@ macro_rules! query {
 ///## Join iterators
 ///
 ///```
-/// # use caolo_sim::query;
-/// # use caolo_sim::init_inmemory_storage;
+/// use caolo_sim::query;
 /// use caolo_sim::prelude::*;
 /// use caolo_sim::join;
 /// use caolo_sim::tables::JoinIterator;
 ///
-/// let mut store = init_inmemory_storage(None);
+/// let mut store = SimpleExecutor.initialize(None);
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();
@@ -74,27 +72,27 @@ macro_rules! query {
 ///
 /// // Initialize entities ...
 ///
-/// # query!(
-/// #    mutate
-/// #    store
-/// #    {
-/// #        EntityId, Bot, .insert_or_update(entity_1, Bot);
-/// #        EntityId, Bot, .insert_or_update(entity_2, Bot);
-/// #
-/// #        EntityId, PositionComponent, .insert_or_update(entity_1, PositionComponent::default());
-/// #        EntityId, PositionComponent, .insert_or_update(entity_2, PositionComponent::default());
-/// #        EntityId, PositionComponent, .insert_or_update(entity_3, PositionComponent::default());
-/// #
-/// #        // notice how entity_3 is not a bot, but has carry
-/// #
-/// #        EntityId, CarryComponent,
-/// #                 .insert_or_update(entity_1, CarryComponent{carry: 12, carry_max: 69});
-/// #        EntityId, CarryComponent,
-/// #                 .insert_or_update(entity_2, CarryComponent{carry: 30, carry_max: 69});
-/// #        EntityId, CarryComponent,
-/// #                 .insert_or_update(entity_3, CarryComponent{carry: 40, carry_max: 69});
-/// #    }
-/// # );
+/// query!(
+///    mutate
+///    store
+///    {
+///        EntityId, Bot, .insert_or_update(entity_1, Bot);
+///        EntityId, Bot, .insert_or_update(entity_2, Bot);
+///
+///        EntityId, PositionComponent, .insert_or_update(entity_1, PositionComponent::default());
+///        EntityId, PositionComponent, .insert_or_update(entity_2, PositionComponent::default());
+///        EntityId, PositionComponent, .insert_or_update(entity_3, PositionComponent::default());
+///
+///        // notice how entity_3 is not a bot, but has carry
+///
+///        EntityId, CarryComponent,
+///                 .insert_or_update(entity_1, CarryComponent{carry: 12, carry_max: 69});
+///        EntityId, CarryComponent,
+///                 .insert_or_update(entity_2, CarryComponent{carry: 30, carry_max: 69});
+///        EntityId, CarryComponent,
+///                 .insert_or_update(entity_3, CarryComponent{carry: 40, carry_max: 69});
+///    }
+/// );
 ///
 /// let bot_table = store.view::<EntityId, Bot>();
 /// let bot = bot_table.iter();
@@ -123,10 +121,9 @@ macro_rules! query {
 ///
 /// // these rows are mandatory
 /// use caolo_sim::join;
-/// use caolo_sim::init_inmemory_storage;
 /// use caolo_sim::tables::JoinIterator;
 ///
-/// let mut store = init_inmemory_storage(None);
+/// let mut store = SimpleExecutor.initialize(None);
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();

@@ -1,5 +1,6 @@
 pub use crate::components::*;
 pub use crate::data_store::World;
+pub use crate::executor::*;
 pub use crate::geometry::*;
 pub use crate::indices::*;
 pub use crate::storage::views::*;

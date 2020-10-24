@@ -40,7 +40,7 @@ pub use world_logger::*;
 
 use super::{Component, DeleteById, TableId};
 use crate::indices::EntityId;
-use crate::World;
+use crate::prelude::World;
 use slog::trace;
 use std::ptr::NonNull;
 

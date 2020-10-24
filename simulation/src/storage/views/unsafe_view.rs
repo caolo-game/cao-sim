@@ -1,6 +1,6 @@
 use super::super::HasTable;
 use super::{Component, FromWorldMut, TableId};
-use crate::World;
+use crate::prelude::World;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 

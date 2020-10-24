@@ -1,8 +1,11 @@
-use crate::components::{
-    game_config::GameConfig, EntityScript, OwnedEntity, ScriptComponent, ScriptHistoryEntry,
-};
 use crate::indices::{EntityId, ScriptId, UserId};
-use crate::{intents::*, profile, World};
+use crate::{
+    components::{
+        game_config::GameConfig, EntityScript, OwnedEntity, ScriptComponent, ScriptHistoryEntry,
+    },
+    prelude::World,
+};
+use crate::{intents::*, profile};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
 use slog::{debug, info, o, trace, warn};

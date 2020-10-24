@@ -1,10 +1,18 @@
-use slog::{debug, info, o};
+use std::pin::Pin;
 
-use crate::{components::EntityScript, data_store::World, intents, prelude::EntityId};
+use slog::{debug, info, o, Logger};
+
+use crate::{
+    components::EntityScript, data_store::init_inmemory_storage, data_store::World, intents,
+    prelude::EntityId,
+};
 use crate::{profile, systems::execute_world_update, systems::script_execution::execute_scripts};
 
 /// Execute world state updates
 pub trait Executor {
+    /// Initialize this executor's state and return the initial world state
+    fn initialize(&mut self, logger: Option<Logger>) -> Pin<Box<World>>;
+    /// Forward the world state by 1 tick
     fn forward(&mut self, world: &mut World) -> anyhow::Result<()>;
 }
 
@@ -21,7 +29,7 @@ impl Executor for SimpleExecutor {
 
         info!(logger, "Tick starting");
 
-        let scripts_table = world.view::<EntityId, EntityScript>().reborrow();
+        let scripts_table = world.view::<EntityId, EntityScript>();
         let executions: Vec<(EntityId, EntityScript)> =
             scripts_table.iter().map(|(id, x)| (id, *x)).collect();
 
@@ -39,5 +47,9 @@ impl Executor for SimpleExecutor {
 
         info!(logger, "Tick done");
         Ok(())
+    }
+
+    fn initialize(&mut self, logger: Option<Logger>) -> Pin<Box<World>> {
+        init_inmemory_storage(logger)
     }
 }

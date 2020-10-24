@@ -478,7 +478,7 @@ pub fn get_valid_transits(
 
     trace!(logger, "Returning bridge candidates: {:?}", candidates);
 
-    debug_assert!(candidates.len() >= 1);
+    debug_assert!(!candidates.is_empty());
     Ok(candidates)
 }
 
