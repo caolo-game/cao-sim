@@ -22,10 +22,8 @@ impl Executor for SimpleExecutor {
         info!(logger, "Tick starting");
 
         let scripts_table = world.view::<EntityId, EntityScript>().reborrow();
-        let executions = scripts_table
-            .iter()
-            .map(|(id, x)| (id, *x))
-            .collect::<Vec<_>>();
+        let executions: Vec<(EntityId, EntityScript)> =
+            scripts_table.iter().map(|(id, x)| (id, *x)).collect();
 
         debug!(logger, "Executing scripts");
         let intents = execute_scripts(executions.as_slice(), world);
