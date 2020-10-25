@@ -1,6 +1,12 @@
 //! Multiprocess executor.
 //!
 
+mod drone;
+mod primary;
+
+use self::drone::*;
+use self::primary::*;
+
 use arrayvec::ArrayVec;
 use capnp::{message::ReaderOptions, message::TypedReader, serialize::try_read_message};
 use chrono::{DateTime, Duration, TimeZone, Utc};
@@ -43,18 +49,16 @@ pub struct MpExecutor {
     client: Client,
     connection: Connection,
     role: Role,
-    /// Timestamp of the primary mutex
-    primary_mutex: DateTime<Utc>,
 
     mutex_expiry_ms: i64,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Role {
     /// This is the main/coordinator instance
-    Primary,
+    Primary(Primary),
     /// This is a worker instance
-    Drone,
+    Drone(Drone),
 }
 
 #[derive(Debug)]
@@ -104,10 +108,9 @@ impl MpExecutor {
 
             Ok(MpExecutor {
                 logger,
-                role: Role::Drone,
+                role: Role::Drone(Drone { primary_mutex }),
                 client,
                 connection,
-                primary_mutex,
                 mutex_expiry_ms: options.primary_mutex_expiry_ms,
             })
         }
@@ -126,82 +129,34 @@ impl MpExecutor {
     /// Check if this instance is the Primary and if so still holds the mutex.
     pub fn is_primary(&self) -> bool {
         match self.role {
-            Role::Primary => Utc::now() < self.primary_mutex,
-            Role::Drone => false,
+            Role::Primary(Primary { primary_mutex }) => Utc::now() < primary_mutex,
+            Role::Drone(_) => false,
         }
     }
 
     /// Returns the current role of this instance
-    pub fn update_role(&mut self) -> Result<Role, MpExcError> {
+    pub fn update_role(&mut self) -> Result<&Role, MpExcError> {
         debug!(self.logger, "Updating role of a {:?} process", self.role);
         let now = Utc::now();
         let new_expiry: i64 =
             (now + Duration::milliseconds(self.mutex_expiry_ms)).timestamp_millis();
 
-        match self.role {
-            Role::Primary => {
-                let res: Option<Vec<String>> = redis::pipe()
-                    .getset(CAO_PRIMARY_MUTEX_KEY, new_expiry)
-                    .expire(
-                        CAO_PRIMARY_MUTEX_KEY,
-                        (self.mutex_expiry_ms / 1000) as usize + 1, // round up
-                    )
-                    .ignore()
-                    .query(&mut self.connection)
-                    .map_err(MpExcError::RedisError)?;
-                let res: Option<i64> = res
-                    .as_ref()
-                    .and_then(|s| s.get(0))
-                    .and_then(|s| s.parse().ok());
-                match res {
-                    Some(res) if res != self.primary_mutex.timestamp_millis() => {
-                        // another process aquired the mutex
-                        info!(self.logger, "Another process has been promoted to Primary. Demoting this process to Drone");
-                        self.role = Role::Drone;
-                        self.primary_mutex = Utc.timestamp_millis(res);
-                    }
-                    _ => {
-                        self.primary_mutex = Utc.timestamp_millis(new_expiry);
-                        debug!(
-                            self.logger,
-                            "Primary mutex has been re-aquired until {}", self.primary_mutex
-                        );
-                    }
-                }
-            }
-            Role::Drone => {
-                // add a bit of bias to let the current Primary re-aquire first
-                let primary_expired =
-                    now.timestamp_millis() >= (self.primary_mutex.timestamp_millis() + 50);
-                if primary_expired {
-                    debug!(
-                        self.logger,
-                        "Primary mutex has expired. Attempting to aquire"
-                    );
-                    let (success, res) = redis::pipe()
-                        .cmd("SET")
-                        .arg(CAO_PRIMARY_MUTEX_KEY)
-                        .arg(new_expiry)
-                        .arg("NX")
-                        .arg("PX")
-                        .arg(self.mutex_expiry_ms)
-                        .get(CAO_PRIMARY_MUTEX_KEY)
-                        .query(&mut self.connection)
-                        .map_err(MpExcError::RedisError)?;
-                    if success {
-                        info!(
-                            self.logger,
-                            "Aquired Primary mutex. Promoting this process to Primary"
-                        );
-                        self.role = Role::Primary;
-                    } else {
-                        debug!(self.logger, "Another process aquired the mutex.");
-                    }
-                    self.primary_mutex = Utc.timestamp_millis(res);
-                }
-            }
-        }
-        Ok(self.role)
+        self.role = match self.role {
+            Role::Primary(p) => p.update_role(
+                self.logger.clone(),
+                &mut self.connection,
+                new_expiry,
+                self.mutex_expiry_ms,
+            )?,
+            Role::Drone(d) => d.update_role(
+                self.logger.clone(),
+                &mut self.connection,
+                now,
+                new_expiry,
+                self.mutex_expiry_ms,
+            )?,
+        };
+        Ok(&self.role)
     }
 
     fn execute_batch_script_update(
@@ -287,7 +242,7 @@ impl MpExecutor {
                 Some(t) if t > world.time() => break,
                 _ => {
                     trace!(self.logger, "World has not been updated. Waiting...");
-                    if matches!(self.update_role()?, Role::Primary) {
+                    if matches!(self.update_role()?, Role::Primary(_)) {
                         info!(
                             self.logger,
                             "Assumed role of Primary while waiting for world update. Last world state in this executor: tick {}",
@@ -402,7 +357,7 @@ impl MpExecutor {
             self.execute_batch_script_jobs(world)?;
             let new_role = self.update_role()?;
             assert!(
-                matches!(new_role, Role::Primary),
+                matches!(new_role, Role::Primary(_)),
                 "Primary role has been lost while executing a tick"
             );
 
@@ -546,7 +501,7 @@ impl Executor for MpExecutor {
             self.logger = logger.clone();
         }
         self.update_role()?;
-        if matches!(self.role, Role::Primary) {
+        if matches!(self.role, Role::Primary(_)) {
             let mut connection = self
                 .client
                 .get_connection()
@@ -566,8 +521,8 @@ impl Executor for MpExecutor {
         profile!("world_forward");
         self.update_role()?;
         match self.role {
-            Role::Primary => self.forward_primary(world)?,
-            Role::Drone => self.forward_drone(world)?,
+            Role::Primary(_) => self.forward_primary(world)?,
+            Role::Drone(_) => self.forward_drone(world)?,
         }
         Ok(())
     }
