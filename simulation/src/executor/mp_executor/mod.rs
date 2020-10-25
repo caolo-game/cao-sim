@@ -7,23 +7,20 @@ mod primary;
 use self::drone::*;
 use self::primary::*;
 
-use arrayvec::ArrayVec;
 use capnp::{message::ReaderOptions, message::TypedReader, serialize::try_read_message};
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use redis::{Client, Commands, Connection};
-use slog::{debug, error, info, o, trace, warn, Drain, Logger};
-use std::{collections::HashMap, convert::TryFrom};
+use slog::{debug, error, info, o, trace, Drain, Logger};
+use std::fmt::Display;
 use uuid::Uuid;
 
 use crate::{
     components::EntityScript,
     data_store::init_inmemory_storage,
-    intents::{self, BotIntents},
-    job_capnp::{self, script_batch_job, script_batch_result},
+    job_capnp::{script_batch_job, script_batch_result},
     prelude::EntityId,
     prelude::World,
     profile,
-    systems::execute_world_update,
     systems::script_execution::execute_scripts,
 };
 
@@ -61,6 +58,15 @@ pub enum Role {
     Drone(Drone),
 }
 
+impl Display for Role {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Role::Primary(_) => write!(f, "Primary"),
+            Role::Drone(_) => write!(f, "Drone"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ExecutorOptions {
     pub redis_url: String,
@@ -93,6 +99,9 @@ pub enum MpExcError {
     MessageSerializeError(capnp::Error),
     #[error("Failed to deserialize message {0:?}")]
     MessageDeserializeError(capnp::Error),
+
+    #[error("The primary node lost its mutex while executing a world update")]
+    PrimaryRoleLost,
 }
 
 impl MpExecutor {
@@ -248,7 +257,7 @@ impl MpExecutor {
                             "Assumed role of Primary while waiting for world update. Last world state in this executor: tick {}",
                             world.time()
                         );
-                        return self.forward_primary(world);
+                        return primary::forward_primary(self, world);
                     }
                 }
             }
@@ -287,184 +296,6 @@ impl MpExecutor {
         }
         Ok(())
     }
-
-    fn forward_primary(&mut self, world: &mut World) -> Result<(), MpExcError> {
-        self.logger = world
-            .logger
-            .new(o!("tick" => world.time(), "role" => format!("{:?}", self.role)));
-        info!(self.logger, "Tick starting");
-        let mut connection = self
-            .client
-            .get_connection()
-            .map_err(MpExcError::RedisError)?;
-
-        // broadcast world
-        // TODO broadcast changesets instead of the whole state
-        debug!(self.logger, "Sending world state");
-        let world_buff =
-            rmp_serde::to_vec_named(&world.store).map_err(MpExcError::WorldSerializeError)?;
-        redis::pipe()
-            .set(CAO_WORLD_KEY, world_buff)
-            .ignore()
-            .query(&mut connection)
-            .map_err(MpExcError::RedisError)?;
-
-        let scripts_table = world.view::<EntityId, EntityScript>();
-        let executions: Vec<(EntityId, EntityScript)> =
-            scripts_table.iter().map(|(i, x)| (i, *x)).collect();
-        // split the work (TODO how?)
-        // for now let's split it into groups of CHUNK_SIZE
-        let mut message_status = executions
-            .chunks(CHUNK_SIZE)
-            .enumerate()
-            // skip the first chunk, let's execute it on this node
-            .skip(1)
-            // TODO: this could be done in parallel, however connection has to be mutably borrowed
-            // We could open more connections, but that brings its own probelms...
-            // Maybe upgrade to a pool?
-            .try_fold(HashMap::with_capacity(32), |mut ids, (i, chunk)| {
-                let from = i * CHUNK_SIZE;
-                let to = from + chunk.len();
-
-                let msg_id = Uuid::new_v4();
-                let job = enqueue_job(&self.logger, &mut self.connection, msg_id, from, to)?;
-                ids.insert(msg_id, job);
-                Ok(ids)
-            })?;
-
-        // send start signal to drones
-        // this 'fence' should ensure that the drones read the correct world state
-        // and that the queue is full at this point
-        redis::pipe()
-            .set(CAO_WORLD_TIME_KEY, world.time())
-            .ignore()
-            .query(&mut connection)
-            .map_err(MpExcError::RedisError)?;
-
-        debug!(self.logger, "Executing the first chunk");
-        let mut intents: Vec<BotIntents> = match executions.chunks(CHUNK_SIZE).next() {
-            Some(chunk) => execute_scripts(chunk, world),
-            None => {
-                warn!(self.logger, "No scripts to execute");
-                return Ok(());
-            }
-        };
-        debug!(self.logger, "Executing the first chunk done");
-
-        // wait for all messages to return
-        'retry: loop {
-            // execute jobs while the queue isn't empty
-            self.execute_batch_script_jobs(world)?;
-            let new_role = self.update_role()?;
-            assert!(
-                matches!(new_role, Role::Primary(_)),
-                "Primary role has been lost while executing a tick"
-            );
-
-            trace!(self.logger, "Checking jobs' status");
-            while let Some(message) = connection
-                .rpop::<_, Option<Vec<u8>>>(CAO_JOB_RESULTS_LIST_KEY)
-                .map_err(MpExcError::RedisError)
-                .and_then::<Option<ScriptBatchResultReader>, _>(|message| {
-                    parse_script_batch_result(message)
-                })?
-            {
-                use job_capnp::script_batch_result::payload::Which;
-                let message = message.get().map_err(MpExcError::MessageDeserializeError)?;
-                let msg_id = message
-                    .get_msg_id()
-                    .map_err(MpExcError::MessageDeserializeError)?
-                    .get_data()
-                    .map_err(MpExcError::MessageDeserializeError)?;
-                let msg_id = Uuid::from_slice(msg_id).expect("Failed to parse msg id");
-                let status = message_status
-                    .entry(msg_id)
-                    .or_insert_with(|| ScriptBatchStatus::new(msg_id, 0, executions.len()));
-                match message
-                    .get_payload()
-                    .which()
-                    .expect("Failed to get payload variant")
-                {
-                    Which::StartTime(Ok(time)) => {
-                        status.started = Some(Utc.timestamp_millis(time.get_value_ms()))
-                    }
-                    Which::Intents(Ok(ints)) => {
-                        status.finished = Some(Utc::now());
-                        for int in ints {
-                            let msg = int.get_payload().expect("Failed to read payload");
-                            let bot_int = rmp_serde::from_slice(msg)
-                                .expect("Failed to deserialize BotIntents");
-                            intents.push(bot_int);
-                        }
-                    }
-                    _ => {
-                        error!(self.logger, "Failed to read variant");
-                    }
-                }
-            }
-            let mut count = 0;
-            'stati: for (_, status) in message_status.iter() {
-                if status.finished.is_some() {
-                    count += 1;
-                    continue 'stati;
-                }
-            }
-            if count == message_status.len() {
-                debug!(self.logger, "All jobs have returned");
-                break 'retry;
-            }
-        }
-        // TODO
-        // on timeout retry failed jobs
-        //
-        debug!(self.logger, "Got {} intents", intents.len());
-        intents::move_into_storage(world, intents);
-
-        debug!(self.logger, "Executing systems update");
-        execute_world_update(world);
-
-        debug!(self.logger, "Executing post-processing");
-        world.post_process();
-
-        info!(self.logger, "Tick done");
-
-        Ok(())
-    }
-}
-
-fn enqueue_job(
-    logger: &Logger,
-    connection: &mut Connection,
-    msg_id: Uuid,
-    from: usize,
-    to: usize,
-) -> Result<ScriptBatchStatus, MpExcError> {
-    let mut msg = capnp::message::Builder::new_default();
-    let mut root = msg.init_root::<script_batch_job::Builder>();
-
-    let mut id_msg = root.reborrow().init_msg_id();
-    id_msg.set_data(msg_id.as_bytes());
-    root.reborrow()
-        .set_from_index(u32::try_from(from).expect("Expected index to be convertible to u32"));
-    root.reborrow()
-        .set_to_index(u32::try_from(to).expect("Expected index to be convertible to u32"));
-
-    let mut payload = ArrayVec::<[u8; 64]>::new();
-    capnp::serialize::write_message(&mut payload, &msg)
-        .map_err(MpExcError::MessageSerializeError)?;
-    debug!(
-        logger,
-        "pushing job: msg_id: {}, from: {}, to: {}; size: {}",
-        msg_id,
-        from,
-        to,
-        payload.len()
-    );
-    redis::pipe()
-        .lpush(CAO_JOB_QUEUE_KEY, payload.as_slice())
-        .query(connection)
-        .map_err(MpExcError::RedisError)?;
-    Ok(ScriptBatchStatus::new(msg_id, from, to))
 }
 
 #[derive(Debug, Clone)]
@@ -521,7 +352,7 @@ impl Executor for MpExecutor {
         profile!("world_forward");
         self.update_role()?;
         match self.role {
-            Role::Primary(_) => self.forward_primary(world)?,
+            Role::Primary(_) => primary::forward_primary(self, world)?,
             Role::Drone(_) => self.forward_drone(world)?,
         }
         Ok(())
