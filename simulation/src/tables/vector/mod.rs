@@ -126,7 +126,7 @@ where
             return Ok(res);
         }
         let mut last = data[0].0;
-        for (id, row) in data[1..].into_iter() {
+        for (id, row) in data[1..].iter() {
             if id == &last {
                 return Err(VecTableError::DuplicateEntry(last));
             }
