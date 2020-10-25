@@ -303,11 +303,13 @@ async fn main() -> Result<(), anyhow::Error> {
 
         tick(logger.clone(), &mut executor, &mut storage);
 
-        send_world(logger.clone(), &storage, &mut redis_connection)
-            .map_err(|err| {
-                error!(logger, "Failed to send world {:?}", err);
-            })
-            .unwrap_or(());
+        if executor.is_primary() {
+            send_world(logger.clone(), &storage, &mut redis_connection)
+                .map_err(|err| {
+                    error!(logger, "Failed to send world {:?}", err);
+                })
+                .unwrap_or(());
+        }
         let mut sleep_duration = tick_freq
             .checked_sub(Instant::now() - start)
             .unwrap_or_else(|| Duration::from_millis(0));
@@ -317,11 +319,16 @@ async fn main() -> Result<(), anyhow::Error> {
         // inputs because handling them is built into the sleep cycle
         while sleep_duration > Duration::from_millis(0) {
             let start = Instant::now();
-            input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
-                .map_err(|err| {
-                    error!(logger, "Failed to handle inputs {:?}", err);
-                })
-                .unwrap_or(());
+            executor
+                .update_role()
+                .expect("Failed to update executors role");
+            if executor.is_primary() {
+                input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
+                    .map_err(|err| {
+                        error!(logger, "Failed to handle inputs {:?}", err);
+                    })
+                    .unwrap_or(());
+            }
             sleep_duration = sleep_duration
                 .checked_sub(Instant::now() - start)
                 .unwrap_or_else(|| Duration::from_millis(0));
