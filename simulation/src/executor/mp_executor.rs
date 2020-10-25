@@ -321,8 +321,8 @@ impl MpExecutor {
         while let Some(message) = self
             .connection
             .rpop::<_, Option<Vec<u8>>>(CAO_JOB_QUEUE_KEY)
-            .map_err(|e| MpExcError::RedisError(e))
-            .and_then::<Option<BatchScriptInputReader>, _>(|message| parse_script_batch(message))?
+            .map_err(MpExcError::RedisError)
+            .and_then::<Option<BatchScriptInputReader>, _>(parse_script_batch)?
         {
             let message: BatchScriptInputMsg = message.get().map_err(|err| {
                 error!(self.logger, "Failed to 'get' capnp message {:?}", err);
@@ -409,7 +409,7 @@ impl MpExecutor {
             trace!(self.logger, "Checking jobs' status");
             while let Some(message) = connection
                 .rpop::<_, Option<Vec<u8>>>(CAO_JOB_RESULTS_LIST_KEY)
-                .map_err(|e| MpExcError::RedisError(e))
+                .map_err(MpExcError::RedisError)
                 .and_then::<Option<ScriptBatchResultReader>, _>(|message| {
                     parse_script_batch_result(message)
                 })?
@@ -584,7 +584,7 @@ fn parse_script_batch(
                 nesting_limit: 64,
             },
         )
-        .map_err(|err| MpExcError::MessageDeserializeError(err))
+        .map_err(MpExcError::MessageDeserializeError)
         .map(|reader| reader.map(|r| r.into_typed()))
     } else {
         Ok(None)
@@ -603,7 +603,7 @@ fn parse_script_batch_result(
                 nesting_limit: 64,
             },
         )
-        .map_err(|err| MpExcError::MessageDeserializeError(err))
+        .map_err(MpExcError::MessageDeserializeError)
         .map(|reader| reader.map(|r| r.into_typed()))
     } else {
         Ok(None)
