@@ -1,4 +1,4 @@
-FROM rust:latest AS build
+FROM rust:latest AS deps
 
 RUN apt-get update
 RUN apt-get install lld clang capnproto -y --fix-missing
@@ -19,11 +19,21 @@ RUN sed -i 's/src\/main.rs/src\/dummy.rs/' Cargo.toml
 RUN sed -i '/caolo-sim/d' Cargo.toml
 # remove git dependencies
 RUN sed -i -E '/([a-z]|[A-Z]|[0-9])+(.)*=(.)*git(\s)*\=/d' Cargo.toml
-RUN cat Cargo.toml
 RUN cargo build --release --all-features
+
+FROM rust:latest AS build
+COPY ./.cargo/ ./.cargo/
+RUN cargo --version
+
+RUN apt-get update
+RUN apt-get install lld clang capnproto -y --fix-missing
 
 WORKDIR /caolo
 
+COPY --from=deps /caolo/worker/target ./target
+
+COPY ./Cargo.lock ./Cargo.lock
+COPY ./Cargo.toml ./Cargo.toml
 COPY ./simulation/ ./simulation/
 COPY ./cao-storage-derive/ ./cao-storage-derive/
 COPY ./worker/ ./worker/
