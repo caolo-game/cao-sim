@@ -1,8 +1,13 @@
-use super::{queen::Queen, MpExcError, Role, CAO_QUEEN_MUTEX_KEY};
+use crate::prelude::World;
+
+use super::{
+    queen::{self, Queen},
+    MpExcError, MpExecutor, Role, CAO_QUEEN_MUTEX_KEY, CAO_WORLD_KEY, CAO_WORLD_TIME_KEY,
+};
 
 use chrono::{DateTime, TimeZone, Utc};
-use redis::Connection;
-use slog::{debug, info, Logger};
+use redis::{Commands, Connection};
+use slog::{debug, info, o, trace, Logger};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Drone {
@@ -49,4 +54,44 @@ impl Drone {
             Role::Drone(self)
         })
     }
+}
+
+pub fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
+    // wait for the updated world
+    loop {
+        match executor
+            .connection
+            .get::<_, Option<u64>>(CAO_WORLD_TIME_KEY)
+            .map_err(MpExcError::RedisError)?
+        {
+            Some(t) if t > world.time() => break,
+            _ => {
+                trace!(executor.logger, "World has not been updated. Waiting...");
+                if matches!(executor.update_role()?, Role::Queen(_)) {
+                    info!(
+                            executor.logger,
+                            "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}",
+                            world.time()
+                        );
+                    return queen::forward_queen(executor, world);
+                }
+            }
+        }
+    }
+
+    // update world
+    let store: Vec<Vec<u8>> = redis::pipe()
+        .get(CAO_WORLD_KEY)
+        .query(&mut executor.connection)
+        .map_err(MpExcError::RedisError)?;
+    let store: crate::data_store::Storage =
+        rmp_serde::from_slice(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
+    world.store = store;
+    executor.logger = world
+        .logger
+        .new(o!("tick" => world.time(), "role" => format!("{:?}", executor.role)));
+    info!(executor.logger, "Tick starting");
+
+    // execute jobs
+    executor.execute_batch_script_jobs(world)
 }
