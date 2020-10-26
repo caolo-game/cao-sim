@@ -196,9 +196,8 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
                 continue 'stati;
             }
             if let Some(start) = status.started {
-                if (Utc::now() - start)
-                    > Duration::milliseconds(executor.options.script_chunk_timeout_ms)
-                {
+                let timeout = executor.options.script_chunk_timeout_ms;
+                if (Utc::now() - start) > Duration::milliseconds(timeout) {
                     warn!(
                         executor.logger,
                         "Job {} has timed out. Requeueing", status.id
