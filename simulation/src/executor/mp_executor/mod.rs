@@ -27,10 +27,12 @@ use super::Executor;
 
 pub const QUEEN_MUTEX: &str = "CAO_QUEEN_MUTEX";
 pub const WORLD: &str = "CAO_WORLD";
-pub const WORLD_TIME: &str = "CAO_WORLD_TIME";
 pub const JOB_QUEUE: &str = "CAO_JOB_QUEUE";
 pub const JOB_RESULTS_LIST: &str = "CAO_JOB_RESULTS_LIST";
 pub const CHUNK_SIZE: usize = 256;
+
+pub const UPDATE_FENCE: &str = "CAO_UPDATE_FENCE";
+pub const WORLD_TIME_FENCE: &str = "CAO_WORLD_TIME";
 
 type BatchScriptInputMsg<'a> = script_batch_job::Reader<'a>;
 type BatchScriptInputReader = TypedReader<capnp::serialize::OwnedSegments, script_batch_job::Owned>;
@@ -49,7 +51,7 @@ pub struct MpExecutor {
     mutex_expiry_ms: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Role {
     /// This is the main/coordinator instance
     Queen(Queen),
@@ -226,7 +228,7 @@ impl Executor for MpExecutor {
                 .map_err(MpExcError::RedisError)?;
             redis::pipe()
                 .del(WORLD)
-                .del(WORLD_TIME)
+                .del(WORLD_TIME_FENCE)
                 .del(JOB_QUEUE)
                 .del(JOB_RESULTS_LIST)
                 .query(&mut connection)

@@ -12,8 +12,8 @@ use crate::{
 
 use super::{
     drone::Drone, parse_script_batch_result, MpExcError, MpExecutor, Role, ScriptBatchResultReader,
-    ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX,
-    WORLD, WORLD_TIME, CHUNK_SIZE,
+    ScriptBatchStatus, CHUNK_SIZE, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX, UPDATE_FENCE, WORLD,
+    WORLD_TIME_FENCE,
 };
 
 use arrayvec::ArrayVec;
@@ -88,6 +88,8 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     redis::pipe()
         .set(WORLD, world_buff)
         .ignore()
+        .set(WORLD_TIME_FENCE, world.time())
+        .ignore()
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
 
@@ -114,11 +116,8 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
             Ok(ids)
         })?;
 
-    // send start signal to drones
-    // this 'fence' should ensure that the drones read the correct world state
-    // and that the queue is full at this point
     redis::pipe()
-        .set(WORLD_TIME, world.time())
+        .set(UPDATE_FENCE, world.time())
         .ignore()
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
