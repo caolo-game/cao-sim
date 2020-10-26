@@ -2,10 +2,10 @@
 //!
 
 mod drone;
-mod primary;
+mod queen;
 
 use self::drone::*;
-use self::primary::*;
+use self::queen::*;
 
 use capnp::{message::ReaderOptions, message::TypedReader, serialize::try_read_message};
 use chrono::{DateTime, Duration, TimeZone, Utc};
@@ -26,7 +26,7 @@ use crate::{
 
 use super::Executor;
 
-pub const CAO_PRIMARY_MUTEX_KEY: &str = "CAO_PRIMARY_MUTEX";
+pub const CAO_QUEEN_MUTEX_KEY: &str = "CAO_QUEEN_MUTEX";
 pub const CAO_WORLD_KEY: &str = "CAO_WORLD";
 pub const CAO_WORLD_TIME_KEY: &str = "CAO_WORLD_TIME";
 pub const CAO_JOB_QUEUE_KEY: &str = "CAO_JOB_QUEUE";
@@ -53,7 +53,7 @@ pub struct MpExecutor {
 #[derive(Debug, Clone)]
 pub enum Role {
     /// This is the main/coordinator instance
-    Primary(Primary),
+    Queen(Queen),
     /// This is a worker instance
     Drone(Drone),
 }
@@ -61,7 +61,7 @@ pub enum Role {
 impl Display for Role {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Role::Primary(_) => write!(f, "Primary"),
+            Role::Queen(_) => write!(f, "Queen"),
             Role::Drone(_) => write!(f, "Drone"),
         }
     }
@@ -70,7 +70,7 @@ impl Display for Role {
 #[derive(Debug)]
 pub struct ExecutorOptions {
     pub redis_url: String,
-    pub primary_mutex_expiry_ms: i64,
+    pub queen_mutex_expiry_ms: i64,
 }
 
 impl Default for ExecutorOptions {
@@ -79,7 +79,7 @@ impl Default for ExecutorOptions {
             std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
         Self {
             redis_url,
-            primary_mutex_expiry_ms: 2000,
+            queen_mutex_expiry_ms: 2000,
         }
     }
 }
@@ -100,8 +100,8 @@ pub enum MpExcError {
     #[error("Failed to deserialize message {0:?}")]
     MessageDeserializeError(capnp::Error),
 
-    #[error("The primary node lost its mutex while executing a world update")]
-    PrimaryRoleLost,
+    #[error("The queen node lost its mutex while executing a world update")]
+    QueenRoleLost,
 }
 
 impl MpExecutor {
@@ -112,15 +112,15 @@ impl MpExecutor {
         fn _new(logger: Logger, options: ExecutorOptions) -> Result<MpExecutor, MpExcError> {
             let client =
                 Client::open(options.redis_url.as_str()).map_err(MpExcError::RedisError)?;
-            let primary_mutex = Utc.timestamp_millis(0);
+            let queen_mutex = Utc.timestamp_millis(0);
             let connection = client.get_connection().map_err(MpExcError::RedisError)?;
 
             Ok(MpExecutor {
                 logger,
-                role: Role::Drone(Drone { primary_mutex }),
+                role: Role::Drone(Drone { queen_mutex }),
                 client,
                 connection,
-                mutex_expiry_ms: options.primary_mutex_expiry_ms,
+                mutex_expiry_ms: options.queen_mutex_expiry_ms,
             })
         }
 
@@ -135,10 +135,10 @@ impl MpExecutor {
         _new(logger, options.into().unwrap_or_default())
     }
 
-    /// Check if this instance is the Primary and if so still holds the mutex.
-    pub fn is_primary(&self) -> bool {
+    /// Check if this instance is the Queen and if so still holds the mutex.
+    pub fn is_queen(&self) -> bool {
         match self.role {
-            Role::Primary(Primary { primary_mutex }) => Utc::now() < primary_mutex,
+            Role::Queen(Queen { queen_mutex }) => Utc::now() < queen_mutex,
             Role::Drone(_) => false,
         }
     }
@@ -151,7 +151,7 @@ impl MpExecutor {
             (now + Duration::milliseconds(self.mutex_expiry_ms)).timestamp_millis();
 
         self.role = match self.role {
-            Role::Primary(p) => p.update_role(
+            Role::Queen(p) => p.update_role(
                 self.logger.clone(),
                 &mut self.connection,
                 new_expiry,
@@ -251,13 +251,13 @@ impl MpExecutor {
                 Some(t) if t > world.time() => break,
                 _ => {
                     trace!(self.logger, "World has not been updated. Waiting...");
-                    if matches!(self.update_role()?, Role::Primary(_)) {
+                    if matches!(self.update_role()?, Role::Queen(_)) {
                         info!(
                             self.logger,
-                            "Assumed role of Primary while waiting for world update. Last world state in this executor: tick {}",
+                            "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}",
                             world.time()
                         );
-                        return primary::forward_primary(self, world);
+                        return queen::forward_queen(self, world);
                     }
                 }
             }
@@ -332,7 +332,7 @@ impl Executor for MpExecutor {
             self.logger = logger.clone();
         }
         self.update_role()?;
-        if matches!(self.role, Role::Primary(_)) {
+        if matches!(self.role, Role::Queen(_)) {
             let mut connection = self
                 .client
                 .get_connection()
@@ -352,7 +352,7 @@ impl Executor for MpExecutor {
         profile!("world_forward");
         self.update_role()?;
         match self.role {
-            Role::Primary(_) => primary::forward_primary(self, world)?,
+            Role::Queen(_) => queen::forward_queen(self, world)?,
             Role::Drone(_) => self.forward_drone(world)?,
         }
         Ok(())

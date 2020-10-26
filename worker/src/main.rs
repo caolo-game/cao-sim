@@ -255,14 +255,14 @@ async fn main() -> Result<(), anyhow::Error> {
         logger.clone(),
         mp_executor::ExecutorOptions {
             redis_url: redis_url.clone(),
-            primary_mutex_expiry_ms: 2000,
+            queen_mutex_expiry_ms: 2000,
         },
     )
     .unwrap();
     let mut storage = executor.initialize(None).unwrap();
     info!(logger, "Starting with {} actors", game_conf.n_actors);
 
-    if executor.is_primary() {
+    if executor.is_queen() {
         init::init_storage(logger.clone(), &mut storage, &game_conf);
     }
 
@@ -273,7 +273,7 @@ async fn main() -> Result<(), anyhow::Error> {
     )
     .await?;
 
-    if executor.is_primary() {
+    if executor.is_queen() {
         send_config(
             logger.clone(),
             &redis_client,
@@ -303,7 +303,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
         tick(logger.clone(), &mut executor, &mut storage);
 
-        if executor.is_primary() {
+        if executor.is_queen() {
             send_world(logger.clone(), &storage, &mut redis_connection)
                 .map_err(|err| {
                     error!(logger, "Failed to send world {:?}", err);
@@ -322,7 +322,7 @@ async fn main() -> Result<(), anyhow::Error> {
             executor
                 .update_role()
                 .expect("Failed to update executors role");
-            if executor.is_primary() {
+            if executor.is_queen() {
                 input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
                     .map_err(|err| {
                         error!(logger, "Failed to handle inputs {:?}", err);
