@@ -9,7 +9,10 @@ use caolo_sim::{executor::Executor, prelude::*};
 use mp_executor::MpExecutor;
 use slog::{debug, error, info, o, trace, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
-use std::time::{Duration, Instant};
+use std::{
+    env,
+    time::{Duration, Instant},
+};
 use thiserror::Error;
 
 #[cfg(feature = "jemallocator")]
@@ -238,7 +241,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .fuse();
     let logger = slog::Logger::root(drain, o!());
 
-    let _sentry = std::env::var("SENTRY_URI")
+    let _sentry = env::var("SENTRY_URI")
         .ok()
         .map(|uri| {
             let options: sentry::ClientOptions = uri.as_str().into();
@@ -248,14 +251,24 @@ async fn main() -> Result<(), anyhow::Error> {
             warn!(logger, "Sentry URI was not provided");
         });
 
-    let redis_url =
-        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
+    let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
+
+    let queen_mutex_expiry_ms = env::var("CAO_QUEEN_MUTEX_EXPIRY_MS")
+        .ok()
+        .and_then(|x| x.parse().ok())
+        .unwrap_or(2000);
+
+    let script_chunk_size = env::var("CAO_QUEEN_SCRIPT_CHUNK_SIZE")
+        .ok()
+        .and_then(|x| x.parse().ok())
+        .unwrap_or(1024);
 
     let mut executor = MpExecutor::new(
         logger.clone(),
         mp_executor::ExecutorOptions {
             redis_url: redis_url.clone(),
-            queen_mutex_expiry_ms: 2000,
+            queen_mutex_expiry_ms,
+            script_chunk_size,
         },
     )
     .unwrap();
@@ -268,7 +281,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let redis_client = redis::Client::open(redis_url.as_str()).expect("Redis client");
     let pg_pool = PgPool::new(
-        &std::env::var("DATABASE_URL")
+        &env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:admin@localhost:5432/caolo".to_owned()),
     )
     .await?;

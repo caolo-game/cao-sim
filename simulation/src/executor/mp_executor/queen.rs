@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     drone::Drone, parse_script_batch_result, MpExcError, MpExecutor, Role, ScriptBatchResultReader,
-    ScriptBatchStatus, CHUNK_SIZE, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX, UPDATE_FENCE, WORLD,
+    ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX, UPDATE_FENCE, WORLD,
     WORLD_TIME_FENCE,
 };
 
@@ -97,9 +97,10 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     let executions: Vec<(EntityId, EntityScript)> =
         scripts_table.iter().map(|(i, x)| (i, *x)).collect();
     // split the work (TODO how?)
-    // for now let's split it into groups of CHUNK_SIZE
+    // for now let's split it into groups of `chunk_size`
+    let chunk_size = executor.options.script_chunk_size;
     let mut message_status = executions
-        .chunks(CHUNK_SIZE)
+        .chunks(chunk_size)
         .enumerate()
         // skip the first chunk, let's execute it on this node
         .skip(1)
@@ -107,7 +108,7 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
         // We could open more connections, but that brings its own probelms...
         // Maybe upgrade to a pool?
         .try_fold(HashMap::with_capacity(32), |mut ids, (i, chunk)| {
-            let from = i * CHUNK_SIZE;
+            let from = i * chunk_size;
             let to = from + chunk.len();
 
             let msg_id = Uuid::new_v4();
@@ -123,7 +124,7 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
         .map_err(MpExcError::RedisError)?;
 
     debug!(executor.logger, "Executing the first chunk");
-    let mut intents: Vec<BotIntents> = match executions.chunks(CHUNK_SIZE).next() {
+    let mut intents: Vec<BotIntents> = match executions.chunks(chunk_size).next() {
         Some(chunk) => execute_scripts(chunk, world),
         None => {
             warn!(executor.logger, "No scripts to execute");
