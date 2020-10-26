@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     drone::Drone, parse_script_batch_result, MpExcError, MpExecutor, Role, ScriptBatchResultReader,
-    ScriptBatchStatus, CAO_JOB_QUEUE_KEY, CAO_JOB_RESULTS_LIST_KEY, CAO_PRIMARY_MUTEX_KEY,
+    ScriptBatchStatus, CAO_JOB_QUEUE_KEY, CAO_JOB_RESULTS_LIST_KEY, CAO_QUEEN_MUTEX_KEY,
     CAO_WORLD_KEY, CAO_WORLD_TIME_KEY, CHUNK_SIZE,
 };
 
@@ -23,12 +23,12 @@ use slog::{debug, error, info, o, trace, warn, Logger};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Primary {
-    /// Timestamp of the primary mutex
-    pub primary_mutex: DateTime<Utc>,
+pub struct Queen {
+    /// Timestamp of the queen mutex
+    pub queen_mutex: DateTime<Utc>,
 }
 
-impl Primary {
+impl Queen {
     pub fn update_role(
         mut self,
         logger: Logger,
@@ -36,11 +36,11 @@ impl Primary {
         new_expiry: i64,
         mutex_expiry_ms: i64,
     ) -> Result<Role, MpExcError> {
-        // add a bit of bias to let the current Primary re-aquire first
+        // add a bit of bias to let the current Queen re-aquire first
         let res: Option<Vec<String>> = redis::pipe()
-            .getset(CAO_PRIMARY_MUTEX_KEY, new_expiry)
+            .getset(CAO_QUEEN_MUTEX_KEY, new_expiry)
             .expire(
-                CAO_PRIMARY_MUTEX_KEY,
+                CAO_QUEEN_MUTEX_KEY,
                 (mutex_expiry_ms / 1000) as usize + 1, // round up
             )
             .ignore()
@@ -51,30 +51,30 @@ impl Primary {
             .and_then(|s| s.get(0))
             .and_then(|s| s.parse().ok());
         let res = match res {
-            Some(res) if res != self.primary_mutex.timestamp_millis() => {
+            Some(res) if res != self.queen_mutex.timestamp_millis() => {
                 // another process aquired the mutex
                 info!(
                     logger,
-                    "Another process has been promoted to Primary. Demoting this process to Drone"
+                    "Another process has been promoted to Queen. Demoting this process to Drone"
                 );
                 Role::Drone(Drone {
-                    primary_mutex: Utc.timestamp_millis(res),
+                    queen_mutex: Utc.timestamp_millis(res),
                 })
             }
             _ => {
-                self.primary_mutex = Utc.timestamp_millis(new_expiry);
+                self.queen_mutex = Utc.timestamp_millis(new_expiry);
                 debug!(
                     logger,
-                    "Primary mutex has been re-aquired until {}", self.primary_mutex
+                    "Queen mutex has been re-aquired until {}", self.queen_mutex
                 );
-                Role::Primary(self)
+                Role::Queen(self)
             }
         };
         Ok(res)
     }
 }
 
-pub fn forward_primary(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
+pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
     executor.logger = world
         .logger
         .new(o!("tick" => world.time(), "role" => format!("{}", executor.role)));
@@ -139,8 +139,8 @@ pub fn forward_primary(executor: &mut MpExecutor, world: &mut World) -> Result<(
         executor.execute_batch_script_jobs(world)?;
         let new_role = executor.update_role()?;
         assert!(
-            matches!(new_role, Role::Primary(_)),
-            "Primary role has been lost while executing a tick"
+            matches!(new_role, Role::Queen(_)),
+            "Queen role has been lost while executing a tick"
         );
 
         trace!(executor.logger, "Checking jobs' status");
