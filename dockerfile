@@ -15,9 +15,11 @@ COPY ./worker/Cargo.toml ./Cargo.toml
 RUN mkdir src/
 RUN echo "fn main() {}" > ./src/dummy.rs
 RUN sed -i 's/src\/main.rs/src\/dummy.rs/' Cargo.toml
-# remove 'caolo' dependencies because they change often
+# remove cao-sim
 RUN sed -i '/caolo-sim/d' Cargo.toml
-RUN sed -i '/cao-lang/d' Cargo.toml
+# remove git dependencies
+RUN sed -i -E '/([a-z]|[A-Z]|[0-9])+(.)*=(.)*git(\s)*\=/d' Cargo.toml
+RUN cat Cargo.toml
 RUN cargo build --release --all-features
 
 WORKDIR /caolo
