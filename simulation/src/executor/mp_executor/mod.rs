@@ -29,7 +29,6 @@ pub const QUEEN_MUTEX: &str = "CAO_QUEEN_MUTEX";
 pub const WORLD: &str = "CAO_WORLD";
 pub const JOB_QUEUE: &str = "CAO_JOB_QUEUE";
 pub const JOB_RESULTS_LIST: &str = "CAO_JOB_RESULTS_LIST";
-pub const CHUNK_SIZE: usize = 256;
 
 pub const UPDATE_FENCE: &str = "CAO_UPDATE_FENCE";
 pub const WORLD_TIME_FENCE: &str = "CAO_WORLD_TIME";
@@ -43,12 +42,11 @@ type ScriptBatchResultReader =
 ///
 pub struct MpExecutor {
     pub logger: Logger,
+    pub options: ExecutorOptions,
 
     client: Client,
     connection: Connection,
     role: Role,
-
-    mutex_expiry_ms: i64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -72,6 +70,7 @@ impl Display for Role {
 pub struct ExecutorOptions {
     pub redis_url: String,
     pub queen_mutex_expiry_ms: i64,
+    pub script_chunk_size: usize,
 }
 
 impl Default for ExecutorOptions {
@@ -81,6 +80,7 @@ impl Default for ExecutorOptions {
         Self {
             redis_url,
             queen_mutex_expiry_ms: 2000,
+            script_chunk_size: 1024,
         }
     }
 }
@@ -121,7 +121,7 @@ impl MpExecutor {
                 role: Role::Drone(Drone { queen_mutex }),
                 client,
                 connection,
-                mutex_expiry_ms: options.queen_mutex_expiry_ms,
+                options,
             })
         }
 
@@ -149,21 +149,21 @@ impl MpExecutor {
         debug!(self.logger, "Updating role of a {:?} process", self.role);
         let now = Utc::now();
         let new_expiry: i64 =
-            (now + Duration::milliseconds(self.mutex_expiry_ms)).timestamp_millis();
+            (now + Duration::milliseconds(self.options.queen_mutex_expiry_ms)).timestamp_millis();
 
         self.role = match self.role {
             Role::Queen(p) => p.update_role(
                 self.logger.clone(),
                 &mut self.connection,
                 new_expiry,
-                self.mutex_expiry_ms,
+                self.options.queen_mutex_expiry_ms,
             )?,
             Role::Drone(d) => d.update_role(
                 self.logger.clone(),
                 &mut self.connection,
                 now,
                 new_expiry,
-                self.mutex_expiry_ms,
+                self.options.queen_mutex_expiry_ms,
             )?,
         };
         Ok(&self.role)
