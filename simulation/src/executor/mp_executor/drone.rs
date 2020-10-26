@@ -7,7 +7,7 @@ use super::{
 
 use chrono::{DateTime, TimeZone, Utc};
 use redis::{Commands, Connection};
-use slog::{debug, info, o, trace, Logger};
+use slog::{debug, info, o, trace, warn, Logger};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Drone {
@@ -101,13 +101,14 @@ fn wait_for_fence(
 }
 
 pub fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
+    let current_time = world.time();
     info!(executor.logger, "Waiting for {} fence", WORLD_TIME_FENCE);
-    match wait_for_fence(executor, WORLD_TIME_FENCE, world.time()) {
+    match wait_for_fence(executor, WORLD_TIME_FENCE, current_time) {
         Ok(_) => {}
         Err(FenceError::NewRole(Role::Drone(_))) => unreachable!(),
         Err(FenceError::NewRole(Role::Queen(_))) => {
             let logger = &executor.logger;
-            info!(logger, "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}", world.time());
+            warn!(logger, "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}", world.time());
             return queen::forward_queen(executor, world);
         }
         Err(FenceError::MpExcError(err)) => return Err(err),
@@ -123,15 +124,15 @@ pub fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     world.store = store;
     executor.logger = world
         .logger
-        .new(o!("tick" => world.time(), "role" => format!("{:?}", executor.role)));
+        .new(o!("tick" => world.time(), "role" => format!("{}", executor.role)));
 
     info!(executor.logger, "Waiting for {} fence", UPDATE_FENCE);
-    match wait_for_fence(executor, UPDATE_FENCE, world.time() - 1) {
+    match wait_for_fence(executor, UPDATE_FENCE, current_time) {
         Ok(_) => {}
         Err(FenceError::NewRole(Role::Drone(_))) => unreachable!(),
         Err(FenceError::NewRole(Role::Queen(_))) => {
             let logger = &executor.logger;
-            info!(logger, "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}", world.time());
+            warn!(logger, "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}", world.time());
             return queen::forward_queen(executor, world);
         }
         Err(FenceError::MpExcError(err)) => return Err(err),

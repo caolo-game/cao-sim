@@ -127,7 +127,7 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
         Some(chunk) => execute_scripts(chunk, world),
         None => {
             warn!(executor.logger, "No scripts to execute");
-            return Ok(());
+            return post_script_update(executor, world, vec![]);
         }
     };
     debug!(executor.logger, "Executing the first chunk done");
@@ -199,6 +199,14 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     // TODO
     // on timeout retry failed jobs
     //
+    post_script_update(executor, world, intents)
+}
+
+fn post_script_update(
+    executor: &mut MpExecutor,
+    world: &mut World,
+    intents: Vec<BotIntents>,
+) -> Result<(), MpExcError> {
     debug!(executor.logger, "Got {} intents", intents.len());
     intents::move_into_storage(world, intents);
 
