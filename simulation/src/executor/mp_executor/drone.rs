@@ -87,7 +87,7 @@ fn wait_for_fence(
                 .map_err(MpExcError::RedisError)
                 .map_err(FenceError::MpExcError)?
             {
-                // if current_value is None than any value will break the loop
+                // if current_value is None then any value will break the loop
                 Some(t) if current_value.map(|v| v < t).unwrap_or(true) => break Ok(t),
                 _ => {
                     trace!(executor.logger, "World has not been updated. Waiting...");
