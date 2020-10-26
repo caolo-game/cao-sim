@@ -327,6 +327,11 @@ async fn main() -> Result<(), anyhow::Error> {
             .checked_sub(Instant::now() - start)
             .unwrap_or_else(|| Duration::from_millis(0));
 
+        if !executor.is_queen() {
+            std::thread::sleep(sleep_duration);
+            continue;
+        }
+
         // use the sleep time to update inputs
         // this allows faster responses to clients as well as potentially spending less time on
         // inputs because handling them is built into the sleep cycle
@@ -335,13 +340,11 @@ async fn main() -> Result<(), anyhow::Error> {
             executor
                 .update_role()
                 .expect("Failed to update executors role");
-            if executor.is_queen() {
-                input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
-                    .map_err(|err| {
-                        error!(logger, "Failed to handle inputs {:?}", err);
-                    })
-                    .unwrap_or(());
-            }
+            input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
+                .map_err(|err| {
+                    error!(logger, "Failed to handle inputs {:?}", err);
+                })
+                .unwrap_or(());
             sleep_duration = sleep_duration
                 .checked_sub(Instant::now() - start)
                 .unwrap_or_else(|| Duration::from_millis(0));
