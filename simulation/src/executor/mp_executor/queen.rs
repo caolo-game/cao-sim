@@ -12,8 +12,8 @@ use crate::{
 
 use super::{
     drone::Drone, parse_script_batch_result, MpExcError, MpExecutor, Role, ScriptBatchResultReader,
-    ScriptBatchStatus, CAO_JOB_QUEUE_KEY, CAO_JOB_RESULTS_LIST_KEY, CAO_QUEEN_MUTEX_KEY,
-    CAO_WORLD_KEY, CAO_WORLD_TIME_KEY, CHUNK_SIZE,
+    ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX,
+    WORLD, WORLD_TIME, CHUNK_SIZE,
 };
 
 use arrayvec::ArrayVec;
@@ -38,9 +38,9 @@ impl Queen {
     ) -> Result<Role, MpExcError> {
         // add a bit of bias to let the current Queen re-aquire first
         let res: Option<Vec<String>> = redis::pipe()
-            .getset(CAO_QUEEN_MUTEX_KEY, new_expiry)
+            .getset(QUEEN_MUTEX, new_expiry)
             .expire(
-                CAO_QUEEN_MUTEX_KEY,
+                QUEEN_MUTEX,
                 (mutex_expiry_ms / 1000) as usize + 1, // round up
             )
             .ignore()
@@ -86,7 +86,7 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     let world_buff =
         rmp_serde::to_vec_named(&world.store).map_err(MpExcError::WorldSerializeError)?;
     redis::pipe()
-        .set(CAO_WORLD_KEY, world_buff)
+        .set(WORLD, world_buff)
         .ignore()
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
@@ -118,7 +118,7 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     // this 'fence' should ensure that the drones read the correct world state
     // and that the queue is full at this point
     redis::pipe()
-        .set(CAO_WORLD_TIME_KEY, world.time())
+        .set(WORLD_TIME, world.time())
         .ignore()
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
@@ -146,7 +146,7 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
         trace!(executor.logger, "Checking jobs' status");
         while let Some(message) = executor
             .connection
-            .rpop::<_, Option<Vec<u8>>>(CAO_JOB_RESULTS_LIST_KEY)
+            .rpop::<_, Option<Vec<u8>>>(JOB_RESULTS_LIST)
             .map_err(MpExcError::RedisError)
             .and_then::<Option<ScriptBatchResultReader>, _>(|message| {
                 parse_script_batch_result(message)
@@ -243,7 +243,7 @@ fn enqueue_job(
         payload.len()
     );
     redis::pipe()
-        .lpush(CAO_JOB_QUEUE_KEY, payload.as_slice())
+        .lpush(JOB_QUEUE, payload.as_slice())
         .query(connection)
         .map_err(MpExcError::RedisError)?;
     Ok(ScriptBatchStatus::new(msg_id, from, to))

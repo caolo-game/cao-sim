@@ -8,7 +8,7 @@ use crate::{
     systems::script_execution::execute_scripts,
 };
 
-use super::{BatchScriptInputMsg, MpExcError, MpExecutor, CAO_JOB_RESULTS_LIST_KEY};
+use super::{BatchScriptInputMsg, MpExcError, MpExecutor, JOB_RESULTS_LIST};
 
 pub fn execute_batch_script_update(
     executor: &mut MpExecutor,
@@ -41,7 +41,7 @@ pub fn execute_batch_script_update(
         .map_err(MpExcError::MessageSerializeError)?;
     executor
         .connection
-        .lpush(CAO_JOB_RESULTS_LIST_KEY, payload.as_slice())
+        .lpush(JOB_RESULTS_LIST, payload.as_slice())
         .map_err(MpExcError::RedisError)?;
 
     let scripts_table = world.view::<EntityId, EntityScript>();
@@ -79,7 +79,7 @@ pub fn execute_batch_script_update(
         .map_err(MpExcError::MessageSerializeError)?;
     executor
         .connection
-        .lpush(CAO_JOB_RESULTS_LIST_KEY, payload.as_slice())
+        .lpush(JOB_RESULTS_LIST, payload.as_slice())
         .map_err(MpExcError::RedisError)?;
     Ok(())
 }

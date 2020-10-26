@@ -2,7 +2,7 @@ use crate::prelude::World;
 
 use super::{
     queen::{self, Queen},
-    MpExcError, MpExecutor, Role, CAO_QUEEN_MUTEX_KEY, CAO_WORLD_KEY, CAO_WORLD_TIME_KEY,
+    MpExcError, MpExecutor, Role, QUEEN_MUTEX, WORLD, WORLD_TIME,
 };
 
 use chrono::{DateTime, TimeZone, Utc};
@@ -32,12 +32,12 @@ impl Drone {
         debug!(logger, "Queen mutex has expired. Attempting to aquire");
         let (success, res) = redis::pipe()
             .cmd("SET")
-            .arg(CAO_QUEEN_MUTEX_KEY)
+            .arg(QUEEN_MUTEX)
             .arg(new_expiry)
             .arg("NX")
             .arg("PX")
             .arg(mutex_expiry_ms)
-            .get(CAO_QUEEN_MUTEX_KEY)
+            .get(QUEEN_MUTEX)
             .query(connection)
             .map_err(MpExcError::RedisError)?;
         Ok(if success {
@@ -61,7 +61,7 @@ pub fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     loop {
         match executor
             .connection
-            .get::<_, Option<u64>>(CAO_WORLD_TIME_KEY)
+            .get::<_, Option<u64>>(WORLD_TIME)
             .map_err(MpExcError::RedisError)?
         {
             Some(t) if t > world.time() => break,
@@ -81,7 +81,7 @@ pub fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(),
 
     // update world
     let store: Vec<Vec<u8>> = redis::pipe()
-        .get(CAO_WORLD_KEY)
+        .get(WORLD)
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
     let store: crate::data_store::Storage =

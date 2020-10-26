@@ -25,11 +25,11 @@ use crate::{
 
 use super::Executor;
 
-pub const CAO_QUEEN_MUTEX_KEY: &str = "CAO_QUEEN_MUTEX";
-pub const CAO_WORLD_KEY: &str = "CAO_WORLD";
-pub const CAO_WORLD_TIME_KEY: &str = "CAO_WORLD_TIME";
-pub const CAO_JOB_QUEUE_KEY: &str = "CAO_JOB_QUEUE";
-pub const CAO_JOB_RESULTS_LIST_KEY: &str = "CAO_JOB_RESULTS_LIST";
+pub const QUEEN_MUTEX: &str = "CAO_QUEEN_MUTEX";
+pub const WORLD: &str = "CAO_WORLD";
+pub const WORLD_TIME: &str = "CAO_WORLD_TIME";
+pub const JOB_QUEUE: &str = "CAO_JOB_QUEUE";
+pub const JOB_RESULTS_LIST: &str = "CAO_JOB_RESULTS_LIST";
 pub const CHUNK_SIZE: usize = 256;
 
 type BatchScriptInputMsg<'a> = script_batch_job::Reader<'a>;
@@ -171,7 +171,7 @@ impl MpExecutor {
     fn execute_batch_script_jobs(&mut self, world: &mut World) -> Result<(), MpExcError> {
         while let Some(message) = self
             .connection
-            .rpop::<_, Option<Vec<u8>>>(CAO_JOB_QUEUE_KEY)
+            .rpop::<_, Option<Vec<u8>>>(JOB_QUEUE)
             .map_err(MpExcError::RedisError)
             .and_then::<Option<BatchScriptInputReader>, _>(parse_script_batch)?
         {
@@ -225,10 +225,10 @@ impl Executor for MpExecutor {
                 .get_connection()
                 .map_err(MpExcError::RedisError)?;
             redis::pipe()
-                .del(CAO_WORLD_KEY)
-                .del(CAO_WORLD_TIME_KEY)
-                .del(CAO_JOB_QUEUE_KEY)
-                .del(CAO_JOB_RESULTS_LIST_KEY)
+                .del(WORLD)
+                .del(WORLD_TIME)
+                .del(JOB_QUEUE)
+                .del(JOB_RESULTS_LIST)
                 .query(&mut connection)
                 .map_err(MpExcError::RedisError)?;
         }
