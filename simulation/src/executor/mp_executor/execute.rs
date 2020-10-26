@@ -1,6 +1,6 @@
 use chrono::Utc;
 use redis::Commands;
-use slog::{debug, info};
+use slog::debug;
 
 use crate::prelude::World;
 use crate::{
@@ -24,8 +24,7 @@ pub fn execute_batch_script_update(
             .map_err(MpExcError::MessageDeserializeError)?,
     )
     .expect("Failed to deserialize msg id");
-    info!(executor.logger, "Got message with id {:?}", msg_id);
-
+    debug!(executor.logger, "Got message with id {:?}", msg_id);
     debug!(executor.logger, "Signaling start time");
     let mut msg = capnp::message::Builder::new_default();
     let mut root = msg.init_root::<script_batch_result::Builder>();
