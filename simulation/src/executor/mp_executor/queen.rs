@@ -88,6 +88,10 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     redis::pipe()
         .set(WORLD, world_buff)
         .ignore()
+        .query(&mut executor.connection)
+        .map_err(MpExcError::RedisError)?;
+    // make sure WORLD is set before setting fence...
+    redis::pipe()
         .set(WORLD_TIME_FENCE, world.time())
         .ignore()
         .query(&mut executor.connection)
