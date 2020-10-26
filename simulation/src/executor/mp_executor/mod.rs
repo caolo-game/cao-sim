@@ -2,26 +2,25 @@
 //!
 
 mod drone;
+mod execute;
 mod queen;
 
-use self::drone::*;
-use self::queen::*;
+pub use self::drone::*;
+pub use self::queen::*;
 
 use capnp::{message::ReaderOptions, message::TypedReader, serialize::try_read_message};
 use chrono::{DateTime, Duration, TimeZone, Utc};
+use execute::execute_batch_script_update;
 use redis::{Client, Commands, Connection};
-use slog::{debug, error, info, o, trace, Drain, Logger};
+use slog::{debug, error, o, Drain, Logger};
 use std::fmt::Display;
 use uuid::Uuid;
 
 use crate::{
-    components::EntityScript,
     data_store::init_inmemory_storage,
     job_capnp::{script_batch_job, script_batch_result},
-    prelude::EntityId,
     prelude::World,
     profile,
-    systems::script_execution::execute_scripts,
 };
 
 use super::Executor;
@@ -168,118 +167,6 @@ impl MpExecutor {
         Ok(&self.role)
     }
 
-    fn execute_batch_script_update(
-        &mut self,
-        message: BatchScriptInputMsg,
-        world: &mut World,
-    ) -> Result<(), MpExcError> {
-        let msg_id_msg = message
-            .get_msg_id()
-            .map_err(MpExcError::MessageDeserializeError)?;
-        let msg_id = uuid::Uuid::from_slice(
-            msg_id_msg
-                .get_data()
-                .map_err(MpExcError::MessageDeserializeError)?,
-        )
-        .expect("Failed to deserialize msg id");
-        info!(self.logger, "Got message with id {:?}", msg_id);
-
-        debug!(self.logger, "Signaling start time");
-        let mut msg = capnp::message::Builder::new_default();
-        let mut root = msg.init_root::<script_batch_result::Builder>();
-
-        root.reborrow()
-            .set_msg_id(msg_id_msg)
-            .map_err(MpExcError::MessageSerializeError)?;
-        let mut start_time = root.reborrow().init_payload().init_start_time();
-        start_time.set_value_ms(Utc::now().timestamp_millis());
-
-        let mut payload = Vec::with_capacity(1_000_000);
-        capnp::serialize::write_message(&mut payload, &msg)
-            .map_err(MpExcError::MessageSerializeError)?;
-        self.connection
-            .lpush(CAO_JOB_RESULTS_LIST_KEY, payload.as_slice())
-            .map_err(MpExcError::RedisError)?;
-
-        let scripts_table = world.view::<EntityId, EntityScript>();
-        let executions: Vec<(EntityId, EntityScript)> =
-            scripts_table.iter().map(|(id, x)| (id, *x)).collect();
-        let from = message.get_from_index() as usize;
-        let to = message.get_to_index() as usize;
-        let executions = &executions[from..to];
-
-        debug!(self.logger, "Executing scripts");
-        let intents = execute_scripts(executions, world);
-        debug!(self.logger, "Executing scripts done");
-
-        let mut root = msg.init_root::<script_batch_result::Builder>();
-        root.reborrow()
-            .set_msg_id(msg_id_msg)
-            .map_err(MpExcError::MessageSerializeError)?;
-        let mut intents_msg = root
-            .reborrow()
-            .init_payload()
-            .init_intents(intents.len() as u32);
-        for (i, intent) in intents.into_iter().enumerate() {
-            let mut intent_msg = intents_msg.reborrow().get(i as u32);
-            intent_msg.reborrow().set_entity_id(intent.entity_id.0);
-            intent_msg.set_payload(
-                rmp_serde::to_vec_named(&intent)
-                    .expect("Failed to serialize intents")
-                    .as_slice(),
-            );
-        }
-
-        debug!(self.logger, "Sending result of message {}", msg_id);
-        payload.clear();
-        capnp::serialize::write_message(&mut payload, &msg)
-            .map_err(MpExcError::MessageSerializeError)?;
-        self.connection
-            .lpush(CAO_JOB_RESULTS_LIST_KEY, payload.as_slice())
-            .map_err(MpExcError::RedisError)?;
-        Ok(())
-    }
-
-    fn forward_drone(&mut self, world: &mut World) -> Result<(), MpExcError> {
-        // wait for the updated world
-        loop {
-            match self
-                .connection
-                .get::<_, Option<u64>>(CAO_WORLD_TIME_KEY)
-                .map_err(MpExcError::RedisError)?
-            {
-                Some(t) if t > world.time() => break,
-                _ => {
-                    trace!(self.logger, "World has not been updated. Waiting...");
-                    if matches!(self.update_role()?, Role::Queen(_)) {
-                        info!(
-                            self.logger,
-                            "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}",
-                            world.time()
-                        );
-                        return queen::forward_queen(self, world);
-                    }
-                }
-            }
-        }
-
-        // update world
-        let store: Vec<Vec<u8>> = redis::pipe()
-            .get(CAO_WORLD_KEY)
-            .query(&mut self.connection)
-            .map_err(MpExcError::RedisError)?;
-        let store: crate::data_store::Storage =
-            rmp_serde::from_slice(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
-        world.store = store;
-        self.logger = world
-            .logger
-            .new(o!("tick" => world.time(), "role" => format!("{:?}", self.role)));
-        info!(self.logger, "Tick starting");
-
-        // execute jobs
-        self.execute_batch_script_jobs(world)
-    }
-
     /// Execute until the queue is empty
     fn execute_batch_script_jobs(&mut self, world: &mut World) -> Result<(), MpExcError> {
         while let Some(message) = self
@@ -292,7 +179,7 @@ impl MpExecutor {
                 error!(self.logger, "Failed to 'get' capnp message {:?}", err);
                 MpExcError::MessageDeserializeError(err)
             })?;
-            self.execute_batch_script_update(message, world)?;
+            execute_batch_script_update(self, message, world)?;
         }
         Ok(())
     }
@@ -353,7 +240,7 @@ impl Executor for MpExecutor {
         self.update_role()?;
         match self.role {
             Role::Queen(_) => queen::forward_queen(self, world)?,
-            Role::Drone(_) => self.forward_drone(world)?,
+            Role::Drone(_) => drone::forward_drone(self, world)?,
         }
         Ok(())
     }
