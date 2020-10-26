@@ -2,7 +2,7 @@ use crate::prelude::World;
 
 use super::{
     queen::{self, Queen},
-    MpExcError, MpExecutor, Role, QUEEN_MUTEX, WORLD, WORLD_TIME,
+    MpExcError, MpExecutor, Role, QUEEN_MUTEX, UPDATE_FENCE, WORLD, WORLD_TIME_FENCE,
 };
 
 use chrono::{DateTime, TimeZone, Utc};
@@ -56,27 +56,61 @@ impl Drone {
     }
 }
 
-pub fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
-    // wait for the updated world
-    loop {
-        match executor
-            .connection
-            .get::<_, Option<u64>>(WORLD_TIME)
-            .map_err(MpExcError::RedisError)?
-        {
-            Some(t) if t > world.time() => break,
-            _ => {
-                trace!(executor.logger, "World has not been updated. Waiting...");
-                if matches!(executor.update_role()?, Role::Queen(_)) {
-                    info!(
-                            executor.logger,
-                            "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}",
-                            world.time()
-                        );
-                    return queen::forward_queen(executor, world);
+#[derive(thiserror::Error, Debug)]
+enum FenceError {
+    #[error("Got a new role while waiting for fence: {0}")]
+    NewRole(Role),
+    #[error("Error while waiting for fence: {0}")]
+    MpExcError(MpExcError),
+}
+
+/// Waits until the value at the given key is larger than the given value.
+/// Assumes that the current role is `Drone`
+///
+/// Returns the new value of the fence
+fn wait_for_fence(
+    executor: &mut MpExecutor,
+    key: &str,
+    current_value: impl Into<Option<u64>>,
+) -> Result<u64, FenceError> {
+    fn _wait(
+        executor: &mut MpExecutor,
+        key: &str,
+        current_value: Option<u64>,
+    ) -> Result<u64, FenceError> {
+        loop {
+            match executor
+                .connection
+                .get::<_, Option<u64>>(key)
+                .map_err(MpExcError::RedisError)
+                .map_err(FenceError::MpExcError)?
+            {
+                // if current_value is None than any value will break the loop
+                Some(t) if current_value.map(|v| v < t).unwrap_or(true) => break Ok(t),
+                _ => {
+                    trace!(executor.logger, "World has not been updated. Waiting...");
+                    let role = executor.update_role().map_err(FenceError::MpExcError)?;
+                    if matches!(role, Role::Queen(_)) {
+                        return Err(FenceError::NewRole(*role));
+                    }
                 }
             }
         }
+    }
+    _wait(executor, key, current_value.into())
+}
+
+pub fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
+    info!(executor.logger, "Waiting for {} fence", WORLD_TIME_FENCE);
+    match wait_for_fence(executor, WORLD_TIME_FENCE, world.time()) {
+        Ok(_) => {}
+        Err(FenceError::NewRole(Role::Drone(_))) => unreachable!(),
+        Err(FenceError::NewRole(Role::Queen(_))) => {
+            let logger = &executor.logger;
+            info!(logger, "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}", world.time());
+            return queen::forward_queen(executor, world);
+        }
+        Err(FenceError::MpExcError(err)) => return Err(err),
     }
 
     // update world
@@ -90,6 +124,19 @@ pub fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(),
     executor.logger = world
         .logger
         .new(o!("tick" => world.time(), "role" => format!("{:?}", executor.role)));
+
+    info!(executor.logger, "Waiting for {} fence", UPDATE_FENCE);
+    match wait_for_fence(executor, UPDATE_FENCE, world.time() - 1) {
+        Ok(_) => {}
+        Err(FenceError::NewRole(Role::Drone(_))) => unreachable!(),
+        Err(FenceError::NewRole(Role::Queen(_))) => {
+            let logger = &executor.logger;
+            info!(logger, "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}", world.time());
+            return queen::forward_queen(executor, world);
+        }
+        Err(FenceError::MpExcError(err)) => return Err(err),
+    }
+
     info!(executor.logger, "Tick starting");
 
     // execute jobs
