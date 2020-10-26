@@ -17,7 +17,7 @@ use super::{
 };
 
 use arrayvec::ArrayVec;
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Duration, TimeZone, Utc};
 use redis::{Commands, Connection};
 use slog::{debug, error, info, o, trace, warn, Logger};
 use uuid::Uuid;
@@ -190,10 +190,27 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
             }
         }
         let mut count = 0;
-        'stati: for (_, status) in message_status.iter() {
+        'stati: for (msg_id, status) in message_status.iter_mut() {
             if status.finished.is_some() {
                 count += 1;
                 continue 'stati;
+            }
+            if let Some(start) = status.started {
+                if (Utc::now() - start)
+                    > Duration::milliseconds(executor.options.script_chunk_timeout_ms)
+                {
+                    warn!(
+                        executor.logger,
+                        "Job {} has timed out. Requeueing", status.id
+                    );
+                    *status = enqueue_job(
+                        &executor.logger,
+                        &mut executor.connection,
+                        *msg_id,
+                        status.from,
+                        status.to,
+                    )?;
+                }
             }
         }
         if count == message_status.len() {
@@ -201,9 +218,6 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
             break 'retry;
         }
     }
-    // TODO
-    // on timeout retry failed jobs
-    //
     post_script_update(executor, world, intents)
 }
 

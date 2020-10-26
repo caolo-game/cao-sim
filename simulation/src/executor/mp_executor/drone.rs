@@ -95,6 +95,7 @@ fn wait_for_fence(
                     }
                 }
             }
+            std::thread::sleep(std::time::Duration::from_millis(50));
         }
     }
     _wait(executor, key, current_value.into())

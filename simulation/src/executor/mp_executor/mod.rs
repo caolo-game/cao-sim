@@ -71,6 +71,7 @@ pub struct ExecutorOptions {
     pub redis_url: String,
     pub queen_mutex_expiry_ms: i64,
     pub script_chunk_size: usize,
+    pub script_chunk_timeout_ms: i64,
 }
 
 impl Default for ExecutorOptions {
@@ -81,6 +82,7 @@ impl Default for ExecutorOptions {
             redis_url,
             queen_mutex_expiry_ms: 2000,
             script_chunk_size: 1024,
+            script_chunk_timeout_ms: 200,
         }
     }
 }

@@ -16,7 +16,7 @@ use crate::join;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View, WorldLogger};
 use crate::tables::{JoinIterator, Table};
-use slog::{debug, Logger};
+use slog::{Logger, debug, warn};
 
 type SpawnSystemMut = (
     UnsafeView<EntityId, SpawnComponent>,
@@ -110,9 +110,14 @@ fn spawn_bot(
         "spawn_bot spawn_id: {:?} entity_id: {:?}", spawn_id, entity_id
     );
 
-    let bot = spawn_bots
-        .delete(&entity_id)
-        .expect("Spawning bot was not found");
+    let bot = match spawn_bots.delete(&entity_id) {
+        Some(bot) => bot,
+        None => {
+            warn!(logger, "Spawning bot {:?} was not found", entity_id);
+            return;
+        }
+    };
+
     bots.insert_or_update(entity_id, bot.bot);
     hps.insert_or_update(
         entity_id,

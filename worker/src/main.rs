@@ -269,15 +269,15 @@ async fn main() -> Result<(), anyhow::Error> {
             redis_url: redis_url.clone(),
             queen_mutex_expiry_ms,
             script_chunk_size,
+            ..Default::default()
         },
     )
     .unwrap();
     let mut storage = executor.initialize(None).unwrap();
     info!(logger, "Starting with {} actors", game_conf.n_actors);
+    init::init_storage(logger.clone(), &mut storage, &game_conf);
 
-    if executor.is_queen() {
-        init::init_storage(logger.clone(), &mut storage, &game_conf);
-    }
+    executor.update_role().unwrap();
 
     let redis_client = redis::Client::open(redis_url.as_str()).expect("Redis client");
     let pg_pool = PgPool::new(
