@@ -38,6 +38,11 @@ pub fn execute_batch_script_update(
     let mut payload = Vec::with_capacity(1_000_000);
     capnp::serialize::write_message(&mut payload, &msg)
         .map_err(MpExcError::MessageSerializeError)?;
+    debug!(
+        executor.logger,
+        "Sending start time, {} bytes",
+        payload.len()
+    );
     executor
         .connection
         .lpush(JOB_RESULTS_LIST, payload.as_slice())
@@ -72,7 +77,12 @@ pub fn execute_batch_script_update(
         );
     }
 
-    debug!(executor.logger, "Sending result of message {}", msg_id);
+    debug!(
+        executor.logger,
+        "Sending result of message {}, {} bytes",
+        msg_id,
+        payload.len()
+    );
     payload.clear();
     capnp::serialize::write_message(&mut payload, &msg)
         .map_err(MpExcError::MessageSerializeError)?;
