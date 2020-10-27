@@ -35,3 +35,46 @@ impl<'a> storage::views::FromWorld<'a> for Time {
 impl Component<EmptyKey> for Time {
     type Table = UniqueTable<Time>;
 }
+
+#[derive(Clone)]
+pub struct RuntimeGuard {
+    /// This underlying executor is subject to change so let's not publish that...
+    #[cfg(feature = "mp_executor")]
+    pub(crate) tokio_rt: std::sync::Arc<tokio::runtime::Runtime>,
+}
+
+#[cfg(feature = "mp_executor")]
+impl RuntimeGuard {
+    pub fn block_on<F>(&self, f: F) -> F::Output
+    where
+        F: std::future::Future,
+    {
+        self.tokio_rt.block_on(f)
+    }
+}
+
+/// Initializes the global executors.
+/// As we rely on both tokio and rayon it's best to tweak their internals a bit.
+///
+/// ```
+/// let _cao_guard = caolo_sim::init_runtime();
+/// ```
+pub fn init_runtime() -> RuntimeGuard {
+    #[cfg(not(feature = "disable-parallelism"))]
+    {
+        #[cfg(feature = "mp_executor")]
+        let tokio_rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .build()
+            .expect("Failed to init tokio runtime");
+
+        RuntimeGuard {
+            #[cfg(feature = "mp_executor")]
+            tokio_rt: std::sync::Arc::new(tokio_rt),
+        }
+    }
+    #[cfg(feature = "disable-parallelism")]
+    {
+        RuntimeGuard {}
+    }
+}

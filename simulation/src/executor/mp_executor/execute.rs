@@ -1,6 +1,6 @@
 use chrono::Utc;
-use redis::Commands;
-use slog::debug;
+use lapin::{options::BasicPublishOptions, BasicProperties};
+use slog::{debug, trace};
 
 use crate::prelude::World;
 use crate::{
@@ -10,9 +10,9 @@ use crate::{
 
 use super::{BatchScriptInputMsg, MpExcError, MpExecutor, JOB_RESULTS_LIST};
 
-pub fn execute_batch_script_update(
+pub async fn execute_batch_script_update<'a>(
     executor: &mut MpExecutor,
-    message: BatchScriptInputMsg,
+    message: BatchScriptInputMsg<'a>,
     world: &mut World,
 ) -> Result<(), MpExcError> {
     let msg_id_msg = message
@@ -43,10 +43,20 @@ pub fn execute_batch_script_update(
         "Sending start time, {} bytes",
         payload.len()
     );
-    executor
-        .connection
-        .lpush(JOB_RESULTS_LIST, payload.as_slice())
-        .map_err(MpExcError::RedisError)?;
+    let confirm = executor
+        .amqp_chan
+        .basic_publish(
+            "",
+            JOB_RESULTS_LIST,
+            BasicPublishOptions::default(),
+            payload,
+            BasicProperties::default(),
+        )
+        .await
+        .map_err(MpExcError::AmqpError)?
+        .await
+        .map_err(MpExcError::AmqpError)?;
+    trace!(executor.logger, "Got confirmation {:?}", confirm);
 
     let scripts_table = world.view::<EntityId, EntityScript>();
     let executions: Vec<(EntityId, EntityScript)> =
@@ -77,18 +87,28 @@ pub fn execute_batch_script_update(
         );
     }
 
+    let mut payload = Vec::with_capacity(1_000_000);
+    capnp::serialize::write_message(&mut payload, &msg)
+        .map_err(MpExcError::MessageSerializeError)?;
     debug!(
         executor.logger,
         "Sending result of message {}, {} bytes",
         msg_id,
         payload.len()
     );
-    payload.clear();
-    capnp::serialize::write_message(&mut payload, &msg)
-        .map_err(MpExcError::MessageSerializeError)?;
-    executor
-        .connection
-        .lpush(JOB_RESULTS_LIST, payload.as_slice())
-        .map_err(MpExcError::RedisError)?;
+    let confirm = executor
+        .amqp_chan
+        .basic_publish(
+            "",
+            JOB_RESULTS_LIST,
+            BasicPublishOptions::default(),
+            payload,
+            BasicProperties::default(),
+        )
+        .await
+        .map_err(MpExcError::AmqpError)?
+        .await
+        .map_err(MpExcError::AmqpError)?;
+    trace!(executor.logger, "Got confirmation {:?}", confirm);
     Ok(())
 }
