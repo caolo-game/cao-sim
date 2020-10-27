@@ -235,8 +235,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_envlogger::new(drain).fuse();
     let drain = slog_async::Async::new(drain)
-        .overflow_strategy(slog_async::OverflowStrategy::Block)
-        .chan_size(16000)
+        .overflow_strategy(slog_async::OverflowStrategy::DropAndReport)
         .build()
         .fuse();
     let logger = slog::Logger::root(drain, o!());
