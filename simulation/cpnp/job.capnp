@@ -20,10 +20,7 @@ struct ScriptBatchJob
 struct ScriptBatchResult
 {
     msgId @0: Uuid;
-    payload: union {
-        startTime @1: Timestamp;
-        intents @2: List(BotIntents);
-    }
+    intents @1: List(BotIntents);
 }
 
 struct BotIntents

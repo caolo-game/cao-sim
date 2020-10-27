@@ -1,6 +1,5 @@
-use chrono::Utc;
 use lapin::{options::BasicPublishOptions, BasicProperties};
-use slog::{debug, trace};
+use slog::debug;
 
 use crate::prelude::World;
 use crate::{
@@ -25,38 +24,6 @@ pub async fn execute_batch_script_update<'a>(
     )
     .expect("Failed to deserialize msg id");
     debug!(executor.logger, "Got message with id {:?}", msg_id);
-    debug!(executor.logger, "Signaling start time");
-    let mut msg = capnp::message::Builder::new_default();
-    let mut root = msg.init_root::<script_batch_result::Builder>();
-
-    root.reborrow()
-        .set_msg_id(msg_id_msg)
-        .map_err(MpExcError::MessageSerializeError)?;
-    let mut start_time = root.reborrow().init_payload().init_start_time();
-    start_time.set_value_ms(Utc::now().timestamp_millis());
-
-    let mut payload = Vec::with_capacity(1_000_000);
-    capnp::serialize::write_message(&mut payload, &msg)
-        .map_err(MpExcError::MessageSerializeError)?;
-    debug!(
-        executor.logger,
-        "Sending start time, {} bytes",
-        payload.len()
-    );
-    let confirm = executor
-        .amqp_chan
-        .basic_publish(
-            "",
-            JOB_RESULTS_LIST,
-            BasicPublishOptions::default(),
-            payload,
-            BasicProperties::default(),
-        )
-        .await
-        .map_err(MpExcError::AmqpError)?
-        .await
-        .map_err(MpExcError::AmqpError)?;
-    trace!(executor.logger, "Got confirmation {:?}", confirm);
 
     let scripts_table = world.view::<EntityId, EntityScript>();
     let executions: Vec<(EntityId, EntityScript)> =
@@ -69,14 +36,12 @@ pub async fn execute_batch_script_update<'a>(
     let intents = execute_scripts(executions, world);
     debug!(executor.logger, "Executing scripts done");
 
+    let mut msg = capnp::message::Builder::new_default();
     let mut root = msg.init_root::<script_batch_result::Builder>();
     root.reborrow()
         .set_msg_id(msg_id_msg)
         .map_err(MpExcError::MessageSerializeError)?;
-    let mut intents_msg = root
-        .reborrow()
-        .init_payload()
-        .init_intents(intents.len() as u32);
+    let mut intents_msg = root.reborrow().init_intents(intents.len() as u32);
     for (i, intent) in intents.into_iter().enumerate() {
         let mut intent_msg = intents_msg.reborrow().get(i as u32);
         intent_msg.reborrow().set_entity_id(intent.entity_id.0);
@@ -96,7 +61,7 @@ pub async fn execute_batch_script_update<'a>(
         msg_id,
         payload.len()
     );
-    let confirm = executor
+    executor
         .amqp_chan
         .basic_publish(
             "",
@@ -106,9 +71,6 @@ pub async fn execute_batch_script_update<'a>(
             BasicProperties::default(),
         )
         .await
-        .map_err(MpExcError::AmqpError)?
-        .await
         .map_err(MpExcError::AmqpError)?;
-    trace!(executor.logger, "Got confirmation {:?}", confirm);
     Ok(())
 }

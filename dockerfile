@@ -34,6 +34,7 @@ RUN sed -i '/\[\[bench/,+2d' simulation/Cargo.toml
 
 RUN cargo build --release --all-features
 
+
 # ==============================================================================================
 
 FROM rust:latest AS build
@@ -45,6 +46,8 @@ RUN apt-get install lld clang capnproto -y --fix-missing
 
 WORKDIR /caolo
 
+# copy the cache
+COPY --from=deps $CARGO_HOME $CARGO_HOME
 COPY --from=deps /caolo/target ./target
 COPY --from=deps /caolo/Cargo.lock ./Cargo.lock
 
