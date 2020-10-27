@@ -12,7 +12,9 @@ use slog::{debug, o, Drain};
 use uuid::Uuid;
 
 fn main() {
-    std::env::set_var("RUST_LOG", "info,caolo_sim::executor::mp_executor=info");
+    std::env::set_var("RUST_LOG", "info,caolo_sim::executor::mp_executor=trace");
+
+    let rt = caolo_sim::init_runtime();
 
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
@@ -23,7 +25,9 @@ fn main() {
         .fuse();
     let logger = slog::Logger::root(drain, o!());
 
-    let mut executor = MpExecutor::new(logger.clone(), None).unwrap();
+    let mut executor = rt
+        .block_on(MpExecutor::new(&rt, logger.clone(), None))
+        .unwrap();
     let mut world = executor.initialize(Some(logger.clone())).unwrap();
 
     let script_id = ScriptId(Uuid::new_v4());

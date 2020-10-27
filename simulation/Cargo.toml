@@ -10,7 +10,7 @@ build="build.rs"
 
 [features]
 default = ["mp_executor"]
-mp_executor = ["capnpc", "capnp", "redis", "serde_json", "rmp-serde"]
+mp_executor = ["capnpc", "capnp", "redis", "serde_json", "rmp-serde", "lapin", "tokio-amqp"]
 log_tables = ["lazy_static", "serde_json"]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
@@ -23,6 +23,9 @@ cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
 cao_storage_derive = { path = "../cao-storage-derive" }
 cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, features=["http"] }
 
+rayon = { version="1" }
+tokio = { version = "0.3", features = ["rt", "stream"] }
+
 slog = { version="2", features=["max_level_trace", "release_max_level_info"] }
 slog-async = "*"
 slog-term = "*"
@@ -31,7 +34,6 @@ slog-envlogger = "*"
 rand = { version= "0.7", features=["small_rng"] }
 chrono = { version= "0.4", features=["serde"] }
 uuid = { version="0.8", features=["serde", "v4"] }
-rayon = { version="1" }
 arrayvec = { version="0.5", features=["serde", "array-sizes-33-128"] }
 serde = "1"
 serde_derive = "1"
@@ -43,6 +45,8 @@ serde_json = { version="1", optional=true }
 rmp-serde = { version="0.14", optional=true }
 capnp = { version="0.13", optional=true }
 redis = { version= "0.15", optional=true }
+lapin = { version= "1", optional=true }
+tokio-amqp = { version="0.2.1", optional=true }
 
 [dev-dependencies]
 criterion = "0.3"

@@ -24,7 +24,11 @@ fn init() {
     dep_dotenv::dotenv().unwrap_or_default();
 }
 
-fn tick(logger: Logger, exc: &mut impl Executor, storage: &mut World) {
+fn tick(
+    logger: Logger,
+    exc: &mut impl Executor,
+    storage: &mut World,
+) {
     let start = chrono::Utc::now();
     exc.forward(storage)
         .map(|_| {
@@ -225,9 +229,9 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[async_std::main]
-async fn main() -> Result<(), anyhow::Error> {
+fn main() {
     init();
+    let sim_rt = caolo_sim::init_runtime();
 
     let game_conf = config::GameConfig::load();
 
@@ -262,28 +266,30 @@ async fn main() -> Result<(), anyhow::Error> {
         .and_then(|x| x.parse().ok())
         .unwrap_or(1024);
 
-    let mut executor = MpExecutor::new(
-        logger.clone(),
-        mp_executor::ExecutorOptions {
-            redis_url: redis_url.clone(),
-            queen_mutex_expiry_ms,
-            script_chunk_size,
-            ..Default::default()
-        },
-    )
-    .unwrap();
+    let mut executor = sim_rt
+        .block_on(MpExecutor::new(
+            &sim_rt,
+            logger.clone(),
+            mp_executor::ExecutorOptions {
+                redis_url: redis_url.clone(),
+                queen_mutex_expiry_ms,
+                script_chunk_size,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
     let mut storage = executor.initialize(None).unwrap();
     info!(logger, "Starting with {} actors", game_conf.n_actors);
     init::init_storage(logger.clone(), &mut storage, &game_conf);
 
-    executor.update_role().unwrap();
+    sim_rt.block_on(executor.update_role()).unwrap();
 
     let redis_client = redis::Client::open(redis_url.as_str()).expect("Redis client");
-    let pg_pool = PgPool::new(
-        &env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://postgres:admin@localhost:5432/caolo".to_owned()),
-    )
-    .await?;
+    let pg_pool = sim_rt
+        .block_on(PgPool::new(&env::var("DATABASE_URL").unwrap_or_else(
+            |_| "postgres://postgres:admin@localhost:5432/caolo".to_owned(),
+        )))
+        .unwrap();
 
     if executor.is_queen() {
         send_config(
@@ -294,8 +300,8 @@ async fn main() -> Result<(), anyhow::Error> {
         )
         .expect("Send config");
 
-        send_terrain(&logger, &*storage.as_ref(), &pg_pool)
-            .await
+        sim_rt
+            .block_on(send_terrain(&logger, &*storage.as_ref(), &pg_pool))
             .expect("Send terrain");
 
         send_schema(logger.clone(), &redis_client).expect("Send schema");
@@ -309,7 +315,7 @@ async fn main() -> Result<(), anyhow::Error> {
     );
     let mut redis_connection = redis_client
         .get_connection()
-        .with_context(|| "Get redis connection failed")?;
+        .expect("Get redis connection failed");
     loop {
         let start = Instant::now();
 
@@ -336,8 +342,8 @@ async fn main() -> Result<(), anyhow::Error> {
         // inputs because handling them is built into the sleep cycle
         while sleep_duration > Duration::from_millis(0) {
             let start = Instant::now();
-            executor
-                .update_role()
+            sim_rt
+                .block_on(executor.update_role())
                 .expect("Failed to update executors role");
             input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
                 .map_err(|err| {
