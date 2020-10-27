@@ -178,8 +178,6 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             .await
             .map_err(MpExcError::AmqpError)?
         {
-            use crate::job_capnp::script_batch_result::payload::Which;
-
             let delivery = message.delivery;
 
             let message = parse_script_batch_result(delivery.data)?.unwrap(); // FIXME
@@ -193,15 +191,8 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             let status = message_status
                 .entry(msg_id)
                 .or_insert_with(|| ScriptBatchStatus::new(msg_id, 0, executions.len()));
-            match message
-                .get_payload()
-                .which()
-                .expect("Failed to get payload variant")
-            {
-                Which::StartTime(Ok(time)) => {
-                    status.started = Some(Utc.timestamp_millis(time.get_value_ms()))
-                }
-                Which::Intents(Ok(ints)) => {
+            match message.get_intents() {
+                Ok(ints) => {
                     status.finished = Some(Utc::now());
                     for int in ints {
                         let msg = int.get_payload().expect("Failed to read payload");
@@ -210,8 +201,9 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                         intents.push(bot_int);
                     }
                 }
-                _ => {
-                    error!(executor.logger, "Failed to read variant");
+                Err(err) => {
+                    error!(executor.logger, "Failed to read intents {:?}", err);
+                    continue;
                 }
             }
         }
@@ -222,21 +214,19 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                 count += 1;
                 continue 'stati;
             }
-            if let Some(start) = status.started {
-                let timeout = executor.options.script_chunk_timeout_ms;
-                if (Utc::now() - start) > Duration::milliseconds(timeout) {
-                    warn!(executor.logger, "Job {} has timed out.", status.id);
-                    if timeouts.try_push(*msg_id).is_err() {
-                        warn!(executor.logger, "Requeueing {}", status.id);
-                        *status = enqueue_job(
-                            &executor.logger,
-                            &mut executor.amqp_chan,
-                            *msg_id,
-                            status.from,
-                            status.to,
-                        )
-                        .await?;
-                    }
+            let timeout = executor.options.script_chunk_timeout_ms;
+            if (Utc::now() - status.enqueued) > Duration::milliseconds(timeout) {
+                warn!(executor.logger, "Job {} has timed out.", status.id);
+                if timeouts.try_push(*msg_id).is_err() {
+                    warn!(executor.logger, "Requeueing {}", status.id);
+                    *status = enqueue_job(
+                        &executor.logger,
+                        &mut executor.amqp_chan,
+                        *msg_id,
+                        status.from,
+                        status.to,
+                    )
+                    .await?;
                 }
             }
         }
@@ -302,7 +292,7 @@ async fn enqueue_job(
         payload.len()
     );
 
-    let confirm = channel
+    channel
         .basic_publish(
             "",
             JOB_QUEUE,
@@ -311,9 +301,6 @@ async fn enqueue_job(
             BasicProperties::default(),
         )
         .await
-        .map_err(MpExcError::AmqpError)?
-        .await
         .map_err(MpExcError::AmqpError)?;
-    trace!(logger, "Got confirmation {:?}", confirm);
     Ok(ScriptBatchStatus::new(msg_id, from, to))
 }

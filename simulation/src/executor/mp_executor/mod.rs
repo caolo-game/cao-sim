@@ -247,7 +247,6 @@ struct ScriptBatchStatus {
     from: usize,
     to: usize,
     enqueued: DateTime<Utc>,
-    started: Option<DateTime<Utc>>,
     finished: Option<DateTime<Utc>>,
 }
 
@@ -258,7 +257,6 @@ impl ScriptBatchStatus {
             from,
             to,
             enqueued: Utc::now(),
-            started: None,
             finished: None,
         }
     }
