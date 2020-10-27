@@ -60,9 +60,8 @@ impl RuntimeGuard {
 /// let _cao_guard = caolo_sim::init_runtime();
 /// ```
 pub fn init_runtime() -> RuntimeGuard {
-    #[cfg(not(feature = "disable-parallelism"))]
+    #[cfg(feature = "mp_executor")]
     {
-        #[cfg(feature = "mp_executor")]
         let tokio_rt = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
             .build()
@@ -73,7 +72,7 @@ pub fn init_runtime() -> RuntimeGuard {
             tokio_rt: std::sync::Arc::new(tokio_rt),
         }
     }
-    #[cfg(feature = "disable-parallelism")]
+    #[cfg(not(feature = "mp_executor"))]
     {
         RuntimeGuard {}
     }
