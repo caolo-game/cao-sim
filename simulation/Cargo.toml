@@ -6,6 +6,12 @@ edition = "2018"
 
 build="build.rs"
 
+# docker caching hack
+# [[bin]]
+# name = "caolo-simulation"
+# path = "src/dummy.rs"
+# required-features = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
