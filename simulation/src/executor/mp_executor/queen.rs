@@ -190,6 +190,7 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
             }
         }
         let mut count = 0;
+        let mut timeouts = ArrayVec::<[_; 3]>::new();
         'stati: for (msg_id, status) in message_status.iter_mut() {
             if status.finished.is_some() {
                 count += 1;
@@ -198,19 +199,25 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
             if let Some(start) = status.started {
                 let timeout = executor.options.script_chunk_timeout_ms;
                 if (Utc::now() - start) > Duration::milliseconds(timeout) {
-                    warn!(
-                        executor.logger,
-                        "Job {} has timed out. Requeueing", status.id
-                    );
-                    *status = enqueue_job(
-                        &executor.logger,
-                        &mut executor.connection,
-                        *msg_id,
-                        status.from,
-                        status.to,
-                    )?;
+                    warn!(executor.logger, "Job {} has timed out.", status.id);
+                    if timeouts.try_push(*msg_id).is_err() {
+                        warn!(executor.logger, "Requeueing {}", status.id);
+                        *status = enqueue_job(
+                            &executor.logger,
+                            &mut executor.connection,
+                            *msg_id,
+                            status.from,
+                            status.to,
+                        )?;
+                    }
                 }
             }
+        }
+        for msg_id in timeouts {
+            info!(executor.logger, "Executing timed out job {}", msg_id);
+            let ScriptBatchStatus { from, to, .. } = message_status.remove(&msg_id).unwrap();
+            let ints = execute_scripts(&executions[from..to], world);
+            intents.extend_from_slice(ints.as_slice());
         }
         if count == message_status.len() {
             debug!(executor.logger, "All jobs have returned");
