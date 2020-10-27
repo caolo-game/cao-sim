@@ -97,7 +97,7 @@ fn wait_for_fence(
                     }
                 }
             }
-            sleep(Duration::from_millis(50));
+            sleep(Duration::from_micros(500));
         }
     }
     _wait(executor, key, current_value.into())
