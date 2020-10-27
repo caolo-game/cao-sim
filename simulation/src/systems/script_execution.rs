@@ -8,7 +8,7 @@ use crate::{
 use crate::{intents::*, profile};
 use cao_lang::prelude::*;
 use rayon::prelude::*;
-use slog::{debug, info, o, trace, warn};
+use slog::{debug, o, trace, warn};
 use std::convert::TryFrom;
 use std::fmt::{self, Display, Formatter};
 use std::mem::{replace, take};
@@ -46,7 +46,7 @@ pub fn execute_scripts(
     // load balancing should be even less of a problem...
     let chunk_size = (n_scripts / n_threads) + 1;
 
-    info!(
+    debug!(
         logger,
         "Executing {} scripts on {} threads in chunks of {}", n_scripts, n_threads, chunk_size
     );

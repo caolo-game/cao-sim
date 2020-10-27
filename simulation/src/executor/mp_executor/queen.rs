@@ -109,7 +109,7 @@ pub fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(),
         // skip the first chunk, let's execute it on this node
         .skip(1)
         // TODO: this could be done in parallel, however connection has to be mutably borrowed
-        // We could open more connections, but that brings its own probelms...
+        // We could open more connections, but that brings its own problems...
         // Maybe upgrade to a pool?
         .try_fold(HashMap::with_capacity(32), |mut ids, (i, chunk)| {
             let from = i * chunk_size;
@@ -232,7 +232,7 @@ fn post_script_update(
     world: &mut World,
     intents: Vec<BotIntents>,
 ) -> Result<(), MpExcError> {
-    debug!(executor.logger, "Got {} intents", intents.len());
+    info!(executor.logger, "Got {} intents", intents.len());
     intents::move_into_storage(world, intents);
 
     debug!(executor.logger, "Executing systems update");
