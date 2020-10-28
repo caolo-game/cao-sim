@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use std::{collections::HashMap, mem::transmute};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 
 use crate::{
@@ -161,13 +161,10 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                 Ok(message_status)
             },
         )
-        .try_reduce(
-            || HashMap::new(),
-            |a, mut b| {
-                b.extend(a);
-                Ok(b)
-            },
-        )?;
+        .try_reduce(HashMap::new, |a, mut b| {
+            b.extend(a);
+            Ok(b)
+        })?;
 
     debug!(executor.logger, "Executing the first chunk");
     let mut intents: Vec<BotIntents> = match executions.chunks(chunk_size).next() {
@@ -208,7 +205,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                 msg_id.get_d1(),
                 msg_id.get_d2(),
                 msg_id.get_d3(),
-                unsafe { transmute::<_, &[u8; 8]>(&msg_id.get_d4()) },
+                unsafe { &*(&msg_id.get_d4() as *const u64 as *const [u8; 8]) },
             )
             .expect("Failed to parse msgid");
             let status = message_status
@@ -303,7 +300,7 @@ fn build_job_msg(
     id_msg.set_d1(d1);
     id_msg.set_d2(d2);
     id_msg.set_d3(d3);
-    id_msg.set_d4(unsafe { *std::mem::transmute::<_, &u64>(d4) });
+    id_msg.set_d4(unsafe { *(d4 as *const [u8; 8] as *const u64) });
     root.reborrow()
         .set_from_index(u32::try_from(from).expect("Expected index to be convertible to u32"));
     root.reborrow()

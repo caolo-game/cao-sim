@@ -251,7 +251,7 @@ impl MpExecutor {
                     msg_id.get_d1(),
                     msg_id.get_d2(),
                     msg_id.get_d3(),
-                    unsafe { std::mem::transmute::<_, &[u8; 8]>(&msg_id.get_d4()) },
+                    unsafe { &*(&msg_id.get_d4() as *const u64 as *const [u8; 8]) },
                 )
                 .expect("Failed to deserialize msg id");
                 error!(

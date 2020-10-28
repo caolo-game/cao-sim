@@ -53,11 +53,8 @@ impl RuntimeGuard {
     }
 }
 
-/// Initializes the global executors.
-/// As we rely on both tokio and rayon it's best to tweak their internals a bit.
-///
 /// ```
-/// let _cao_guard = caolo_sim::init_runtime();
+/// let _cao_rt = caolo_sim::init_runtime();
 /// ```
 pub fn init_runtime() -> RuntimeGuard {
     #[cfg(feature = "mp_executor")]

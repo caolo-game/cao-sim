@@ -16,7 +16,7 @@ use crate::join;
 use crate::profile;
 use crate::storage::views::{UnsafeView, View, WorldLogger};
 use crate::tables::{JoinIterator, Table};
-use slog::{Logger, debug, warn};
+use slog::{debug, warn, Logger};
 
 type SpawnSystemMut = (
     UnsafeView<EntityId, SpawnComponent>,

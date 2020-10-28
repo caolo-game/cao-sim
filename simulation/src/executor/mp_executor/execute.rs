@@ -9,9 +9,9 @@ use crate::{
 
 use super::{BatchScriptInputMsg, MpExcError, MpExecutor, JOB_RESULTS_LIST};
 
-pub async fn execute_batch_script_update<'a>(
+pub async fn execute_batch_script_update(
     executor: &mut MpExecutor,
-    message: BatchScriptInputMsg<'a>,
+    message: BatchScriptInputMsg<'_>,
     world: &mut World,
 ) -> Result<(), MpExcError> {
     let msg_id_msg = message
@@ -21,7 +21,7 @@ pub async fn execute_batch_script_update<'a>(
         msg_id_msg.get_d1(),
         msg_id_msg.get_d2(),
         msg_id_msg.get_d3(),
-        unsafe { std::mem::transmute::<_, &[u8; 8]>(&msg_id_msg.get_d4()) },
+        unsafe { &*(&msg_id_msg.get_d4() as *const u64 as *const [u8; 8]) },
     )
     .expect("Failed to deserialize msg id");
     debug!(executor.logger, "Executing message with id {:?}", msg_id);

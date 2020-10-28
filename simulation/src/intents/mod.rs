@@ -10,13 +10,13 @@ mod pathcache_intent;
 mod spawn_intent;
 
 pub use self::attack_intent::*;
+pub use self::delete_entity_intent::*;
 pub use self::dropoff_intent::*;
 pub use self::log_intent::*;
 pub use self::mine_intent::*;
 pub use self::move_intent::*;
 pub use self::pathcache_intent::*;
 pub use self::spawn_intent::*;
-pub use self::delete_entity_intent::*;
 
 use crate::components::ScriptHistoryEntry;
 use crate::indices::{EmptyKey, EntityId};
