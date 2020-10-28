@@ -23,7 +23,7 @@ pub struct Time(pub u64);
 
 #[cfg(feature = "mp_executor")]
 #[allow(unknown_lints)]
-#[allow(clippy)]
+#[allow(clippy::all)]
 pub mod job_capnp {
     include!(concat!(env!("OUT_DIR"), "/cpnp/job_capnp.rs"));
 }
