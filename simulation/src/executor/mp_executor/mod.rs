@@ -256,7 +256,12 @@ impl MpExecutor {
                     "Failed to aquire expected world: {}. Skipping job {}", expected_time, msg_id
                 );
             }
-            execute_batch_script_update(self, message, world).await?;
+            execute_batch_script_update(self, message, world)
+                .await
+                .map_err(|err| {
+                    error!(self.logger, "Failed to execute message {}", err);
+                    err
+                })?;
         }
         debug!(self.logger, "Executing batch script jobs done");
         Ok(())

@@ -270,7 +270,7 @@ macro_rules! storage {
     (
         module $module: ident
         $(
-            key $id:ty, table $row: ty = $name: ident
+           $(attr $attr: meta )* key $id:ty, table $row: ty = $name: ident
         ),*
         $(,)*
     ) => {
@@ -287,7 +287,10 @@ macro_rules! storage {
                 #[cao_storage($id, $name, $row)]
             )*
             pub struct Storage {
-                $( pub(crate) $name: <$row as crate::tables::Component<$id>>::Table ),+ ,
+                $(
+                $(#[ $attr ])*
+                pub(crate) $name: <$row as crate::tables::Component<$id>>::Table ),
+                +,
             }
 
             storage!(@implement_tables $($name, $id,  $row )*);
