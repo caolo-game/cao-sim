@@ -163,9 +163,9 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
         )
         .try_reduce(
             || HashMap::new(),
-            |mut a, b| {
-                a.extend(b);
-                Ok(a)
+            |a, mut b| {
+                b.extend(a);
+                Ok(b)
             },
         )?;
 
