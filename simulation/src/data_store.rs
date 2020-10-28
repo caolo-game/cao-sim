@@ -51,16 +51,16 @@ storage!(
     key WorldPosition, table EntityComponent = point_entity,
 
     // intents
-    key EmptyKey, table Intents<MoveIntent> = move_intents,
-    key EmptyKey, table Intents<SpawnIntent> = spawn_intents,
-    key EmptyKey, table Intents<MineIntent> = mine_intents,
-    key EmptyKey, table Intents<DropoffIntent> = dropoff_intents,
-    key EmptyKey, table Intents<LogIntent> = log_intents,
-    key EmptyKey, table Intents<CachePathIntent> = update_path_cache_intents,
-    key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
-    key EmptyKey, table Intents<MeleeIntent> = melee_intents,
-    key EmptyKey, table Intents<ScriptHistoryEntry> = script_history_intents,
-    key EmptyKey, table Intents<DeleteEntityIntent> = delete_entity_intents,
+    attr serde(skip) key EmptyKey, table Intents<MoveIntent> = move_intents,
+    attr serde(skip) key EmptyKey, table Intents<SpawnIntent> = spawn_intents,
+    attr serde(skip) key EmptyKey, table Intents<MineIntent> = mine_intents,
+    attr serde(skip) key EmptyKey, table Intents<DropoffIntent> = dropoff_intents,
+    attr serde(skip) key EmptyKey, table Intents<LogIntent> = log_intents,
+    attr serde(skip) key EmptyKey, table Intents<CachePathIntent> = update_path_cache_intents,
+    attr serde(skip) key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
+    attr serde(skip) key EmptyKey, table Intents<MeleeIntent> = melee_intents,
+    attr serde(skip) key EmptyKey, table Intents<ScriptHistoryEntry> = script_history_intents,
+    attr serde(skip) key EmptyKey, table Intents<DeleteEntityIntent> = delete_entity_intents,
 
     // globals
     key EmptyKey, table ScriptHistory = script_history,
