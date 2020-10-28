@@ -80,8 +80,7 @@ fn impl_storage(input: DeriveInput) -> TokenStream {
                 }
                 /// Execute deferred deletes, will clear `self`!
                 fn execute<Store: DeleteById<#ty>>(&mut self, store: &mut Store) {
-                    let mut deletes = Vec::new();
-                    std::mem::swap(&mut deletes, &mut self.#k);
+                    let deletes = std::mem::take(&mut self.#k);
                     for id in deletes.into_iter() {
                         store.delete(&id);
                     }

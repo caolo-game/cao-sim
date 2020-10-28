@@ -60,6 +60,7 @@ storage!(
     key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
     key EmptyKey, table Intents<MeleeIntent> = melee_intents,
     key EmptyKey, table Intents<ScriptHistoryEntry> = script_history_intents,
+    key EmptyKey, table Intents<DeleteEntityIntent> = delete_entity_intents,
 
     // globals
     key EmptyKey, table ScriptHistory = script_history,
@@ -126,7 +127,7 @@ impl World {
 
             let deferred_deletes = DeferredDeletes::default();
 
-            Box::pin(World {
+            let mut res = Box::pin(World {
                 store,
                 deferred_deletes,
                 next_entity: EntityId::default(),
@@ -138,7 +139,12 @@ impl World {
                 },
 
                 logger,
-            })
+            });
+
+            // initialize the intent tables
+            let botints = crate::intents::BotIntents::default();
+            crate::intents::move_into_storage(&mut *res, vec![botints]);
+            res
         }
 
         let logger = logger.into().unwrap_or_else(|| {
