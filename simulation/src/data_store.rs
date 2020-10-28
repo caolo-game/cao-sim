@@ -1,5 +1,4 @@
 pub use self::store_impl::*;
-
 use crate::components::game_config::GameConfig;
 use crate::components::*;
 use crate::indices::*;
@@ -236,7 +235,7 @@ impl World {
             .map(|(r, _)| r)
             .collect::<Vec<_>>();
 
-        macro_rules! table {
+        macro_rules! clear_table {
             ($component: ty) => {
                 let mut table = self.unsafe_view::<WorldPosition, $component>();
                 table.clear();
@@ -244,8 +243,8 @@ impl World {
             };
         };
 
-        table!(TerrainComponent);
-        table!(EntityComponent);
+        clear_table!(TerrainComponent);
+        clear_table!(EntityComponent);
 
         Ok(self)
     }
