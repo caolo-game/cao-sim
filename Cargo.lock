@@ -130,9 +130,9 @@ dependencies = [
 
 [[package]]
 name = "async-global-executor"
-version = "1.4.2"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "124ac8c265e407641c3362b8f4d39cdb4e243885b71eef087be27199790f5a3a"
+checksum = "73079b49cd26b8fd5a15f68fc7707fc78698dc2a3d61430f2a7a9430230dfa04"
 dependencies = [
  "async-executor",
  "async-io",
@@ -456,7 +456,7 @@ dependencies = [
  "slog-stdlog 3.0.5",
  "slog-term",
  "thiserror",
- "tokio 0.3.1",
+ "tokio 0.3.2",
  "tokio-amqp",
  "uuid",
 ]
@@ -486,7 +486,7 @@ dependencies = [
  "slog-term",
  "sqlx",
  "thiserror",
- "tokio 0.3.1",
+ "tokio 0.3.2",
  "uuid",
 ]
 
@@ -1514,9 +1514,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.3.3"
+version = "2.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
+checksum = "0ee1c47aaa256ecabcaea351eae4a9b01ef39ed810004e298d2511ed284b1525"
 
 [[package]]
 name = "memoffset"
@@ -2794,9 +2794,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1911a203c5c240fd237e23a42e48846475f3d3b1e1dad3f17e6cc17a775b707c"
+checksum = "71f1b20504fd0aa9dab3ae17e8c4dd9431e5e08fd6921689f9745a4004883a17"
 dependencies = [
  "futures-core",
  "num_cpus",
@@ -2812,7 +2812,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd66b4b1d88cc402ce1bf611ced36e0cf0d0e8280a2cd5a85303cbcff0d4141e"
 dependencies = [
  "lapin",
- "tokio 0.3.1",
+ "tokio 0.3.2",
 ]
 
 [[package]]

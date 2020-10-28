@@ -71,6 +71,6 @@ RUN apt-get install libssl-dev libcurl4-openssl-dev -y
 
 
 COPY --from=build /caolo/target/release/caolo-worker ./caolo-worker
-# COPY ./worker/run-debug.sh ./run-debug.sh
+COPY ./worker/run-profile.sh ./run-profile.sh
 
 ENTRYPOINT [ "./caolo-worker" ]

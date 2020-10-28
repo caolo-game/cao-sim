@@ -276,13 +276,12 @@ macro_rules! storage {
     ) => {
         pub mod $module {
             use super::*;
+            use crate::tables::Table;
             use crate::storage::views::{UnsafeView, View};
             use crate::storage::{HasTable, DeleteById, DeferredDeleteById};
-            use serde_derive::{Serialize, Deserialize};
-            use cao_storage_derive::CaoStorage;
-            use crate::tables::Table;
+            use serde::{Serialize, Deserialize};
 
-            #[derive(Debug, CaoStorage, Default, Serialize, Deserialize)]
+            #[derive(Debug, cao_storage_derive::CaoStorage, Default, Serialize, Deserialize)]
             $(
                 #[cao_storage($id, $name, $row)]
             )*

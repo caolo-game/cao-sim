@@ -9,7 +9,7 @@ use crate::storage::views::{UnsafeView, UnwrapView, UnwrapViewMut, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
 use crate::Time;
-use serde_derive::Serialize;
+use serde::Serialize;
 use slog::{debug, o, Drain};
 use std::pin::Pin;
 
@@ -63,7 +63,7 @@ storage!(
     attr serde(skip) key EmptyKey, table Intents<DeleteEntityIntent> = delete_entity_intents,
 
     // globals
-    key EmptyKey, table ScriptHistory = script_history,
+    attr serde(skip) key EmptyKey, table ScriptHistory = script_history,
     key EmptyKey, table Time = time,
 
     // configurations
