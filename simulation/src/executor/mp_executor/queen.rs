@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -16,7 +17,7 @@ use super::{
 };
 
 use arrayvec::ArrayVec;
-use chrono::{DateTime, Duration, TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use lapin::{
     options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
     types::FieldTable, BasicProperties,
@@ -122,31 +123,51 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
     // split the work (TODO how?)
     // for now let's split it into groups of `chunk_size`
     let chunk_size = executor.options.script_chunk_size;
-    let mut message_status = HashMap::with_capacity(executions.len() / chunk_size + 1);
-    for (i, chunk) in executions
-        .chunks(chunk_size)
+    let mut message_status: HashMap<_, _> = executions
+        .par_chunks(chunk_size)
         .enumerate()
         // skip the first chunk, let's execute it on this node
         .skip(1)
-    {
-        // TODO: this could be done in parallel, however connection has to be mutably borrowed
-        // We could open more connections, but that brings its own problems...
-        // Maybe upgrade to a pool?
-        let from = i * chunk_size;
-        let to = from + chunk.len();
+        .map(|(i, chunk)| {
+            let from = i * chunk_size;
+            let to = from + chunk.len();
 
-        let msg_id = Uuid::new_v4();
-        let job = enqueue_job(
-            &executor.logger,
-            &mut executor.amqp_chan,
-            msg_id,
-            from,
-            to,
-            current_world_time,
+            let msg_id = Uuid::new_v4();
+
+            // SAFETY
+            // we'll await these tasks in the 'fold' step so this should be fine
+            // the compiler can't tell that `executor` lives long enough, so we'll give it a hint
+            let executor: &'static MpExecutor = unsafe { std::mem::transmute(&*executor) };
+            let msg = build_job_msg(msg_id, from, to, current_world_time);
+            let job = executor.runtime.tokio_rt.spawn(enqueue_job(
+                &executor.logger,
+                &executor.amqp_chan,
+                msg,
+                msg_id,
+                from,
+                to,
+                current_world_time,
+            ));
+            (msg_id, job)
+        })
+        .try_fold(
+            || HashMap::with_capacity(executions.len() / chunk_size + 1),
+            |mut message_status, (msg_id, job)| {
+                let job = executor
+                    .runtime
+                    .block_on(job)
+                    .expect("Failed to join tokio task")?;
+                message_status.insert(msg_id, job);
+                Ok(message_status)
+            },
         )
-        .await?;
-        message_status.insert(msg_id, job);
-    }
+        .try_reduce(
+            || HashMap::new(),
+            |mut a, b| {
+                a.extend(b);
+                Ok(a)
+            },
+        )?;
 
     debug!(executor.logger, "Executing the first chunk");
     let mut intents: Vec<BotIntents> = match executions.chunks(chunk_size).next() {
@@ -211,14 +232,16 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                 count += 1;
                 continue 'stati;
             }
-            let timeout = executor.options.script_chunk_timeout_ms;
-            if (Utc::now() - status.enqueued) > Duration::milliseconds(timeout) {
+            let timeout = executor.options.expected_frequency;
+            if (Utc::now() - status.enqueued) > timeout {
                 warn!(executor.logger, "Job {} has timed out.", status.id);
                 if timeouts.try_push(*msg_id).is_err() {
-                    warn!(executor.logger, "Requeueing {}", status.id);
+                    info!(executor.logger, "Requeueing {}", status.id);
+                    let msg = build_job_msg(*msg_id, status.from, status.to, current_world_time);
                     *status = enqueue_job(
                         &executor.logger,
-                        &mut executor.amqp_chan,
+                        &executor.amqp_chan,
+                        msg,
                         *msg_id,
                         status.from,
                         status.to,
@@ -261,14 +284,12 @@ fn post_script_update(
     Ok(())
 }
 
-async fn enqueue_job(
-    logger: &Logger,
-    channel: &mut lapin::Channel,
+fn build_job_msg(
     msg_id: Uuid,
     from: usize,
     to: usize,
     time: u64,
-) -> Result<ScriptBatchStatus, MpExcError> {
+) -> capnp::message::Builder<capnp::message::HeapAllocator> {
     let mut msg = capnp::message::Builder::new_default();
     let mut root = msg.init_root::<script_batch_job::Builder>();
 
@@ -279,7 +300,18 @@ async fn enqueue_job(
     root.reborrow()
         .set_to_index(u32::try_from(to).expect("Expected index to be convertible to u32"));
     root.reborrow().set_world_time(time);
+    msg
+}
 
+async fn enqueue_job(
+    logger: &Logger,
+    channel: &lapin::Channel,
+    msg: capnp::message::Builder<capnp::message::HeapAllocator>,
+    msg_id: Uuid,
+    from: usize,
+    to: usize,
+    time: u64,
+) -> Result<ScriptBatchStatus, MpExcError> {
     let mut payload = Vec::with_capacity(64);
     capnp::serialize::write_message(&mut payload, &msg)
         .map_err(MpExcError::MessageSerializeError)?;

@@ -79,7 +79,8 @@ pub struct ExecutorOptions {
 
     pub queen_mutex_expiry_ms: i64,
     pub script_chunk_size: usize,
-    pub script_chunk_timeout_ms: i64,
+    /// Expected time to complete a tick
+    pub expected_frequency: Duration,
 }
 
 impl Default for ExecutorOptions {
@@ -94,7 +95,7 @@ impl Default for ExecutorOptions {
             amqp_url,
             queen_mutex_expiry_ms: 2000,
             script_chunk_size: 1024,
-            script_chunk_timeout_ms: 200,
+            expected_frequency: Duration::seconds(1),
         }
     }
 }

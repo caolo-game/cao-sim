@@ -24,11 +24,7 @@ fn init() {
     dep_dotenv::dotenv().unwrap_or_default();
 }
 
-fn tick(
-    logger: Logger,
-    exc: &mut impl Executor,
-    storage: &mut World,
-) {
+fn tick(logger: Logger, exc: &mut impl Executor, storage: &mut World) {
     let start = chrono::Utc::now();
     exc.forward(storage)
         .map(|_| {
@@ -266,6 +262,8 @@ fn main() {
         .and_then(|x| x.parse().ok())
         .unwrap_or(1024);
 
+    let tick_freq = Duration::from_millis(game_conf.target_tick_freq_ms);
+
     let mut executor = sim_rt
         .block_on(MpExecutor::new(
             &sim_rt,
@@ -274,6 +272,9 @@ fn main() {
                 redis_url: redis_url.clone(),
                 queen_mutex_expiry_ms,
                 script_chunk_size,
+                expected_frequency: chrono::Duration::milliseconds(
+                    game_conf.target_tick_freq_ms as i64,
+                ),
                 ..Default::default()
             },
         ))
@@ -306,8 +307,6 @@ fn main() {
 
         send_schema(logger.clone(), &redis_client).expect("Send schema");
     }
-
-    let tick_freq = Duration::from_millis(game_conf.target_tick_freq_ms);
 
     sentry::capture_message(
         "Caolo Worker initialization complete! Starting the game loop",
