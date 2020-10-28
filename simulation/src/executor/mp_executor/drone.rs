@@ -1,15 +1,9 @@
-use std::{thread::sleep, time::Duration};
-
 use crate::prelude::World;
 
-use super::{
-    queen::{self, Queen},
-    MpExcError, MpExecutor, Role, QUEEN_MUTEX, UPDATE_FENCE, WORLD, WORLD_TIME_FENCE,
-};
+use super::{queen::Queen, update_world, MpExcError, MpExecutor, Role, QUEEN_MUTEX};
 
 use chrono::{DateTime, TimeZone, Utc};
-use redis::Commands;
-use slog::{debug, info, o, trace, warn, Logger};
+use slog::{debug, info, o, Logger};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Drone {
@@ -58,95 +52,21 @@ impl Drone {
     }
 }
 
-#[derive(thiserror::Error, Debug)]
-enum FenceError {
-    #[error("Got a new role while waiting for fence: {0}")]
-    NewRole(Role),
-    #[error("Error while waiting for fence: {0}")]
-    MpExcError(MpExcError),
-}
-
-/// Waits until the value at the given key is larger than the given value.
-/// Assumes that the current role is `Drone`
-///
-/// Returns the new value of the fence
-async fn wait_for_fence(
-    executor: &mut MpExecutor,
-    key: &str,
-    current_value: impl Into<Option<u64>>,
-) -> Result<u64, FenceError> {
-    async fn _wait(
-        executor: &mut MpExecutor,
-        key: &str,
-        current_value: Option<u64>,
-    ) -> Result<u64, FenceError> {
-        loop {
-            match executor
-                .connection
-                .get::<_, Option<u64>>(key)
-                .map_err(MpExcError::RedisError)
-                .map_err(FenceError::MpExcError)?
-            {
-                // if current_value is None then any value will break the loop
-                Some(t) if current_value.map(|v| v < t).unwrap_or(true) => break Ok(t),
-                _ => {
-                    trace!(executor.logger, "World has not been updated. Waiting...");
-                    let role = executor
-                        .update_role()
-                        .await
-                        .map_err(FenceError::MpExcError)?;
-                    if matches!(role, Role::Queen(_)) {
-                        return Err(FenceError::NewRole(*role));
-                    }
-                }
-            }
-            sleep(Duration::from_micros(500));
-        }
-    }
-    _wait(executor, key, current_value.into()).await
-}
-
 pub async fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
-    let current_time = world.time();
-
-    debug!(executor.logger, "Waiting for {} fence", WORLD_TIME_FENCE);
-    match wait_for_fence(executor, WORLD_TIME_FENCE, current_time).await {
-        Ok(_) => {}
-        Err(FenceError::NewRole(Role::Drone(_))) => unreachable!(),
-        Err(FenceError::NewRole(Role::Queen(_))) => {
-            let logger = &executor.logger;
-            warn!(logger, "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}", world.time());
-            return queen::forward_queen(executor, world).await;
-        }
-        Err(FenceError::MpExcError(err)) => return Err(err),
-    }
-
-    // update world
-    let store: Vec<Vec<u8>> = redis::pipe()
-        .get(WORLD)
-        .query(&mut executor.connection)
-        .map_err(MpExcError::RedisError)?;
-    let store: crate::data_store::Storage =
-        rmp_serde::from_slice(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
-    world.store = store;
+    update_world(executor, world)?;
     executor.logger = world
         .logger
         .new(o!("tick" => world.time(), "role" => format!("{}", executor.role)));
 
-    info!(executor.logger, "Waiting for {} fence", UPDATE_FENCE);
-    match wait_for_fence(executor, UPDATE_FENCE, current_time).await {
-        Ok(_) => {}
-        Err(FenceError::NewRole(Role::Drone(_))) => unreachable!(),
-        Err(FenceError::NewRole(Role::Queen(_))) => {
-            let logger = &executor.logger;
-            warn!(logger, "Assumed role of Queen while waiting for world update. Last world state in this executor: tick {}", world.time());
-            return queen::forward_queen(executor, world).await;
+    info!(executor.logger, "Listening for messages");
+    loop {
+        // execute jobs
+        executor.execute_batch_script_jobs(world).await?;
+        let role = executor.update_role().await?;
+        if !matches!(role, Role::Drone(_)) {
+            info!(executor.logger, "Executor is no longer a Drone!");
+            break;
         }
-        Err(FenceError::MpExcError(err)) => return Err(err),
     }
-
-    info!(executor.logger, "Tick starting");
-
-    // execute jobs
-    executor.execute_batch_script_jobs(world).await
+    Ok(())
 }

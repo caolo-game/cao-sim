@@ -15,6 +15,9 @@ struct ScriptBatchJob
     msgId @0: Uuid;
     fromIndex @1: UInt32;
     toIndex @2: UInt32;
+    
+    # Timestamp of the World the worker is expected to use
+    worldTime @3: UInt64;
 }
 
 struct ScriptBatchResult
