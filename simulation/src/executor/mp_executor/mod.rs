@@ -13,7 +13,7 @@ use chrono::{DateTime, Duration, TimeZone, Utc};
 use execute::execute_batch_script_update;
 use lapin::options::BasicGetOptions;
 use redis::{Client, Connection as RedisConnection};
-use slog::{debug, error, o, Drain, Logger};
+use slog::{debug, error, info, o, Drain, Logger};
 use std::fmt::Display;
 use tokio_amqp::*;
 use uuid::Uuid;
@@ -31,9 +31,6 @@ pub const QUEEN_MUTEX: &str = "CAO_QUEEN_MUTEX";
 pub const WORLD: &str = "CAO_WORLD";
 pub const JOB_QUEUE: &str = "CAO_JOB_QUEUE";
 pub const JOB_RESULTS_LIST: &str = "CAO_JOB_RESULTS_LIST";
-
-pub const UPDATE_FENCE: &str = "CAO_UPDATE_FENCE";
-pub const WORLD_TIME_FENCE: &str = "CAO_WORLD_TIME";
 
 type BatchScriptInputMsg<'a> = script_batch_job::Reader<'a>;
 type BatchScriptInputReader = TypedReader<capnp::serialize::OwnedSegments, script_batch_job::Owned>;
@@ -234,6 +231,31 @@ impl MpExecutor {
                 error!(self.logger, "Failed to 'get' capnp message {:?}", err);
                 MpExcError::MessageDeserializeError(err)
             })?;
+            let expected_time = message.get_world_time();
+            if expected_time != world.time() {
+                info!(self.logger, "Updating world");
+                update_world(self, world)?;
+                self.logger = world
+                    .logger
+                    .new(o!("tick" => world.time(), "role" => format!("{}", self.role)));
+
+                info!(self.logger, "Updating world done",);
+            }
+            if world.time() != expected_time {
+                let msg_id_msg = message
+                    .get_msg_id()
+                    .map_err(MpExcError::MessageDeserializeError)?;
+                let msg_id = Uuid::from_slice(
+                    msg_id_msg
+                        .get_data()
+                        .map_err(MpExcError::MessageDeserializeError)?,
+                )
+                .expect("Failed to deserialize msg id");
+                error!(
+                    self.logger,
+                    "Failed to aquire expected world: {}. Skipping job {}", expected_time, msg_id
+                );
+            }
             execute_batch_script_update(self, message, world).await?;
         }
         debug!(self.logger, "Executing batch script jobs done");
@@ -282,7 +304,6 @@ impl Executor for MpExecutor {
                     .map_err(MpExcError::RedisError)?;
                 redis::pipe()
                     .del(WORLD)
-                    .del(WORLD_TIME_FENCE)
                     .query(&mut connection)
                     .map_err(MpExcError::RedisError)?;
             }
@@ -329,4 +350,15 @@ fn parse_script_batch_result(
     )
     .map_err(MpExcError::MessageDeserializeError)
     .map(|reader| reader.map(|r| r.into_typed()))
+}
+
+fn update_world(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
+    let store: Vec<Vec<u8>> = redis::pipe()
+        .get(WORLD)
+        .query(&mut executor.connection)
+        .map_err(MpExcError::RedisError)?;
+    let store: crate::data_store::Storage =
+        rmp_serde::from_slice(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
+    world.store = store;
+    Ok(())
 }

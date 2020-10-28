@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     drone::Drone, parse_script_batch_result, MpExcError, MpExecutor, Role, ScriptBatchStatus,
-    JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX, UPDATE_FENCE, WORLD, WORLD_TIME_FENCE,
+    JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX, WORLD,
 };
 
 use arrayvec::ArrayVec;
@@ -77,9 +77,10 @@ impl Queen {
 }
 
 pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
+    let current_world_time = world.time();
     executor.logger = world
         .logger
-        .new(o!("tick" => world.time(), "role" => format!("{}", executor.role)));
+        .new(o!("tick" => current_world_time, "role" => format!("{}", executor.role)));
     info!(executor.logger, "Tick starting");
 
     debug!(executor.logger, "Initializing amqp.amqp_chans");
@@ -114,12 +115,6 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
         .ignore()
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
-    // make sure WORLD is set before setting fence...
-    redis::pipe()
-        .set(WORLD_TIME_FENCE, world.time())
-        .ignore()
-        .query(&mut executor.connection)
-        .map_err(MpExcError::RedisError)?;
 
     let scripts_table = world.view::<EntityId, EntityScript>();
     let executions: Vec<(EntityId, EntityScript)> =
@@ -141,15 +136,17 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
         let to = from + chunk.len();
 
         let msg_id = Uuid::new_v4();
-        let job = enqueue_job(&executor.logger, &mut executor.amqp_chan, msg_id, from, to).await?;
+        let job = enqueue_job(
+            &executor.logger,
+            &mut executor.amqp_chan,
+            msg_id,
+            from,
+            to,
+            current_world_time,
+        )
+        .await?;
         message_status.insert(msg_id, job);
     }
-
-    redis::pipe()
-        .set(UPDATE_FENCE, world.time())
-        .ignore()
-        .query(&mut executor.connection)
-        .map_err(MpExcError::RedisError)?;
 
     debug!(executor.logger, "Executing the first chunk");
     let mut intents: Vec<BotIntents> = match executions.chunks(chunk_size).next() {
@@ -225,6 +222,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                         *msg_id,
                         status.from,
                         status.to,
+                        current_world_time,
                     )
                     .await?;
                 }
@@ -269,6 +267,7 @@ async fn enqueue_job(
     msg_id: Uuid,
     from: usize,
     to: usize,
+    time: u64,
 ) -> Result<ScriptBatchStatus, MpExcError> {
     let mut msg = capnp::message::Builder::new_default();
     let mut root = msg.init_root::<script_batch_job::Builder>();
@@ -279,16 +278,18 @@ async fn enqueue_job(
         .set_from_index(u32::try_from(from).expect("Expected index to be convertible to u32"));
     root.reborrow()
         .set_to_index(u32::try_from(to).expect("Expected index to be convertible to u32"));
+    root.reborrow().set_world_time(time);
 
     let mut payload = Vec::with_capacity(64);
     capnp::serialize::write_message(&mut payload, &msg)
         .map_err(MpExcError::MessageSerializeError)?;
     debug!(
         logger,
-        "pushing job: msg_id: {}, from: {}, to: {}; size: {}",
+        "pushing job: msg_id: {}, from: {}, to: {} time: {}; size: {}",
         msg_id,
         from,
         to,
+        time,
         payload.len()
     );
 

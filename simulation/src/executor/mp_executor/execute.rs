@@ -1,5 +1,5 @@
 use lapin::{options::BasicPublishOptions, BasicProperties};
-use slog::debug;
+use slog::{debug, info};
 
 use crate::prelude::World;
 use crate::{
@@ -23,7 +23,7 @@ pub async fn execute_batch_script_update<'a>(
             .map_err(MpExcError::MessageDeserializeError)?,
     )
     .expect("Failed to deserialize msg id");
-    debug!(executor.logger, "Got message with id {:?}", msg_id);
+    info!(executor.logger, "Executing message with id {:?}", msg_id);
 
     let scripts_table = world.view::<EntityId, EntityScript>();
     let executions: Vec<(EntityId, EntityScript)> =
