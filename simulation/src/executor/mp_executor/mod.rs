@@ -243,13 +243,15 @@ impl MpExecutor {
                 info!(self.logger, "Updating world done",);
             }
             if world.time() != expected_time {
-                let msg_id_msg = message
+                let msg_id = message
                     .get_msg_id()
                     .map_err(MpExcError::MessageDeserializeError)?;
-                let msg_id = Uuid::from_slice(
-                    msg_id_msg
-                        .get_data()
-                        .map_err(MpExcError::MessageDeserializeError)?,
+
+                let msg_id = uuid::Uuid::from_fields(
+                    msg_id.get_d1(),
+                    msg_id.get_d2(),
+                    msg_id.get_d3(),
+                    unsafe { std::mem::transmute::<_, &[u8; 8]>(&msg_id.get_d4()) },
                 )
                 .expect("Failed to deserialize msg id");
                 error!(

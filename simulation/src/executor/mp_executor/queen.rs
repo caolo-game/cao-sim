@@ -1,5 +1,5 @@
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, mem::transmute};
 use std::convert::TryFrom;
 
 use crate::{
@@ -202,10 +202,15 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             let message = message.get().map_err(MpExcError::MessageDeserializeError)?;
             let msg_id = message
                 .get_msg_id()
-                .map_err(MpExcError::MessageDeserializeError)?
-                .get_data()
                 .map_err(MpExcError::MessageDeserializeError)?;
-            let msg_id = Uuid::from_slice(msg_id).expect("Failed to parse msg id");
+
+            let msg_id = uuid::Uuid::from_fields(
+                msg_id.get_d1(),
+                msg_id.get_d2(),
+                msg_id.get_d3(),
+                unsafe { transmute::<_, &[u8; 8]>(&msg_id.get_d4()) },
+            )
+            .expect("Failed to parse msgid");
             let status = message_status
                 .entry(msg_id)
                 .or_insert_with(|| ScriptBatchStatus::new(msg_id, 0, executions.len()));
@@ -294,7 +299,11 @@ fn build_job_msg(
     let mut root = msg.init_root::<script_batch_job::Builder>();
 
     let mut id_msg = root.reborrow().init_msg_id();
-    id_msg.set_data(msg_id.as_bytes());
+    let (d1, d2, d3, d4) = msg_id.as_fields();
+    id_msg.set_d1(d1);
+    id_msg.set_d2(d2);
+    id_msg.set_d3(d3);
+    id_msg.set_d4(unsafe { *std::mem::transmute::<_, &u64>(d4) });
     root.reborrow()
         .set_from_index(u32::try_from(from).expect("Expected index to be convertible to u32"));
     root.reborrow()
