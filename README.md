@@ -9,7 +9,7 @@ Game simulation/back-end of Cao-Lo.
 
 - [Rust](https://rustup.rs/)
 - [Cap'n Proto](https://capnproto.org/)
--
+
 ## Deploy dependencies
 
 - [PostgreSQL](https://www.postgresql.org/)
