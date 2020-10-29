@@ -1,5 +1,5 @@
 use crate::components::{CarryComponent, EnergyComponent, Resource, ResourceComponent};
-use crate::indices::EntityId;
+use crate::indices::*;
 use crate::intents::{Intents, MineIntent};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, View, WorldLogger};
@@ -13,7 +13,7 @@ type Mut = (
 );
 type Const<'a> = (
     View<'a, EntityId, ResourceComponent>,
-    UnwrapView<'a, Intents<MineIntent>>,
+    UnwrapView<'a, EmptyKey, Intents<MineIntent>>,
     WorldLogger,
 );
 

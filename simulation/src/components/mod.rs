@@ -7,10 +7,10 @@ pub use bot_components::*;
 pub use resources::*;
 pub use rooms::*;
 
-use crate::indices::{EmptyKey, EntityId, UserId, WorldPosition};
+use crate::indices::{EntityId, UserId, WorldPosition};
 use crate::tables::{
-    btree::BTreeTable, morton::MortonTable, unique::UniqueTable, vector::DenseVecTable, Component,
-    RoomMortonTable, SpatialKey2d, TableId,
+    btree::BTreeTable, morton::MortonTable, vector::DenseVecTable, Component, RoomMortonTable,
+    SpatialKey2d, TableId,
 };
 
 use cao_lang::prelude::CompiledProgram;
@@ -20,15 +20,15 @@ use std::collections::VecDeque;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ScriptHistoryEntry {
-    pub entity: EntityId,
+    pub entity_id: EntityId,
     pub payload: Vec<HistoryEntry>,
     pub time: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ScriptHistory(pub Vec<ScriptHistoryEntry>);
-impl Component<EmptyKey> for ScriptHistory {
-    type Table = UniqueTable<Self>;
+pub struct ScriptHistory(pub Vec<HistoryEntry>);
+impl Component<EntityId> for ScriptHistory {
+    type Table = DenseVecTable<EntityId, Self>;
 }
 
 /// For tables that store entity ids as values

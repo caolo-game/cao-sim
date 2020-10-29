@@ -1,5 +1,5 @@
-use prelude::{Component, EmptyKey, World};
-use tables::unique::UniqueTable;
+use prelude::{Component, World};
+use tables::{TableId, unique::UniqueTable};
 
 pub mod components;
 pub mod executor;
@@ -34,8 +34,8 @@ impl<'a> storage::views::FromWorld<'a> for Time {
     }
 }
 
-impl Component<EmptyKey> for Time {
-    type Table = UniqueTable<Time>;
+impl<Id: TableId> Component<Id> for Time {
+    type Table = UniqueTable<Id, Time>;
 }
 
 #[derive(Clone)]

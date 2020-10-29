@@ -103,13 +103,13 @@ unsafe impl Sync for DeleteEntityView {}
 
 impl DeleteEntityView
 where
-    crate::data_store::Storage: super::DeleteById<EntityId>,
+    crate::data_store::entity_store::Storage: super::DeleteById<EntityId>,
 {
     /// # Safety
     /// This function should only be called if the pointed to Storage is in memory and no other
     /// threads have access to it at this time!
     pub unsafe fn delete_entity(&mut self, id: EntityId) {
-        let storage = &mut self.storage.as_mut().store;
+        let storage = &mut self.storage.as_mut().entities;
         storage.delete(&id);
     }
 }

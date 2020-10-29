@@ -457,7 +457,7 @@ mod tests {
                     .insert_or_update(bot_id, PositionComponent(from));
                 EntityId, OwnedEntity,
                     .insert_or_update(bot_id, OwnedEntity{owner_id:user_id});
-                EmptyKey, RoomProperties,
+                ConfigKey, RoomProperties,
                     .update(Some(RoomProperties{radius:room_radius as u32, center: room_center}));
 
                 WorldPosition, EntityComponent,

@@ -365,8 +365,8 @@ fn update_world(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpEx
         .get(WORLD)
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
-    let store: crate::data_store::Storage =
+    let store: crate::data_store::entity_store::Storage =
         rmp_serde::from_slice(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
-    world.store = store;
+    world.entities = store;
     Ok(())
 }

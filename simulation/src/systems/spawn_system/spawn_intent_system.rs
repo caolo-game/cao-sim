@@ -1,5 +1,5 @@
 use crate::components::{Bot, OwnedEntity, SpawnBotComponent, SpawnQueueComponent};
-use crate::indices::EntityId;
+use crate::indices::*;
 use crate::intents::{Intents, SpawnIntent};
 use crate::profile;
 use crate::storage::views::{InsertEntityView, UnsafeView, UnwrapView, WorldLogger};
@@ -12,7 +12,7 @@ type Mut = (
     InsertEntityView,
 );
 
-type Const<'a> = (UnwrapView<'a, Intents<SpawnIntent>>, WorldLogger);
+type Const<'a> = (UnwrapView<'a, EmptyKey, Intents<SpawnIntent>>, WorldLogger);
 
 pub fn update(
     (mut spawn_bot_table, mut spawn_queue, mut owner_table, mut insert_entity): Mut,

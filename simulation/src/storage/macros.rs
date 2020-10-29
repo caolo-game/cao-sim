@@ -269,8 +269,9 @@ macro_rules! join {
 macro_rules! storage {
     (
         module $module: ident
+        key $id: ty,
         $(
-           $(attr $attr: meta )* key $id:ty, table $row: ty = $name: ident
+           $(attr $attr: meta )* table $row: ty = $name: ident
         ),*
         $(,)*
     ) => {
@@ -280,6 +281,7 @@ macro_rules! storage {
             use crate::storage::views::{UnsafeView, View};
             use crate::storage::{HasTable, DeleteById, DeferredDeleteById};
             use serde::{Serialize, Deserialize};
+            pub type Key = $id;
 
             #[derive(Debug, cao_storage_derive::CaoStorage, Default, Serialize, Deserialize)]
             $(
@@ -325,5 +327,28 @@ macro_rules! storage {
                 }
             }
         )*
+    };
+}
+
+/// Create an empty struct that can be used a Storage key
+#[macro_export(local_inner_macros)]
+macro_rules! empty_key {
+    ($name: ident) => {
+        #[derive(
+            Debug,
+            Clone,
+            Default,
+            Ord,
+            PartialOrd,
+            Eq,
+            PartialEq,
+            Copy,
+            Hash,
+            Serialize,
+            Deserialize,
+        )]
+        pub struct $name;
+
+        unsafe impl Send for $name {}
     };
 }

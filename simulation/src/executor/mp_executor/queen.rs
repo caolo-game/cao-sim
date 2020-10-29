@@ -110,7 +110,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
     // TODO broadcast changesets instead of the whole state
     debug!(executor.logger, "Sending world state");
     let world_buff =
-        rmp_serde::to_vec_named(&world.store).map_err(MpExcError::WorldSerializeError)?;
+        rmp_serde::to_vec_named(&world.entities).map_err(MpExcError::WorldSerializeError)?;
     redis::pipe()
         .set(WORLD, world_buff)
         .ignore()

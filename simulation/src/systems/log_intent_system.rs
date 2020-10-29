@@ -1,5 +1,5 @@
 use crate::components::LogEntry;
-use crate::indices::EntityTime;
+use crate::indices::*;
 use crate::intents::{Intents, LogIntent};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapViewMut, WorldLogger};
@@ -9,7 +9,7 @@ use std::mem::replace;
 
 type Mut = (
     UnsafeView<EntityTime, LogEntry>,
-    UnwrapViewMut<Intents<LogIntent>>,
+    UnwrapViewMut<EmptyKey, Intents<LogIntent>>,
 );
 
 pub fn update((mut log_table, mut intents): Mut, WorldLogger(logger): WorldLogger) {
