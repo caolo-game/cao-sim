@@ -44,7 +44,7 @@ impl<'a, Id: TableId, C: Component<Id>> Deref for UnwrapView<'a, Id, C> {
 impl<'a, Id: TableId, C: Default + Component<Id, Table = UniqueTable<Id, C>>> FromWorld<'a>
     for UnwrapView<'a, Id, C>
 where
-    crate::data_store::World: HasTable<Id, C>,
+    crate::world::World: HasTable<Id, C>,
 {
     fn new(w: &'a World) -> Self {
         let table: &UniqueTable<Id, C> = View::new(w).reborrow();

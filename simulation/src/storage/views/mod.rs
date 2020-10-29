@@ -63,7 +63,7 @@ unsafe impl Sync for DeferredDeleteEntityView {}
 
 impl DeferredDeleteEntityView
 where
-    crate::data_store::World: super::DeferredDeleteById<EntityId>,
+    crate::world::World: super::DeferredDeleteById<EntityId>,
 {
     /// # Safety
     /// This function should only be called if the pointed to Storage is in memory and no other
@@ -103,7 +103,7 @@ unsafe impl Sync for DeleteEntityView {}
 
 impl DeleteEntityView
 where
-    crate::data_store::entity_store::Storage: super::DeleteById<EntityId>,
+    crate::world::entity_store::Storage: super::DeleteById<EntityId>,
 {
     /// # Safety
     /// This function should only be called if the pointed to Storage is in memory and no other

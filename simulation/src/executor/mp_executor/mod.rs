@@ -19,7 +19,7 @@ use tokio_amqp::*;
 use uuid::Uuid;
 
 use crate::{
-    data_store::init_inmemory_storage,
+    world::init_inmemory_storage,
     job_capnp::{script_batch_job, script_batch_result},
     prelude::World,
     profile, RuntimeGuard,
@@ -365,7 +365,7 @@ fn update_world(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpEx
         .get(WORLD)
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
-    let store: crate::data_store::entity_store::Storage =
+    let store: crate::world::entity_store::Storage =
         rmp_serde::from_slice(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
     world.entities = store;
     Ok(())

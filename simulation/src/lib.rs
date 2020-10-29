@@ -13,7 +13,7 @@ pub mod storage;
 pub mod tables;
 pub mod terrain;
 
-mod data_store;
+mod world;
 mod intents;
 mod systems;
 mod utils;
