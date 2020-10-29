@@ -1,5 +1,5 @@
 use prelude::{Component, World};
-use tables::{TableId, unique::UniqueTable};
+use tables::{unique::UniqueTable, TableId};
 
 pub mod components;
 pub mod executor;
@@ -13,10 +13,10 @@ pub mod storage;
 pub mod tables;
 pub mod terrain;
 
-mod world;
 mod intents;
 mod systems;
 mod utils;
+mod world;
 
 #[derive(Clone, Debug, Default, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Time(pub u64);

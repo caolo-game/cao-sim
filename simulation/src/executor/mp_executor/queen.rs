@@ -11,10 +11,7 @@ use crate::{
     systems::script_execution::execute_scripts,
 };
 
-use super::{
-    drone::Drone, parse_script_batch_result, MpExcError, MpExecutor, Role, ScriptBatchStatus,
-    JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX, WORLD,
-};
+use super::{JOB_QUEUE, JOB_RESULTS_LIST, MpExcError, MpExecutor, QUEEN_MUTEX, Role, ScriptBatchStatus, TimeCodedSer, WORLD_ENTITIES, drone::Drone, parse_script_batch_result};
 
 use arrayvec::ArrayVec;
 use chrono::{DateTime, TimeZone, Utc};
@@ -108,14 +105,22 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
 
     // broadcast world
     // TODO broadcast changesets instead of the whole state
-    debug!(executor.logger, "Sending world state");
-    let world_buff =
-        rmp_serde::to_vec_named(&world.entities).map_err(MpExcError::WorldSerializeError)?;
-    redis::pipe()
-        .set(WORLD, world_buff)
-        .ignore()
-        .query(&mut executor.connection)
-        .map_err(MpExcError::RedisError)?;
+    {
+        debug!(executor.logger, "Sending entities state");
+
+        let ser = TimeCodedSer {
+            time: world.time(),
+            value: &world.entities,
+        };
+
+        let entities_buff =
+            rmp_serde::to_vec_named(&ser).map_err(MpExcError::WorldSerializeError)?;
+        redis::pipe()
+            .set(WORLD_ENTITIES, entities_buff)
+            .ignore()
+            .query(&mut executor.connection)
+            .map_err(MpExcError::RedisError)?;
+    }
 
     let scripts_table = world.view::<EntityId, EntityScript>();
     let executions: Vec<(EntityId, EntityScript)> =

@@ -19,16 +19,20 @@ use tokio_amqp::*;
 use uuid::Uuid;
 
 use crate::{
-    world::init_inmemory_storage,
     job_capnp::{script_batch_job, script_batch_result},
+    prelude::FromWorld,
+    prelude::FromWorldMut,
     prelude::World,
-    profile, RuntimeGuard,
+    profile,
+    systems::positions_system,
+    world::init_inmemory_storage,
+    RuntimeGuard, Time,
 };
 
 use super::Executor;
 
 pub const QUEEN_MUTEX: &str = "CAO_QUEEN_MUTEX";
-pub const WORLD: &str = "CAO_WORLD";
+pub const WORLD_ENTITIES: &str = "CAO_WORLD_ENTITIES";
 pub const JOB_QUEUE: &str = "CAO_JOB_QUEUE";
 pub const JOB_RESULTS_LIST: &str = "CAO_JOB_RESULTS_LIST";
 
@@ -36,6 +40,18 @@ type BatchScriptInputMsg<'a> = script_batch_job::Reader<'a>;
 type BatchScriptInputReader = TypedReader<capnp::serialize::OwnedSegments, script_batch_job::Owned>;
 type ScriptBatchResultReader =
     TypedReader<capnp::serialize::OwnedSegments, script_batch_result::Owned>;
+
+#[derive(serde::Serialize)]
+struct TimeCodedSer<'a, T> {
+    time: u64,
+    value: &'a T,
+}
+
+#[derive(serde::Deserialize)]
+struct TimeCodedDe<T> {
+    time: u64,
+    value: T,
+}
 
 /// Multiprocess executor.
 ///
@@ -311,7 +327,7 @@ impl Executor for MpExecutor {
                     .get_connection()
                     .map_err(MpExcError::RedisError)?;
                 redis::pipe()
-                    .del(WORLD)
+                    .del(WORLD_ENTITIES)
                     .query(&mut connection)
                     .map_err(MpExcError::RedisError)?;
             }
@@ -362,11 +378,18 @@ fn parse_script_batch_result(
 
 fn update_world(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
     let store: Vec<Vec<u8>> = redis::pipe()
-        .get(WORLD)
+        .get(WORLD_ENTITIES)
         .query(&mut executor.connection)
         .map_err(MpExcError::RedisError)?;
-    let store: crate::world::entity_store::Storage =
+    let store: TimeCodedDe<crate::world::entity_store::Storage> =
         rmp_serde::from_slice(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
-    world.entities = store;
+    world.entities = store.value;
+    world.resources.time.value = Some(Time(store.time));
+    // reset the positions storage
+    positions_system::update(FromWorldMut::new(world), FromWorld::new(world));
+    // TODO: 
+    // config
+    // users
+    // terrain (in separate function)
     Ok(())
 }
