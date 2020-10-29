@@ -1,8 +1,8 @@
 use super::*;
 use crate::components::{EntityComponent, PositionComponent};
-use crate::world::World;
 use crate::indices::WorldPosition;
 use crate::profile;
+use crate::world::World;
 use cao_lang::prelude::*;
 use slog::{trace, warn};
 use std::convert::TryFrom;

@@ -13,7 +13,7 @@ type Const<'a> = ();
 pub fn update((mut history_intents, mut history_table): Mut, _: Const) {
     profile!("ScriptHistorySystem update");
 
-    let intents = mem::take(&mut history_intents.0);
+    let Intents(intents) = mem::take(&mut *history_intents);
     for intent in intents {
         history_table.insert_or_update(intent.entity_id, ScriptHistory(intent.payload));
     }

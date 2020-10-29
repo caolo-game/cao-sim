@@ -228,6 +228,7 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
 fn main() {
     init();
     let sim_rt = caolo_sim::init_runtime();
+    let _guard = sim_rt.enter();
 
     let game_conf = config::GameConfig::load();
 
@@ -264,6 +265,7 @@ fn main() {
 
     let tick_freq = Duration::from_millis(game_conf.target_tick_freq_ms);
 
+    info!(logger, "Creating cao executor");
     let mut executor = sim_rt
         .block_on(MpExecutor::new(
             &sim_rt,
@@ -279,6 +281,7 @@ fn main() {
             },
         ))
         .unwrap();
+    info!(logger, "Init storage");
     let mut storage = executor.initialize(None).unwrap();
     info!(logger, "Starting with {} actors", game_conf.n_actors);
     init::init_storage(logger.clone(), &mut storage, &game_conf);

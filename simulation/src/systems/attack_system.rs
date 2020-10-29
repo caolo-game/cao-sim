@@ -8,7 +8,7 @@ use slog::{debug, error, Logger};
 
 type Mut = (
     UnsafeView<EntityId, HpComponent>,
-    UnwrapViewMut<EmptyKey,Intents<MeleeIntent>>,
+    UnwrapViewMut<EmptyKey, Intents<MeleeIntent>>,
 );
 type Const<'a> = (View<'a, EntityId, MeleeAttackComponent>, WorldLogger);
 

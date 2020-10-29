@@ -11,7 +11,10 @@ use crate::{
     systems::script_execution::execute_scripts,
 };
 
-use super::{JOB_QUEUE, JOB_RESULTS_LIST, MpExcError, MpExecutor, QUEEN_MUTEX, Role, ScriptBatchStatus, TimeCodedSer, WORLD_ENTITIES, drone::Drone, parse_script_batch_result};
+use super::{
+    drone::Drone, parse_script_batch_result, world_state::send_world, MpExcError, MpExecutor, Role,
+    ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX,
+};
 
 use arrayvec::ArrayVec;
 use chrono::{DateTime, TimeZone, Utc};
@@ -32,7 +35,7 @@ impl Queen {
     pub async fn update_role(
         mut self,
         logger: Logger,
-        connection: &mut redis::Connection,
+        connection: &mut redis::aio::Connection,
         new_expiry: i64,
         mutex_expiry_ms: i64,
     ) -> Result<Role, MpExcError> {
@@ -44,7 +47,8 @@ impl Queen {
                 (mutex_expiry_ms / 1000) as usize + 1, // round up
             )
             .ignore()
-            .query(connection)
+            .query_async(connection)
+            .await
             .map_err(MpExcError::RedisError)?;
         let res: Option<i64> = res
             .as_ref()
@@ -103,24 +107,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
         .await
         .map_err(MpExcError::AmqpError)?;
 
-    // broadcast world
-    // TODO broadcast changesets instead of the whole state
-    {
-        debug!(executor.logger, "Sending entities state");
-
-        let ser = TimeCodedSer {
-            time: world.time(),
-            value: &world.entities,
-        };
-
-        let entities_buff =
-            rmp_serde::to_vec_named(&ser).map_err(MpExcError::WorldSerializeError)?;
-        redis::pipe()
-            .set(WORLD_ENTITIES, entities_buff)
-            .ignore()
-            .query(&mut executor.connection)
-            .map_err(MpExcError::RedisError)?;
-    }
+    send_world(executor, world).await?;
 
     let scripts_table = world.view::<EntityId, EntityScript>();
     let executions: Vec<(EntityId, EntityScript)> =

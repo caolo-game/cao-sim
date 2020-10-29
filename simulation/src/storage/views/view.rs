@@ -40,6 +40,6 @@ where
     crate::world::World: HasTable<Id, C>,
 {
     fn new(w: &'a World) -> Self {
-        <World as HasTable<Id,C>>::view(w)
+        <World as HasTable<Id, C>>::view(w)
     }
 }

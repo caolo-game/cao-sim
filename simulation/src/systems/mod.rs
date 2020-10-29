@@ -1,4 +1,3 @@
-pub mod script_execution;
 pub mod attack_system;
 pub mod death_system;
 pub mod decay_system;
@@ -11,6 +10,7 @@ pub mod mineral_system;
 pub mod move_intent_system;
 pub mod path_cache_intent_system;
 pub mod positions_system;
+pub mod script_execution;
 pub mod script_history_system;
 pub mod spawn_system;
 

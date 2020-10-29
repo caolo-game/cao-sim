@@ -4,6 +4,7 @@
 mod drone;
 mod execute;
 mod queen;
+mod world_state;
 
 pub use self::drone::*;
 pub use self::queen::*;
@@ -12,27 +13,29 @@ use capnp::{message::ReaderOptions, message::TypedReader, serialize::try_read_me
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use execute::execute_batch_script_update;
 use lapin::options::BasicGetOptions;
-use redis::{Client, Connection as RedisConnection};
+use redis::Client as RedisClient;
+
 use slog::{debug, error, info, o, Drain, Logger};
 use std::fmt::Display;
 use tokio_amqp::*;
 use uuid::Uuid;
+use world_state::update_world;
 
 use crate::{
     job_capnp::{script_batch_job, script_batch_result},
-    prelude::FromWorld,
-    prelude::FromWorldMut,
     prelude::World,
     profile,
-    systems::positions_system,
     world::init_inmemory_storage,
-    RuntimeGuard, Time,
+    RuntimeGuard,
 };
 
 use super::Executor;
 
 pub const QUEEN_MUTEX: &str = "CAO_QUEEN_MUTEX";
 pub const WORLD_ENTITIES: &str = "CAO_WORLD_ENTITIES";
+pub const WORLD_CONFIG: &str = "CAO_WORLD_CONFIG";
+pub const WORLD_USERS: &str = "CAO_WORLD_USERS";
+pub const WORLD_SCRIPTS: &str = "CAO_WORLD_SCIPTS";
 pub const JOB_QUEUE: &str = "CAO_JOB_QUEUE";
 pub const JOB_RESULTS_LIST: &str = "CAO_JOB_RESULTS_LIST";
 
@@ -41,18 +44,6 @@ type BatchScriptInputReader = TypedReader<capnp::serialize::OwnedSegments, scrip
 type ScriptBatchResultReader =
     TypedReader<capnp::serialize::OwnedSegments, script_batch_result::Owned>;
 
-#[derive(serde::Serialize)]
-struct TimeCodedSer<'a, T> {
-    time: u64,
-    value: &'a T,
-}
-
-#[derive(serde::Deserialize)]
-struct TimeCodedDe<T> {
-    time: u64,
-    value: T,
-}
-
 /// Multiprocess executor.
 ///
 pub struct MpExecutor {
@@ -60,8 +51,7 @@ pub struct MpExecutor {
     pub options: ExecutorOptions,
     pub tag: String,
 
-    client: Client,
-    connection: RedisConnection,
+    client: RedisClient,
 
     _amqp_conn: lapin::Connection,
     amqp_chan: lapin::Channel,
@@ -137,6 +127,9 @@ pub enum MpExcError {
 
     #[error("AmqpError {0:?}")]
     AmqpError(lapin::Error),
+
+    #[error("Time mismatch while updating world. Requested: {requested}. Actual: {actual}")]
+    WorldTimeMismatch { requested: u64, actual: u64 },
 }
 
 impl MpExecutor {
@@ -150,10 +143,11 @@ impl MpExecutor {
             logger: Logger,
             options: ExecutorOptions,
         ) -> Result<MpExecutor, MpExcError> {
+            let _g = rt.tokio_rt.enter();
+
             let client =
-                Client::open(options.redis_url.as_str()).map_err(MpExcError::RedisError)?;
+                RedisClient::open(options.redis_url.as_str()).map_err(MpExcError::RedisError)?;
             let queen_mutex = Utc.timestamp_millis(0);
-            let connection = client.get_connection().map_err(MpExcError::RedisError)?;
 
             let amqp_conn = lapin::Connection::connect(
                 options.amqp_url.as_str(),
@@ -177,7 +171,6 @@ impl MpExecutor {
                 amqp_chan: channel,
                 role: Role::Drone(Drone { queen_mutex }),
                 client,
-                connection,
                 options,
             })
         }
@@ -190,7 +183,12 @@ impl MpExecutor {
             slog::Logger::root(drain, o!())
         });
 
-        _new(rt, logger, options.into().unwrap_or_default()).await
+        _new(rt, logger.clone(), options.into().unwrap_or_default())
+            .await
+            .map_err(|err| {
+                error!(logger, "Failed to initialize Executor {:?}", err);
+                err
+            })
     }
 
     /// Check if this instance is the Queen and if so still holds the mutex.
@@ -208,11 +206,17 @@ impl MpExecutor {
         let new_expiry: i64 =
             (now + Duration::milliseconds(self.options.queen_mutex_expiry_ms)).timestamp_millis();
 
+        let mut connection = self
+            .client
+            .get_async_connection()
+            .await
+            .map_err(MpExcError::RedisError)?;
+
         self.role = match self.role {
             Role::Queen(p) => {
                 p.update_role(
                     self.logger.clone(),
-                    &mut self.connection,
+                    &mut connection,
                     new_expiry,
                     self.options.queen_mutex_expiry_ms,
                 )
@@ -221,7 +225,7 @@ impl MpExecutor {
             Role::Drone(d) => {
                 d.update_role(
                     self.logger.clone(),
-                    &mut self.connection,
+                    &mut connection,
                     now,
                     new_expiry,
                     self.options.queen_mutex_expiry_ms,
@@ -251,7 +255,7 @@ impl MpExecutor {
             let expected_time = message.get_world_time();
             if expected_time != world.time() {
                 info!(self.logger, "Updating world");
-                update_world(self, world)?;
+                update_world(self, world, Some(expected_time)).await?;
                 self.logger = world
                     .logger
                     .new(o!("tick" => world.time(), "role" => format!("{}", self.role)));
@@ -374,22 +378,4 @@ fn parse_script_batch_result(
     )
     .map_err(MpExcError::MessageDeserializeError)
     .map(|reader| reader.map(|r| r.into_typed()))
-}
-
-fn update_world(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
-    let store: Vec<Vec<u8>> = redis::pipe()
-        .get(WORLD_ENTITIES)
-        .query(&mut executor.connection)
-        .map_err(MpExcError::RedisError)?;
-    let store: TimeCodedDe<crate::world::entity_store::Storage> =
-        rmp_serde::from_slice(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
-    world.entities = store.value;
-    world.resources.time.value = Some(Time(store.time));
-    // reset the positions storage
-    positions_system::update(FromWorldMut::new(world), FromWorld::new(world));
-    // TODO: 
-    // config
-    // users
-    // terrain (in separate function)
-    Ok(())
 }

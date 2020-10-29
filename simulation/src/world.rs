@@ -77,7 +77,7 @@ storage!(
     module positions_store key WorldPosition,
     // don't forget to implement these in `reset_world_storage`
     table TerrainComponent = point_terrain,
-    table EntityComponent = point_entity,
+    attr serde(skip) table EntityComponent = point_entity,
 );
 
 #[derive(Debug, Serialize)]

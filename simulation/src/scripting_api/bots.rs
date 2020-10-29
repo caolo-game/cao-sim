@@ -408,7 +408,7 @@ mod tests {
     use crate::prelude::*;
     use crate::query;
     use crate::terrain::TileTerrainType;
-    use crate::{world::init_inmemory_storage, map_generation::room::iter_edge};
+    use crate::{map_generation::room::iter_edge, world::init_inmemory_storage};
 
     #[test]
     fn can_move_to_another_room() {
