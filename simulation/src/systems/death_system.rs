@@ -41,7 +41,7 @@ pub fn update(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{data_store::init_inmemory_storage, intents, query};
+    use crate::{intents, query, world::init_inmemory_storage};
     use crate::{
         storage::views::FromWorld,
         storage::views::FromWorldMut,

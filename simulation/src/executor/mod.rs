@@ -6,7 +6,7 @@ use std::{fmt::Debug, pin::Pin};
 use slog::{debug, info, o, Logger};
 
 use crate::{
-    components::EntityScript, data_store::init_inmemory_storage, data_store::World, intents,
+    components::EntityScript, world::init_inmemory_storage, world::World, intents,
     prelude::EntityId,
 };
 use crate::{profile, systems::execute_world_update, systems::script_execution::execute_scripts};

@@ -48,7 +48,7 @@ impl<'a, Id: TableId, C: Component<Id>> DerefMut for UnwrapViewMut<Id, C> {
 impl<'a, Id: TableId, C: Default + Component<Id, Table = UniqueTable<Id, C>>> FromWorldMut
     for UnwrapViewMut<Id, C>
 where
-    crate::data_store::World: HasTable<Id, C>,
+    crate::world::World: HasTable<Id, C>,
 {
     fn new(w: &mut World) -> Self {
         let table = UnsafeView::new(w).as_ptr();

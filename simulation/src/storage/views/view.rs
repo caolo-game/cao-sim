@@ -37,7 +37,7 @@ impl<'a, Id: TableId, C: Component<Id>> Deref for View<'a, Id, C> {
 
 impl<'a, Id: TableId, C: Component<Id>> FromWorld<'a> for View<'a, Id, C>
 where
-    crate::data_store::World: HasTable<Id, C>,
+    crate::world::World: HasTable<Id, C>,
 {
     fn new(w: &'a World) -> Self {
         <World as HasTable<Id,C>>::view(w)

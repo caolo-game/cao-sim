@@ -1,6 +1,6 @@
 use super::*;
 use crate::components::{EntityComponent, PositionComponent};
-use crate::data_store::World;
+use crate::world::World;
 use crate::indices::WorldPosition;
 use crate::profile;
 use cao_lang::prelude::*;
@@ -170,7 +170,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data_store::{init_inmemory_storage, World};
+    use crate::world::{init_inmemory_storage, World};
     use rand::{rngs::SmallRng, thread_rng, Rng, SeedableRng};
     use slog::{o, Drain};
 

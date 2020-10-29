@@ -49,7 +49,7 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
 
 impl<Id: TableId, C: Component<Id>> FromWorldMut for UnsafeView<Id, C>
 where
-    crate::data_store::World: HasTable<Id, C>,
+    crate::world::World: HasTable<Id, C>,
 {
     fn new(w: &mut World) -> Self {
         <World as HasTable<Id, C>>::unsafe_view(w)
