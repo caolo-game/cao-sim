@@ -1,19 +1,18 @@
 pub mod script_execution;
-
-mod attack_system;
-mod death_system;
-mod decay_system;
-mod dropoff_intent_system;
-mod energy_system;
-mod log_intent_system;
-mod log_system;
-mod mine_intent_system;
-mod mineral_system;
-mod move_intent_system;
-mod path_cache_intent_system;
-mod positions_system;
-mod script_history_system;
-mod spawn_system;
+pub mod attack_system;
+pub mod death_system;
+pub mod decay_system;
+pub mod dropoff_intent_system;
+pub mod energy_system;
+pub mod log_intent_system;
+pub mod log_system;
+pub mod mine_intent_system;
+pub mod mineral_system;
+pub mod move_intent_system;
+pub mod path_cache_intent_system;
+pub mod positions_system;
+pub mod script_history_system;
+pub mod spawn_system;
 
 use crate::storage::views::{FromWorld, FromWorldMut};
 use crate::{prelude::World, profile};

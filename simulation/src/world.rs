@@ -39,6 +39,7 @@ storage!(
     table OwnedEntity = entity_owner,
     table PathCacheComponent = entity_pathcache,
     table MeleeAttackComponent = entity_melee,
+
     attr serde(skip) table ScriptHistory = script_history
 );
 
