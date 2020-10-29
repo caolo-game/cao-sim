@@ -170,9 +170,7 @@ where
         if self.ids.get(i).and_then(|x| x.as_ref()).is_some() {
             let _old = mem::replace(&mut self.data[i], MaybeUninit::new(row));
         } else {
-            unsafe {
-                *self.data[i].as_mut_ptr() = row;
-            }
+            self.data[i] = MaybeUninit::new(row);
             self.ids[i] = Some(id);
         }
         true

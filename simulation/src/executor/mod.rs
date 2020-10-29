@@ -6,8 +6,8 @@ use std::{fmt::Debug, pin::Pin};
 use slog::{debug, info, o, Logger};
 
 use crate::{
-    components::EntityScript, world::init_inmemory_storage, world::World, intents,
-    prelude::EntityId,
+    components::EntityScript, intents, prelude::EntityId, world::init_inmemory_storage,
+    world::World,
 };
 use crate::{profile, systems::execute_world_update, systems::script_execution::execute_scripts};
 

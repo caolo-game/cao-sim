@@ -237,6 +237,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e91831deabf0d6d7ec49552e489aed63b7456a7a3c46cff62adad428110b0af0"
 
 [[package]]
+name = "async-trait"
+version = "0.1.41"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b246867b8b3b6ae56035f1eb1ed557c1d8eae97f0d53696138a50fa0e3a3b8c0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "atomic-waker"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -445,7 +456,7 @@ dependencies = [
  "lazy_static",
  "rand",
  "rayon",
- "redis",
+ "redis 0.17.0",
  "rmp-serde",
  "serde",
  "serde_derive",
@@ -475,7 +486,7 @@ dependencies = [
  "env_logger 0.8.1",
  "jemallocator",
  "rand",
- "redis",
+ "redis 0.15.1",
  "sentry",
  "serde",
  "serde_derive",
@@ -577,6 +588,19 @@ dependencies = [
  "either",
  "memchr",
  "unreachable",
+]
+
+[[package]]
+name = "combine"
+version = "4.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2809f67365382d65fd2b6d9c22577231b954ed27400efeafbe687bda75abcc0b"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "memchr",
+ "pin-project-lite",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -1689,9 +1713,9 @@ dependencies = [
 
 [[package]]
 name = "num-traits"
-version = "0.2.12"
+version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac267bcc07f48ee5f8935ab0d24f316fb722d7a1292e2913f0cc196b29ffd611"
+checksum = "8321eb8d2d94fcb1c55a7920cecd987c62e3763af52c5aadcead3c351847deba"
 dependencies = [
  "autocfg",
 ]
@@ -2031,7 +2055,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eeb1fe3fc011cde97315f370bc88e4db3c23b08709a04915921e02b1d363b20"
 dependencies = [
  "bytes",
- "combine",
+ "combine 3.8.1",
  "dtoa",
  "futures-executor",
  "futures-util",
@@ -2041,6 +2065,27 @@ dependencies = [
  "sha1",
  "tokio 0.2.22",
  "tokio-util 0.2.0",
+ "url",
+]
+
+[[package]]
+name = "redis"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95357caf2640abc54651b93c98a8df4fe1ccbf44b8e601ccdf43d5c1451f29ac"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "bytes",
+ "combine 4.3.2",
+ "dtoa",
+ "futures-util",
+ "itoa",
+ "percent-encoding",
+ "pin-project-lite",
+ "sha1",
+ "tokio 0.2.22",
+ "tokio-util 0.3.1",
  "url",
 ]
 

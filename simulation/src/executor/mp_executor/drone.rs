@@ -1,6 +1,6 @@
 use crate::prelude::World;
 
-use super::{queen::Queen, update_world, MpExcError, MpExecutor, Role, QUEEN_MUTEX};
+use super::{queen::Queen, world_state::update_world, MpExcError, MpExecutor, Role, QUEEN_MUTEX};
 
 use chrono::{DateTime, TimeZone, Utc};
 use slog::{debug, info, o, Logger};
@@ -15,7 +15,7 @@ impl Drone {
     pub async fn update_role(
         mut self,
         logger: Logger,
-        connection: &mut redis::Connection,
+        connection: &mut redis::aio::Connection,
         now: DateTime<Utc>,
         new_expiry: i64,
         mutex_expiry_ms: i64,
@@ -34,7 +34,8 @@ impl Drone {
             .arg("PX")
             .arg(mutex_expiry_ms)
             .get(QUEEN_MUTEX)
-            .query(connection)
+            .query_async(connection)
+            .await
             .map_err(MpExcError::RedisError)?;
         Ok(if success {
             info!(
@@ -53,7 +54,7 @@ impl Drone {
 }
 
 pub async fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
-    update_world(executor, world)?;
+    update_world(executor, world, None).await?;
     executor.logger = world
         .logger
         .new(o!("tick" => world.time(), "role" => format!("{}", executor.role)));

@@ -53,6 +53,11 @@ impl RuntimeGuard {
     {
         self.tokio_rt.block_on(f)
     }
+
+    /// Enter the underlying runtime context
+    pub fn enter<'a>(&'a self) -> impl Sized + 'a {
+        self.tokio_rt.enter()
+    }
 }
 
 /// ```
@@ -62,7 +67,8 @@ pub fn init_runtime() -> RuntimeGuard {
     #[cfg(feature = "mp_executor")]
     {
         let tokio_rt = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(2)
+            .enable_all()
+            .worker_threads(4)
             .build()
             .expect("Failed to init tokio runtime");
 
