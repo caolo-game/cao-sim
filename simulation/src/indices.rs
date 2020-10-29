@@ -1,9 +1,10 @@
 //! Structs intended to be used as table indices.
 //!
+use crate::empty_key;
 use crate::geometry::Axial;
 use crate::tables::{SerialId, SpatialKey2d};
 use cao_lang::{prelude::Scalar, traits::AutoByteEncodeProperties};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::ops::Add;
 
@@ -116,14 +117,14 @@ impl Add for Room {
     }
 }
 
-/// Storage key for unindexed tables.
-#[derive(
-    Debug, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Copy, Hash, Serialize, Deserialize,
-)]
-pub struct EmptyKey;
-
-unsafe impl Send for EmptyKey {}
 unsafe impl Send for Room {}
+
 unsafe impl Send for UserId {}
 unsafe impl Send for EntityId {}
 unsafe impl Send for ScriptId {}
+
+// Identify config tables
+empty_key!(ConfigKey);
+
+// Storage key for unindexed tables.
+empty_key!(EmptyKey);

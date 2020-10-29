@@ -1,25 +1,20 @@
 use crate::intents::Intents;
 use crate::prelude::*;
 use crate::profile;
-use crate::storage::views::UnwrapViewMut;
+use crate::storage::views::{UnsafeView, UnwrapViewMut};
 use std::mem;
-use std::ops::DerefMut;
 
 type Mut = (
-    UnwrapViewMut<Intents<ScriptHistoryEntry>>,
-    UnwrapViewMut<ScriptHistory>,
+    UnwrapViewMut<EmptyKey, Intents<ScriptHistoryEntry>>,
+    UnsafeView<EntityId, ScriptHistory>,
 );
 type Const<'a> = ();
 
 pub fn update((mut history_intents, mut history_table): Mut, _: Const) {
     profile!("ScriptHistorySystem update");
 
-    mem::swap(
-        &mut history_intents.deref_mut().0,
-        &mut history_table.deref_mut().0,
-    );
-
-    history_table
-        .0
-        .sort_unstable_by(|a, b| a.entity.cmp(&b.entity));
+    let intents = mem::take(&mut history_intents.0);
+    for intent in intents {
+        history_table.insert_or_update(intent.entity_id, ScriptHistory(intent.payload));
+    }
 }

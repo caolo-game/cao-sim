@@ -1,4 +1,4 @@
-use crate::indices::EntityId;
+use crate::indices::*;
 use crate::profile;
 use crate::storage::views::{DeferredDeleteEntityView, View, WorldLogger};
 use crate::{
@@ -12,7 +12,7 @@ pub fn update(
     mut delete: DeferredDeleteEntityView,
     (hps, delete_intents, WorldLogger(logger)): (
         View<EntityId, HpComponent>,
-        UnwrapView<Intents<DeleteEntityIntent>>,
+        UnwrapView<EmptyKey, Intents<DeleteEntityIntent>>,
         WorldLogger,
     ),
 ) {

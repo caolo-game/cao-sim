@@ -1,9 +1,13 @@
-use crate::indices::{EntityId, ScriptId, UserId};
+use crate::storage::views::FromWorld;
 use crate::{
     components::{
         game_config::GameConfig, EntityScript, OwnedEntity, ScriptComponent, ScriptHistoryEntry,
     },
     prelude::World,
+};
+use crate::{
+    indices::{ConfigKey, EntityId, ScriptId, UserId},
+    storage::views::UnwrapView,
 };
 use crate::{intents::*, profile};
 use cao_lang::prelude::*;
@@ -58,7 +62,7 @@ pub fn execute_scripts(
             |mut intents, entity_scripts| {
                 let data = ScriptExecutionData::unsafe_default(logger.clone());
 
-                let conf = storage.resource::<GameConfig>();
+                let conf = UnwrapView::<ConfigKey, GameConfig>::new(storage);
                 let mut vm = VM::new(logger.clone(), data);
                 vm.history.reserve(conf.execution_limit as usize);
                 vm.max_iter = i32::try_from(conf.execution_limit)
@@ -162,7 +166,7 @@ pub fn execute_single_script<'a>(
 
     let mut intents = aux.intents;
     intents.script_history_intent = Some(ScriptHistoryEntry {
-        entity: entity_id,
+        entity_id,
         payload: history,
         time: storage.time(),
     });

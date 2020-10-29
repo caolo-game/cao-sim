@@ -1,10 +1,9 @@
-pub use self::store_impl::*;
 use crate::components::game_config::GameConfig;
 use crate::components::*;
 use crate::indices::*;
 use crate::intents::*;
 use crate::storage;
-use crate::storage::views::{UnsafeView, UnwrapView, UnwrapViewMut, View};
+use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
 use crate::Time;
@@ -16,65 +15,83 @@ use std::pin::Pin;
 use crate::storage::views::logging::LogGuard;
 
 storage!(
-    module store_impl
+    module room_store key Room,
+    table RoomConnections = room_connections,
+    table RoomComponent = rooms,
+);
 
-    key EntityId, table Bot = entity_bot,
-    key EntityId, table PositionComponent = entity_pos,
-    key EntityId, table SpawnBotComponent = entity_spawnbot,
-    key EntityId, table CarryComponent = entity_carry,
-    key EntityId, table Structure = entity_structure,
-    key EntityId, table HpComponent = entity_hp,
-    key EntityId, table EnergyRegenComponent = entity_energyregen,
-    key EntityId, table EnergyComponent = entity_energy,
-    key EntityId, table ResourceComponent = entity_resource,
-    key EntityId, table DecayComponent = entity_decay,
-    key EntityId, table EntityScript = entity_script,
-    key EntityId, table SpawnComponent = entity_spawn,
-    key EntityId, table SpawnQueueComponent = entity_spawnqueue,
-    key EntityId, table OwnedEntity = entity_owner,
-    key EntityId, table PathCacheComponent = entity_pathcache,
-    key EntityId, table MeleeAttackComponent = entity_melee,
+storage!(
+    module entity_store key EntityId,
 
-    key EntityTime, table LogEntry = timelog,
+    table Bot = entity_bot,
+    table PositionComponent = entity_pos,
+    table SpawnBotComponent = entity_spawnbot,
+    table CarryComponent = entity_carry,
+    table Structure = entity_structure,
+    table HpComponent = entity_hp,
+    table EnergyRegenComponent = entity_energyregen,
+    table EnergyComponent = entity_energy,
+    table ResourceComponent = entity_resource,
+    table DecayComponent = entity_decay,
+    table EntityScript = entity_script,
+    table SpawnComponent = entity_spawn,
+    table SpawnQueueComponent = entity_spawnqueue,
+    table OwnedEntity = entity_owner,
+    table PathCacheComponent = entity_pathcache,
+    table MeleeAttackComponent = entity_melee,
+    attr serde(skip) table ScriptHistory = script_history
+);
 
-    key UserId, table UserComponent = user,
-    key UserId, table EntityScript = user_default_script,
+storage!(
+    module user_store key UserId,
 
-    key ScriptId, table ScriptComponent = scripts,
+    table UserComponent = user,
+    table EntityScript = user_default_script,
+);
 
-    key Room, table RoomConnections = room_connections,
-    key Room, table RoomComponent = rooms,
+storage!(
+    module resource_store key EmptyKey,
 
+    table Time = time,
+    table Intents<MoveIntent> = move_intents,
+    table Intents<SpawnIntent> = spawn_intents,
+    table Intents<MineIntent> = mine_intents,
+    table Intents<DropoffIntent> = dropoff_intents,
+    table Intents<LogIntent> = log_intents,
+    table Intents<CachePathIntent> = update_path_cache_intents,
+    table Intents<MutPathCacheIntent> = mut_path_cache_intents,
+    table Intents<MeleeIntent> = melee_intents,
+    table Intents<ScriptHistoryEntry> = script_history_intents,
+    table Intents<DeleteEntityIntent> = delete_entity_intents,
+);
+
+storage!(
+    module config_store key ConfigKey,
+
+    table RoomProperties = room_properties,
+    table GameConfig = game_config,
+);
+
+storage!(
+    module positions_store key WorldPosition,
     // don't forget to implement these in `reset_world_storage`
-    key WorldPosition, table TerrainComponent = point_terrain,
-    key WorldPosition, table EntityComponent = point_entity,
-
-    // intents
-    attr serde(skip) key EmptyKey, table Intents<MoveIntent> = move_intents,
-    attr serde(skip) key EmptyKey, table Intents<SpawnIntent> = spawn_intents,
-    attr serde(skip) key EmptyKey, table Intents<MineIntent> = mine_intents,
-    attr serde(skip) key EmptyKey, table Intents<DropoffIntent> = dropoff_intents,
-    attr serde(skip) key EmptyKey, table Intents<LogIntent> = log_intents,
-    attr serde(skip) key EmptyKey, table Intents<CachePathIntent> = update_path_cache_intents,
-    attr serde(skip) key EmptyKey, table Intents<MutPathCacheIntent> = mut_path_cache_intents,
-    attr serde(skip) key EmptyKey, table Intents<MeleeIntent> = melee_intents,
-    attr serde(skip) key EmptyKey, table Intents<ScriptHistoryEntry> = script_history_intents,
-    attr serde(skip) key EmptyKey, table Intents<DeleteEntityIntent> = delete_entity_intents,
-
-    // globals
-    attr serde(skip) key EmptyKey, table ScriptHistory = script_history,
-    key EmptyKey, table Time = time,
-
-    // configurations
-    key EmptyKey, table RoomProperties = room_properties,
-    key EmptyKey, table GameConfig = game_config,
+    table TerrainComponent = point_terrain,
+    table EntityComponent = point_entity,
 );
 
 #[derive(Debug, Serialize)]
 pub struct World {
-    pub store: Storage,
+    pub entities: entity_store::Storage,
+    pub room: room_store::Storage,
+    pub user: user_store::Storage,
+    pub config: config_store::Storage,
+    pub resources: resource_store::Storage,
+    pub entity_logs: <LogEntry as Component<EntityTime>>::Table,
+    pub scripts: <ScriptComponent as Component<ScriptId>>::Table,
+    pub positions: positions_store::Storage,
+
     #[serde(skip)]
-    pub deferred_deletes: DeferredDeletes,
+    pub deferred_deletes: entity_store::DeferredDeletes,
 
     pub next_entity: EntityId,
 
@@ -83,19 +100,50 @@ pub struct World {
 
     #[cfg(feature = "log_tables")]
     #[serde(skip)]
-    _guard: LogGuard,
+    pub _guard: LogGuard,
 }
 
-impl<Id: TableId, C: Component<Id>> storage::HasTable<Id, C> for World
-where
-    Storage: storage::HasTable<Id, C>,
-{
-    fn view(&self) -> View<Id, C> {
-        self.store.view()
+macro_rules! impl_hastable {
+    ($module: ident, $field: ident) => {
+        impl<C: Component<$module::Key>> storage::HasTable<$module::Key, C> for World
+        where
+            $module::Storage: storage::HasTable<$module::Key, C>,
+        {
+            fn view(&self) -> View<$module::Key, C> {
+                self.$field.view()
+            }
+
+            fn unsafe_view(&mut self) -> UnsafeView<$module::Key, C> {
+                self.$field.unsafe_view()
+            }
+        }
+    };
+}
+
+impl_hastable!(entity_store, entities);
+impl_hastable!(room_store, room);
+impl_hastable!(user_store, user);
+impl_hastable!(config_store, config);
+impl_hastable!(positions_store, positions);
+impl_hastable!(resource_store, resources);
+
+impl storage::HasTable<EntityTime, LogEntry> for World {
+    fn view(&self) -> View<EntityTime, LogEntry> {
+        View::from_table(&self.entity_logs)
     }
 
-    fn unsafe_view(&mut self) -> UnsafeView<Id, C> {
-        self.store.unsafe_view()
+    fn unsafe_view(&mut self) -> UnsafeView<EntityTime, LogEntry> {
+        UnsafeView::from_table(&mut self.entity_logs)
+    }
+}
+
+impl storage::HasTable<ScriptId, ScriptComponent> for World {
+    fn view(&self) -> View<ScriptId, ScriptComponent> {
+        View::from_table(&self.scripts)
+    }
+
+    fn unsafe_view(&mut self) -> UnsafeView<ScriptId, ScriptComponent> {
+        UnsafeView::from_table(&mut self.scripts)
     }
 }
 
@@ -119,25 +167,29 @@ impl World {
     /// happen.
     pub fn new(logger: impl Into<Option<slog::Logger>>) -> Pin<Box<Self>> {
         fn _new(logger: slog::Logger) -> Pin<Box<World>> {
-            let mut store = Storage::default();
-            store.script_history.value = Some(Default::default());
-            store.game_config.value = Some(Default::default());
-            store.time.value = Some(Time(0));
-
-            let deferred_deletes = DeferredDeletes::default();
+            let mut config: config_store::Storage = Default::default();
+            config.game_config.value = Some(Default::default());
 
             let mut res = Box::pin(World {
-                store,
-                deferred_deletes,
+                entities: Default::default(),
+                room: Default::default(),
+                config,
+                resources: Default::default(),
+                entity_logs: Default::default(),
+                scripts: Default::default(),
+                positions: Default::default(),
+                deferred_deletes: Default::default(),
                 next_entity: EntityId::default(),
+
+                logger,
+
+                user: Default::default(),
 
                 #[cfg(feature = "log_tables")]
                 _guard: LogGuard {
                     fname: "./tables.log".to_owned(),
                     logger: logger.clone(),
                 },
-
-                logger,
             });
 
             // initialize the intent tables
@@ -161,57 +213,39 @@ impl World {
         _new(logger)
     }
 
-    pub fn resource<C>(&self) -> UnwrapView<C>
-    where
-        C: Component<EmptyKey, Table = crate::tables::unique::UniqueTable<C>> + Default,
-        Storage: storage::HasTable<EmptyKey, C>,
-    {
-        let view = self.view::<EmptyKey, C>();
-        UnwrapView::from_table(view.reborrow())
-    }
-
-    pub fn resource_mut<C>(&mut self) -> UnwrapViewMut<C>
-    where
-        C: Component<EmptyKey, Table = crate::tables::unique::UniqueTable<C>> + Default,
-        Storage: storage::HasTable<EmptyKey, C>,
-    {
-        let mut view = self.unsafe_view::<EmptyKey, C>();
-        UnwrapViewMut::from_table(&mut *view)
-    }
-
     pub fn view<Id: TableId, C: Component<Id>>(&self) -> View<Id, C>
     where
-        Storage: storage::HasTable<Id, C>,
+        Self: storage::HasTable<Id, C>,
     {
         <Self as storage::HasTable<Id, C>>::view(self)
     }
 
     pub fn unsafe_view<Id: TableId, C: Component<Id>>(&mut self) -> UnsafeView<Id, C>
     where
-        Storage: storage::HasTable<Id, C>,
+        Self: storage::HasTable<Id, C>,
     {
         <Self as storage::HasTable<Id, C>>::unsafe_view(self)
     }
 
     pub fn delete<Id: TableId>(&mut self, id: &Id)
     where
-        Storage: storage::DeleteById<Id>,
+        entity_store::Storage: storage::DeleteById<Id>,
     {
-        <Storage as storage::DeleteById<Id>>::delete(&mut self.store, id);
+        <entity_store::Storage as storage::DeleteById<Id>>::delete(&mut self.entities, id);
     }
 
     pub fn time(&self) -> u64 {
-        let view = &self.store.time.value;
+        let view = &self.resources.time.value;
         view.map(|Time(t)| t).unwrap_or(0)
     }
 
     /// Perform post-tick cleanup on the storage
     pub fn post_process(&mut self) {
-        self.deferred_deletes.execute_all(&mut self.store);
+        self.deferred_deletes.execute_all(&mut self.entities);
         self.deferred_deletes.clear();
 
-        self.store.time.value = self
-            .store
+        self.resources.time.value = self
+            .resources
             .time
             .value
             .map(|x| Time(x.0 + 1))
@@ -250,12 +284,11 @@ impl World {
     }
 }
 
-impl<Id> storage::DeferredDeleteById<Id> for World
+impl storage::DeferredDeleteById<EntityId> for World
 where
-    Id: TableId,
-    DeferredDeletes: storage::DeferredDeleteById<Id>,
+    entity_store::DeferredDeletes: storage::DeferredDeleteById<EntityId>,
 {
-    fn deferred_delete(&mut self, key: Id) {
+    fn deferred_delete(&mut self, key: EntityId) {
         self.deferred_deletes.deferred_delete(key);
     }
 
@@ -263,7 +296,7 @@ where
         self.deferred_deletes.clear_defers();
     }
 
-    fn execute<Store: storage::DeleteById<Id>>(&mut self, store: &mut Store) {
+    fn execute<Store: storage::DeleteById<EntityId>>(&mut self, store: &mut Store) {
         self.deferred_deletes.execute(store);
     }
 }

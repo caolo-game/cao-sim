@@ -20,7 +20,7 @@ type BotInput<'a> = (
         View<'a, EntityId, EnergyRegenComponent>,
         View<'a, EntityId, EntityScript>,
     ),
-    View<'a, EmptyKey, RoomProperties>,
+    View<'a, ConfigKey, RoomProperties>,
 );
 
 #[derive(Debug, Serialize)]
@@ -98,24 +98,27 @@ pub fn build_bots<'a>(
 }
 
 pub fn build_script_history<'a>(
-    script_history: UnwrapView<'a, ScriptHistory>,
+    script_history: View<'a, EntityId, ScriptHistory>,
     world: &mut world_state::Builder,
 ) {
-    let len = script_history.0.len();
+    let len = script_history.count_set();
     let mut list = world.reborrow().init_script_history(len as u32);
 
-    script_history.0.iter().enumerate().for_each(|(i, entry)| {
-        let mut item = list.reborrow().get(i as u32);
+    script_history
+        .iter()
+        .enumerate()
+        .for_each(|(i, (entity_id, entry))| {
+            let mut item = list.reborrow().get(i as u32);
 
-        item.set_entity_id(entry.entity.0);
-        let mut list = item.init_payload(entry.payload.len() as u32);
+            item.set_entity_id(entity_id.0);
+            let mut list = item.init_payload(entry.0.len() as u32);
 
-        entry.payload.iter().enumerate().for_each(|(i, node)| {
-            let mut entry = list.reborrow().get(i as u32);
-            entry.set_lane(node.id.lane);
-            entry.set_pos(node.id.pos);
+            entry.0.iter().enumerate().for_each(|(i, node)| {
+                let mut entry = list.reborrow().get(i as u32);
+                entry.set_lane(node.id.lane);
+                entry.set_pos(node.id.pos);
+            });
         });
-    });
 }
 
 pub fn build_logs<'a>(v: View<'a, EntityTime, LogEntry>, world: &mut world_state::Builder) {
@@ -149,7 +152,7 @@ pub fn build_logs<'a>(v: View<'a, EntityTime, LogEntry>, world: &mut world_state
 pub fn iter_rooms_terrain<'a>(
     (v, room_props): (
         View<'a, WorldPosition, TerrainComponent>,
-        View<'a, EmptyKey, RoomProperties>,
+        View<'a, ConfigKey, RoomProperties>,
     ),
 ) -> impl Iterator<Item = (Room, Vec<serde_json::Value>)> + 'a {
     use serde_json::json;
@@ -176,7 +179,7 @@ type ResourceInput<'a> = (
     View<'a, EntityId, ResourceComponent>,
     View<'a, EntityId, PositionComponent>,
     View<'a, EntityId, EnergyComponent>,
-    View<'a, EmptyKey, RoomProperties>,
+    View<'a, ConfigKey, RoomProperties>,
 );
 
 pub fn build_resources<'a>(
@@ -212,7 +215,7 @@ type StructuresInput<'a> = (
     View<'a, EntityId, Structure>,
     View<'a, EntityId, PositionComponent>,
     View<'a, EntityId, OwnedEntity>,
-    View<'a, EmptyKey, RoomProperties>,
+    View<'a, ConfigKey, RoomProperties>,
     (
         View<'a, EntityId, SpawnComponent>,
         View<'a, EntityId, EnergyComponent>,
@@ -270,7 +273,7 @@ pub fn build_structures<'a>(
 }
 
 fn init_world_pos(
-    _conf: View<EmptyKey, RoomProperties>,
+    _conf: View<ConfigKey, RoomProperties>,
 ) -> impl Fn(WorldPosition, &mut world_position::Builder) {
     move |world_pos, builder| {
         let mut room = builder.reborrow().init_room();

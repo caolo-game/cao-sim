@@ -1,5 +1,5 @@
 use crate::components::{CarryComponent, EnergyComponent};
-use crate::indices::EntityId;
+use crate::indices::*;
 use crate::intents::*;
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, WorldLogger};
@@ -9,7 +9,10 @@ type Mut = (
     UnsafeView<EntityId, EnergyComponent>,
     UnsafeView<EntityId, CarryComponent>,
 );
-type Const<'a> = (UnwrapView<'a, Intents<DropoffIntent>>, WorldLogger);
+type Const<'a> = (
+    UnwrapView<'a, EmptyKey, Intents<DropoffIntent>>,
+    WorldLogger,
+);
 
 pub fn update((mut energy_table, mut carry_table): Mut, (intents, WorldLogger(logger)): Const) {
     profile!("DropoffSystem update");

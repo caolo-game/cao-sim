@@ -1,11 +1,11 @@
 use crate::geometry::Axial;
-use crate::indices::EmptyKey;
+use crate::indices::ConfigKey;
 use crate::indices::WorldPosition;
 use crate::tables::{
     morton::MortonTable, unique::UniqueTable, Component, RoomMortonTable, SpatialKey2d,
 };
 use crate::terrain::TileTerrainType;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// Represents a connection of a room to another.
 /// Length of the Bridge is defined by `radius - offset_end - offset_start`.
@@ -43,8 +43,8 @@ pub struct RoomProperties {
     pub radius: u32,
     pub center: Axial,
 }
-impl Component<EmptyKey> for RoomProperties {
-    type Table = UniqueTable<Self>;
+impl Component<ConfigKey> for RoomProperties {
+    type Table = UniqueTable<ConfigKey, Self>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]

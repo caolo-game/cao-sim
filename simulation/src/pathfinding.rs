@@ -1,6 +1,6 @@
 use crate::components::{EntityComponent, RoomConnections, RoomProperties, TerrainComponent};
 use crate::geometry::Axial;
-use crate::indices::{EmptyKey, Room, RoomPosition, WorldPosition};
+use crate::indices::{ConfigKey, Room, RoomPosition, WorldPosition};
 use crate::map_generation::room::iter_edge;
 use crate::profile;
 use crate::storage::views::View;
@@ -69,7 +69,7 @@ type FindPathTables<'a> = (
     View<'a, WorldPosition, EntityComponent>,
     View<'a, WorldPosition, TerrainComponent>,
     View<'a, Room, RoomConnections>,
-    View<'a, EmptyKey, RoomProperties>,
+    View<'a, ConfigKey, RoomProperties>,
 );
 
 /// Find path from `from` to `to`. Will append the resulting path to the `path` output vector.
@@ -122,7 +122,7 @@ type FindPathMultiRoomTables<'a> = (
     View<'a, Axial, EntityComponent>,
     View<'a, Axial, TerrainComponent>,
     View<'a, Room, RoomConnections>,
-    View<'a, EmptyKey, RoomProperties>,
+    View<'a, ConfigKey, RoomProperties>,
 );
 
 fn find_path_multiroom(
@@ -398,7 +398,7 @@ pub fn get_valid_transits(
     (terrain, entities, room_properties): (
         View<WorldPosition, TerrainComponent>,
         View<WorldPosition, EntityComponent>,
-        View<EmptyKey, RoomProperties>,
+        View<ConfigKey, RoomProperties>,
     ),
 ) -> Result<ArrayVec<[WorldPosition; 3]>, TransitError> {
     trace!(

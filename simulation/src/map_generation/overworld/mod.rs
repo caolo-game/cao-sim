@@ -5,7 +5,7 @@ pub use params::*;
 
 use crate::components::{RoomComponent, RoomConnection, RoomConnections, RoomProperties};
 use crate::geometry::{Axial, Hexagon};
-use crate::indices::{EmptyKey, Room};
+use crate::indices::{ConfigKey, Room};
 use crate::storage::views::UnsafeView;
 use crate::tables::morton::{ExtendFailure, MortonTable};
 use rand::Rng;
@@ -42,7 +42,7 @@ pub fn generate_room_layout(
     (mut rooms, mut connections, mut room_props): (
         UnsafeView<Room, RoomComponent>,
         UnsafeView<Room, RoomConnections>,
-        UnsafeView<EmptyKey, RoomProperties>,
+        UnsafeView<ConfigKey, RoomProperties>,
     ),
 ) -> Result<(), OverworldGenerationError> {
     let radius = *radius as i32;

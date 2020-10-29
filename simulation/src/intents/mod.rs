@@ -52,10 +52,10 @@ macro_rules! intents {
     ($($name: ident : $type: ty),+,) => {
         /// Move the botintents into the world, overriding the existing ones
         pub fn move_into_storage(s: &mut World, intents: Vec<BotIntents>)  {
-            use crate::storage::views::{UnwrapViewMut, FromWorldMut};
+            use crate::storage::views::{UnwrapViewMut, FromWorldMut, UnsafeView};
             // reset the intent tables
             $(
-                let mut ints = s.unsafe_view::<EmptyKey, Intents<$type>>();
+                let mut ints = UnsafeView::<EmptyKey, Intents<$type>>::new(s);
                 match ints.value.as_mut() {
                     Some(ints) => ints.0.clear(),
                     None => {
@@ -66,7 +66,7 @@ macro_rules! intents {
             for intent in intents {
             $(
                 if let Some(intent) = intent.$name {
-                    let mut ints = UnwrapViewMut::<Intents<$type>>::new(s);
+                    let mut ints = UnwrapViewMut::<EmptyKey, Intents<$type>>::new(s);
                     ints.0.push(intent);
                 }
             )*
@@ -78,7 +78,7 @@ macro_rules! intents {
         pub struct Intents<T> (pub Vec<T>);
         $(
             impl Component<EmptyKey> for Intents<$type> {
-                type Table = UniqueTable<Self>;
+                type Table = UniqueTable<EmptyKey, Self>;
             }
         )*
 

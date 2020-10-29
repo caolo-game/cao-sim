@@ -2,19 +2,19 @@
 //! Intended to be used for configurations.
 //!
 use super::*;
-use crate::indices::EmptyKey;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::mem;
 
 #[derive(Default, Debug, Serialize, Deserialize)]
-pub struct UniqueTable<Row>
+pub struct UniqueTable<Id, Row>
 where
     Row: TableRow,
 {
     pub value: Option<Row>,
+    _m: std::marker::PhantomData<Id>,
 }
 
-impl<Row> UniqueTable<Row>
+impl<Id, Row> UniqueTable<Id, Row>
 where
     Row: TableRow,
 {
@@ -31,11 +31,11 @@ where
     }
 }
 
-impl<Row> Table for UniqueTable<Row>
+impl<Id: TableId, Row> Table for UniqueTable<Id, Row>
 where
     Row: TableRow,
 {
-    type Id = EmptyKey;
+    type Id = Id;
     type Row = Row;
 
     fn delete(&mut self, _id: &Self::Id) -> Option<Row> {

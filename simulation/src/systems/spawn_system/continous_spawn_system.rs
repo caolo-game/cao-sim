@@ -2,7 +2,7 @@
 //!
 
 use crate::components::*;
-use crate::indices::EntityId;
+use crate::indices::{EmptyKey, EntityId};
 use crate::intents::{Intents, SpawnIntent};
 use crate::join;
 use crate::profile;
@@ -10,7 +10,7 @@ use crate::storage::views::{UnwrapViewMut, View, WorldLogger};
 use crate::tables::JoinIterator;
 use slog::debug;
 
-type SpawnSystemMut = (UnwrapViewMut<Intents<SpawnIntent>>,);
+type SpawnSystemMut = (UnwrapViewMut<EmptyKey, Intents<SpawnIntent>>,);
 
 type SpawnSystemConsts<'a> = (
     WorldLogger,

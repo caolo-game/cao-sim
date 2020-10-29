@@ -48,7 +48,7 @@ fn send_config(
 ) -> anyhow::Result<()> {
     debug!(logger, "Sending config");
 
-    let rooms_props = storage.resource::<RoomProperties>();
+    let rooms_props = UnwrapView::<ConfigKey, RoomProperties>::new(storage);
 
     let conf = serde_json::json!({
         "roomProperties" : *rooms_props,
@@ -114,7 +114,7 @@ async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyh
     debug!(logger, "sending terrain ");
 
     let room_properties = storage
-        .view::<EmptyKey, RoomProperties>()
+        .view::<ConfigKey, RoomProperties>()
         .reborrow()
         .value
         .as_ref()

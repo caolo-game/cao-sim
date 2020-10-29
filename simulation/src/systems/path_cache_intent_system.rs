@@ -1,5 +1,5 @@
 use crate::components::{Bot, PathCacheComponent};
-use crate::indices::EntityId;
+use crate::indices::*;
 use crate::intents::{CachePathIntent, Intents, MutPathCacheIntent, PathCacheIntentAction};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapView, UnwrapViewMut, View};
@@ -9,9 +9,12 @@ use std::mem::replace;
 pub fn update(
     (mut path_cache_table, mut cache_intents): (
         UnsafeView<EntityId, PathCacheComponent>,
-        UnwrapViewMut<Intents<CachePathIntent>>,
+        UnwrapViewMut<EmptyKey, Intents<CachePathIntent>>,
     ),
-    (bot_table, mut_cache_intents): (View<EntityId, Bot>, UnwrapView<Intents<MutPathCacheIntent>>),
+    (bot_table, mut_cache_intents): (
+        View<EntityId, Bot>,
+        UnwrapView<EmptyKey, Intents<MutPathCacheIntent>>,
+    ),
 ) {
     profile!("UpdatePathCacheSystem update");
 

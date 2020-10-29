@@ -1,6 +1,6 @@
-use crate::indices::EmptyKey;
+use crate::indices::ConfigKey;
 use crate::tables::{unique::UniqueTable, Component};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameConfig {
@@ -15,6 +15,6 @@ impl Default for GameConfig {
     }
 }
 
-impl Component<EmptyKey> for GameConfig {
-    type Table = UniqueTable<Self>;
+impl Component<ConfigKey> for GameConfig {
+    type Table = UniqueTable<ConfigKey, Self>;
 }

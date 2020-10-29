@@ -1,5 +1,5 @@
 use crate::components::{Bot, EntityComponent, PositionComponent};
-use crate::indices::{EntityId, WorldPosition};
+use crate::indices::{EmptyKey, EntityId, WorldPosition};
 use crate::intents::{Intents, MoveIntent};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapViewMut, View, WorldLogger};
@@ -8,7 +8,7 @@ use slog::{debug, trace, Logger};
 
 type Mut = (
     UnsafeView<EntityId, PositionComponent>,
-    UnwrapViewMut<Intents<MoveIntent>>,
+    UnwrapViewMut<EmptyKey, Intents<MoveIntent>>,
 );
 type Const<'a> = (
     View<'a, EntityId, Bot>,

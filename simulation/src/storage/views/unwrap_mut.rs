@@ -1,31 +1,31 @@
 use super::super::HasTable;
-use super::{Component, FromWorldMut, World};
-use crate::indices::EmptyKey;
+use super::{Component, FromWorldMut, UnsafeView, World};
 use crate::tables::unique::UniqueTable;
+use crate::tables::TableId;
 use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
-pub struct UnwrapViewMut<C: Component<EmptyKey>>(NonNull<UniqueTable<C>>);
+pub struct UnwrapViewMut<Id: TableId, C: Component<Id>>(NonNull<UniqueTable<Id, C>>);
 
-impl<'a, C: Component<EmptyKey>> Clone for UnwrapViewMut<C> {
+impl<'a, Id: TableId, C: Component<Id>> Clone for UnwrapViewMut<Id, C> {
     fn clone(&self) -> Self {
         UnwrapViewMut(self.0)
     }
 }
 
-impl<'a, C: Component<EmptyKey>> Copy for UnwrapViewMut<C> {}
+impl<'a, Id: TableId, C: Component<Id>> Copy for UnwrapViewMut<Id, C> {}
 
-unsafe impl<'a, C: Component<EmptyKey>> Send for UnwrapViewMut<C> {}
-unsafe impl<'a, C: Component<EmptyKey>> Sync for UnwrapViewMut<C> {}
+unsafe impl<'a, Id: TableId, C: Component<Id>> Send for UnwrapViewMut<Id, C> {}
+unsafe impl<'a, Id: TableId, C: Component<Id>> Sync for UnwrapViewMut<Id, C> {}
 
-impl<'a, C: Component<EmptyKey>> UnwrapViewMut<C> {
-    pub fn from_table(t: &mut UniqueTable<C>) -> Self {
+impl<'a, Id: TableId, C: Component<Id>> UnwrapViewMut<Id, C> {
+    pub fn from_table(t: &mut UniqueTable<Id, C>) -> Self {
         let ptr = unsafe { NonNull::new_unchecked(t) };
         Self(ptr)
     }
 }
 
-impl<'a, C: Component<EmptyKey>> Deref for UnwrapViewMut<C> {
+impl<'a, Id: TableId, C: Component<Id>> Deref for UnwrapViewMut<Id, C> {
     type Target = C;
 
     fn deref(&self) -> &Self::Target {
@@ -36,7 +36,7 @@ impl<'a, C: Component<EmptyKey>> Deref for UnwrapViewMut<C> {
     }
 }
 
-impl<'a, C: Component<EmptyKey>> DerefMut for UnwrapViewMut<C> {
+impl<'a, Id: TableId, C: Component<Id>> DerefMut for UnwrapViewMut<Id, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.0.as_mut() }
             .value
@@ -45,12 +45,13 @@ impl<'a, C: Component<EmptyKey>> DerefMut for UnwrapViewMut<C> {
     }
 }
 
-impl<'a, C: Default + Component<EmptyKey, Table = UniqueTable<C>>> FromWorldMut for UnwrapViewMut<C>
+impl<'a, Id: TableId, C: Default + Component<Id, Table = UniqueTable<Id, C>>> FromWorldMut
+    for UnwrapViewMut<Id, C>
 where
-    crate::data_store::Storage: HasTable<EmptyKey, C>,
+    crate::data_store::World: HasTable<Id, C>,
 {
     fn new(w: &mut World) -> Self {
-        let table = w.unsafe_view::<EmptyKey, C>().as_ptr();
+        let table = UnsafeView::new(w).as_ptr();
         UnwrapViewMut(NonNull::new(table).unwrap())
     }
 
