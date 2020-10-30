@@ -256,7 +256,7 @@ impl MpExecutor {
             let expected_time = message.get_world_time();
             if expected_time != world.time() {
                 info!(self.logger, "Updating world");
-                let mut options = WorldIoOptionFlags::new();
+                let mut options = WorldIoOptionFlags::new().all();
                 if world.positions.point_terrain.is_empty() {
                     options = options.all();
                 }
