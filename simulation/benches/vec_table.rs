@@ -1,5 +1,5 @@
 use caolo_sim::indices::EntityId;
-use caolo_sim::tables::{vector::DenseVecTable, Table};
+use caolo_sim::tables::{dense::DenseVecTable, Table};
 use criterion::{black_box, criterion_group, Criterion};
 use rand::seq::SliceRandom;
 use rand::{rngs::SmallRng, Rng, SeedableRng};

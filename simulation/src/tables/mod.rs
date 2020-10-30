@@ -2,12 +2,12 @@
 //! Tables are generic collections that store game data split by (shape) components.
 //!
 pub mod btree;
+pub mod dense;
 pub mod iterators;
 pub mod morton;
 pub mod morton_hierarchy;
 pub mod traits;
 pub mod unique;
-pub mod vector;
 
 pub use self::iterators::*;
 pub use self::morton_hierarchy::*;
@@ -17,13 +17,12 @@ pub use self::traits::*;
 mod tests {
     use super::btree::*;
     use super::*;
-    use serde_derive::Serialize;
     use std::convert::TryInto;
 
-    #[derive(Debug, Clone, Copy, Serialize)]
+    #[derive(Debug, Clone, Copy)]
     struct Row1(i32);
 
-    #[derive(Debug, Clone, Copy, Serialize)]
+    #[derive(Debug, Clone, Copy)]
     struct Row2(i32);
 
     #[test]

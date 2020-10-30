@@ -1,8 +1,8 @@
 use caolo_sim::indices::EntityId;
-use caolo_sim::tables::{btree::BTreeTable, vector::DenseVecTable, JoinIterator};
+use caolo_sim::tables::{btree::BTreeTable, dense::DenseVecTable, JoinIterator};
 use criterion::{black_box, criterion_group, Criterion};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 fn get_rand() -> impl rand::Rng {
     SmallRng::seed_from_u64(0xdeadbeef)
