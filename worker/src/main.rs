@@ -282,7 +282,15 @@ fn main() {
         ))
         .unwrap();
     info!(logger, "Init storage");
-    let mut storage = executor.initialize(None).unwrap();
+    let mut storage = executor
+        .initialize(
+            None,
+            caolo_sim::executor::GameConfig {
+                world_radius: game_conf.world_radius,
+                room_radius: game_conf.room_radius,
+            },
+        )
+        .unwrap();
     info!(logger, "Starting with {} actors", game_conf.n_actors);
     init::init_storage(logger.clone(), &mut storage, &game_conf);
 

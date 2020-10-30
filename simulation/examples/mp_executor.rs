@@ -28,7 +28,15 @@ fn main() {
     let mut executor = rt
         .block_on(MpExecutor::new(&rt, logger.clone(), None))
         .unwrap();
-    let mut world = executor.initialize(Some(logger.clone())).unwrap();
+    let mut world = executor
+        .initialize(
+            Some(logger.clone()),
+            caolo_sim::executor::GameConfig {
+                world_radius: 10,
+                room_radius: 10,
+            },
+        )
+        .unwrap();
 
     let script_id = ScriptId(Uuid::new_v4());
     let script: CompilationUnit =
