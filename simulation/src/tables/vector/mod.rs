@@ -239,6 +239,16 @@ where
         // contains if data has this key AND it is Some
         self.ids.get(i).map(|x| x.is_some()).unwrap_or(false)
     }
+
+    pub fn clear(&mut self) {
+        for (i, _) in self.ids.iter().enumerate().filter(|(_, i)| i.is_some()) {
+            // drop set values
+            let _val = mem::replace(&mut self.data[i], MaybeUninit::uninit());
+        }
+        self.offset = 0;
+        self.ids.clear();
+        self.data.clear();
+    }
 }
 
 impl<Id, Row> Table for DenseVecTable<Id, Row>
