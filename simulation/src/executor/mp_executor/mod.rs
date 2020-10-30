@@ -29,7 +29,7 @@ use crate::{
     RuntimeGuard,
 };
 
-use super::Executor;
+use super::{execute_map_generation, Executor};
 
 pub const QUEEN_MUTEX: &str = "CAO_QUEEN_MUTEX";
 pub const WORLD_ENTITIES: &str = "CAO_WORLD_ENTITIES";
@@ -323,6 +323,7 @@ impl Executor for MpExecutor {
     fn initialize(
         &mut self,
         logger: Option<slog::Logger>,
+        config: super::GameConfig,
     ) -> Result<std::pin::Pin<Box<World>>, Self::Error> {
         let rt = self.runtime.clone();
         rt.block_on(async move {
@@ -330,8 +331,12 @@ impl Executor for MpExecutor {
                 self.logger = logger.clone();
             }
             self.update_role().await?;
-            let world = init_inmemory_storage(self.logger.clone());
+            let mut world = init_inmemory_storage(self.logger.clone());
             if matches!(self.role, Role::Queen(_)) {
+                info!(self.logger, "Generating map");
+                execute_map_generation(self.logger.clone(), &mut *world, &config)
+                    .expect("Failed to generate world map");
+
                 info!(self.logger, "Sending world state to Drones");
                 let opts = WorldIoOptionFlags::new().all();
                 world_state::send_world(self, &world, opts)

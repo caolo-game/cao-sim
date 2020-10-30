@@ -379,7 +379,15 @@ mod tests {
         let logger = slog::Logger::root(drain, o!());
 
         let mut exc = SimpleExecutor;
-        let mut world = exc.initialize(Some(logger.clone())).unwrap();
+        let mut world = exc
+            .initialize(
+                Some(logger.clone()),
+                caolo_sim::executor::GameConfig {
+                    world_radius: 10,
+                    room_radius: 10,
+                },
+            )
+            .unwrap();
 
         // smoke test: can the game be even initialized?
         init_storage(logger, &mut *world, &Default::default());

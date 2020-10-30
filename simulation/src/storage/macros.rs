@@ -13,7 +13,11 @@
 /// use caolo_sim::query;
 /// use caolo_sim::prelude::*;
 ///
-/// let mut store = SimpleExecutor.initialize(None).unwrap();
+/// let mut store = SimpleExecutor.initialize(None, caolo_sim::executor::GameConfig {
+///     world_radius: 1,
+///     room_radius: 10,
+/// },
+/// ).unwrap();
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();
@@ -64,7 +68,11 @@ macro_rules! query {
 /// use caolo_sim::join;
 /// use caolo_sim::tables::JoinIterator;
 ///
-/// let mut store = SimpleExecutor.initialize(None).unwrap();
+/// let mut store = SimpleExecutor.initialize(None, caolo_sim::executor::GameConfig {
+///     world_radius: 1,
+///     room_radius: 10,
+/// },
+/// ).unwrap();
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();
@@ -123,7 +131,11 @@ macro_rules! query {
 /// use caolo_sim::join;
 /// use caolo_sim::tables::JoinIterator;
 ///
-/// let mut store = SimpleExecutor.initialize(None).unwrap();
+/// let mut store = SimpleExecutor.initialize(None, caolo_sim::executor::GameConfig {
+///     world_radius: 1,
+///     room_radius: 10,
+/// },
+/// ).unwrap();
 ///
 /// let entity_1 = store.insert_entity();
 /// let entity_2 = store.insert_entity();
