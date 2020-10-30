@@ -1,6 +1,6 @@
 use crate::tables::{btree::BTreeTable, Component, TableId};
 use cao_lang::{prelude::Scalar, traits::AutoByteEncodeProperties};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 #[derive(Debug, Serialize, Clone, Copy, Deserialize)]

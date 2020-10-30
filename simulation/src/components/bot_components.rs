@@ -1,5 +1,5 @@
 use crate::indices::{EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
-use crate::tables::{btree::BTreeTable, vector::DenseVecTable, Component, TableId};
+use crate::tables::{btree::BTreeTable, dense::DenseVecTable, Component, TableId};
 use arrayvec::ArrayVec;
 
 use serde::{Deserialize, Serialize};
