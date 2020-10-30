@@ -7,8 +7,8 @@ use std::marker::PhantomData;
 
 impl<Pos, Row> Serialize for MortonTable<Pos, Row>
 where
-    Pos: SpatialKey2d + Send,
-    Row: TableRow + Send,
+    Pos: SpatialKey2d + Serialize,
+    Row: TableRow + Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -22,16 +22,16 @@ where
 
 struct MortonVisitor<K, V>
 where
-    K: SpatialKey2d + Send,
-    V: TableRow + Send,
+    K: SpatialKey2d,
+    V: TableRow,
 {
     _m: PhantomData<(K, V)>,
 }
 
 impl<'de, Pos, Row> Visitor<'de> for MortonVisitor<Pos, Row>
 where
-    Pos: SpatialKey2d + Send + Deserialize<'de>,
-    Row: TableRow + Send + Deserialize<'de>,
+    Pos: SpatialKey2d + Deserialize<'de>,
+    Row: TableRow + Deserialize<'de>,
 {
     type Value = MortonTable<Pos, Row>;
 
@@ -65,8 +65,8 @@ where
 
 impl<'de, Pos, Row> Deserialize<'de> for MortonTable<Pos, Row>
 where
-    Pos: SpatialKey2d + Send + Deserialize<'de>,
-    Row: TableRow + Send + Deserialize<'de>,
+    Pos: SpatialKey2d + Deserialize<'de>,
+    Row: TableRow + Deserialize<'de>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

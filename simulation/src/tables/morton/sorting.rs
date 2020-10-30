@@ -7,7 +7,7 @@ const RADIX_MASK_LEN: usize = 8; // how many bits are considered at a time
 const RADIX_MASK: u32 = (1 << (RADIX_MASK_LEN + 1)) - 1;
 const NUM_BUCKETS: usize = RADIX_MASK as usize + 1;
 
-pub fn sort<T: Send + Clone>(keys: &mut Vec<MortonKey>, values: &mut [T]) {
+pub fn sort<T: Clone>(keys: &mut Vec<MortonKey>, values: &mut [T]) {
     debug_assert!(
         keys.len() == values.len(),
         "{} {}",

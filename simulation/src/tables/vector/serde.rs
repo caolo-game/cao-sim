@@ -7,8 +7,8 @@ use std::marker::PhantomData;
 
 impl<Id, Row> Serialize for DenseVecTable<Id, Row>
 where
-    Id: SerialId,
-    Row: TableRow,
+    Id: SerialId + Serialize,
+    Row: TableRow + Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

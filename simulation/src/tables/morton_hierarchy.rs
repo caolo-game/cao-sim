@@ -6,9 +6,6 @@ use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use thiserror::Error;
 
-#[cfg(not(feature = "disable-parallelism"))]
-use rayon::prelude::*;
-
 #[derive(Debug, Clone, Error)]
 pub enum ExtendFailure {
     #[error("Failed to extend the room level {0:?}")]
@@ -34,7 +31,7 @@ where
 
 impl<Row> RoomMortonTable<Row>
 where
-    Row: TableRow + Sync,
+    Row: TableRow,
 {
     pub fn new() -> Self {
         Self {
@@ -151,12 +148,8 @@ where
             GroupByRooms::new(&values).collect();
         let groups = &groups;
 
-        // invidual extends can run in parallel
-        #[cfg(not(feature = "disable-parallelism"))]
-        let iter = self.table.par_iter_mut();
-        #[cfg(feature = "disable-parallelism")]
+        // TODO invidual extends can run in parallel
         let mut iter = self.table.iter_mut();
-
         iter.try_for_each(move |(room_id, ref mut room)| {
             if let Some(items) = groups.get(&room_id) {
                 // extend each group by their corresponding values
@@ -243,7 +236,7 @@ impl<'a, Row> GroupByRooms<'a, Row> {
 
 impl<Row> Table for RoomMortonTable<Row>
 where
-    Row: TableRow + Sync,
+    Row: TableRow,
 {
     type Id = WorldPosition;
     type Row = Row;
