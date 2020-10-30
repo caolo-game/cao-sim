@@ -353,7 +353,7 @@ mod tests {
             .initialize(
                 Some(logger.clone()),
                 caolo_sim::executor::GameConfig {
-                    world_radius: 10,
+                    world_radius: 2,
                     room_radius: 10,
                 },
             )

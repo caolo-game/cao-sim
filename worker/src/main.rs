@@ -292,7 +292,6 @@ fn main() {
         )
         .unwrap();
     info!(logger, "Starting with {} actors", game_conf.n_actors);
-    init::init_storage(logger.clone(), &mut storage, &game_conf);
 
     sim_rt.block_on(executor.update_role()).unwrap();
 
@@ -304,6 +303,7 @@ fn main() {
         .unwrap();
 
     if executor.is_queen() {
+        init::init_storage(logger.clone(), &mut storage, &game_conf);
         send_config(
             logger.clone(),
             &redis_client,

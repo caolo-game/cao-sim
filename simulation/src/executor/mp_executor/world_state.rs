@@ -1,6 +1,6 @@
 use redis::Client as RedisClient;
 use serde::{de::DeserializeOwned, Serialize};
-use slog::{Logger, debug, error, info};
+use slog::{debug, error, Logger};
 
 use crate::{
     prelude::FromWorld, prelude::FromWorldMut, prelude::World, systems::positions_system, Time,
@@ -284,7 +284,7 @@ where
     let payload: Vec<u8> =
         rmp_serde::to_vec_named(&payload).map_err(MpExcError::WorldSerializeError)?;
 
-    info!(
+    debug!(
         logger,
         "Sending payload of size {} to key {}",
         payload.len(),
