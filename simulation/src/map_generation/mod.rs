@@ -79,6 +79,8 @@ pub fn generate_full_map(
             )
             .map_err(|err| MapGenError::RoomGenerationError { err, room })?;
 
+            terrain_table.dedupe();
+
             terrain_tables.push((room.0, terrain_table));
             Ok(terrain_tables)
         },
