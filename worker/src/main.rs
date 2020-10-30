@@ -123,7 +123,7 @@ async fn send_terrain(logger: &Logger, storage: &World, client: &PgPool) -> anyh
     let room_radius = room_properties.radius;
 
     let mut tx = client.begin().await?;
-    sqlx::query("DELETE FROM world_map WHERE 1=1;")
+    sqlx::query("DELETE FROM world_map")
         .execute(&mut tx)
         .await?;
 

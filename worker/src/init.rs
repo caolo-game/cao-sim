@@ -1,8 +1,5 @@
 use crate::config::GameConfig;
 use cao_lang::{compiler::CompileOptions, prelude::*};
-use caolo_sim::map_generation::generate_full_map;
-use caolo_sim::map_generation::overworld::OverworldGenerationParams;
-use caolo_sim::map_generation::room::RoomGenerationParams;
 use caolo_sim::prelude::*;
 use rand::Rng;
 use slog::{debug, trace, Logger};
@@ -49,35 +46,8 @@ pub fn init_storage(logger: Logger, storage: &mut World, config: &GameConfig) {
         }
     );
 
-    let world_radius = config.world_radius;
+
     let radius = config.room_radius;
-    assert!(radius > 6);
-    let params = OverworldGenerationParams::builder()
-        .with_radius(world_radius as u32)
-        .with_room_radius(radius)
-        .with_min_bridge_len(3)
-        .with_max_bridge_len(radius - 3)
-        .build()
-        .unwrap();
-    let room_params = RoomGenerationParams::builder()
-        .with_radius(radius)
-        .with_chance_plain(0.33)
-        .with_chance_wall(0.33)
-        .with_plain_dilation(2)
-        .build()
-        .unwrap();
-    debug!(logger, "generating map {:#?} {:#?}", params, room_params);
-
-    generate_full_map(
-        storage.logger.clone(),
-        &params,
-        &room_params,
-        None,
-        FromWorldMut::new(&mut *storage),
-    )
-    .unwrap();
-    debug!(logger, "world generation done");
-
     debug!(logger, "Reset position storage");
     let mut entities_by_pos = storage.unsafe_view::<WorldPosition, EntityComponent>();
     entities_by_pos.clear();
