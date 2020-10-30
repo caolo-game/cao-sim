@@ -72,7 +72,7 @@ where
 
 impl<Pos, Row> Default for MortonTable<Pos, Row>
 where
-    Pos: SpatialKey2d + Send,
+    Pos: SpatialKey2d,
     Row: TableRow,
 {
     fn default() -> Self {
@@ -85,18 +85,11 @@ where
     }
 }
 
-unsafe impl<Pos, Row> Send for MortonTable<Pos, Row>
-where
-    Pos: SpatialKey2d + Send,
-    Row: TableRow + Send,
-{
-}
-
 #[cfg(not(feature = "disable-parallelism"))]
 impl<'a, Pos, Row> MortonTable<Pos, Row>
 where
     Pos: SpatialKey2d + Send,
-    Row: TableRow,
+    Row: TableRow + Send,
     (Pos, Row): Send,
     // if the underlying vector implements par_iter_mut...
 {
@@ -105,23 +98,10 @@ where
     }
 }
 
-// #[cfg(not(feature = "disable-parallelism"))]
-// impl<'a, Pos, Row> MortonTable<Pos, Row>
-// where
-//     Pos: SpatialKey2d + Send,
-//     Row: TableRow + Send ,
-//     // if the underlying vector implements par_iter...
-//     Vec<(Pos, Row)>: rayon::iter::IntoParallelRefIterator<'a, Item = (Pos, Row)>,
-// {
-//     pub fn par_iter(&'a mut self) -> impl ParallelIterator<Item = (Pos, &'a Row)> + 'a {
-//         self.values.par_iter().map(move |(k, v)| (k, v))
-//     }
-// }
-//
 impl<Pos, Row> MortonTable<Pos, Row>
 where
     Pos: SpatialKey2d,
-    Row: TableRow + Send,
+    Row: TableRow,
 {
     pub fn new() -> Self {
         Self {
@@ -643,8 +623,8 @@ where
 
 impl<Pos, Row> Table for MortonTable<Pos, Row>
 where
-    Pos: SpatialKey2d + Send,
-    Row: TableRow + Send,
+    Pos: SpatialKey2d,
+    Row: TableRow,
 {
     type Id = Pos;
     type Row = Row;

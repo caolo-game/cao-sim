@@ -167,8 +167,9 @@ where
             self.ids.resize(i + 1, None);
             self.data.resize_with(i + 1, MaybeUninit::uninit);
         }
-        if self.ids.get(i).and_then(|x| x.as_ref()).is_some() {
-            let _old = mem::replace(&mut self.data[i], MaybeUninit::new(row));
+        if self.ids[i].is_some() {
+            let _old: Row =
+                unsafe { mem::replace(&mut self.data[i], MaybeUninit::new(row)).assume_init() };
         } else {
             self.data[i] = MaybeUninit::new(row);
             self.ids[i] = Some(id);
@@ -243,7 +244,8 @@ where
     pub fn clear(&mut self) {
         for (i, _) in self.ids.iter().enumerate().filter(|(_, i)| i.is_some()) {
             // drop set values
-            let _val = mem::replace(&mut self.data[i], MaybeUninit::uninit());
+            let _val =
+                unsafe { mem::replace(&mut self.data[i], MaybeUninit::uninit()).assume_init() };
         }
         self.offset = 0;
         self.ids.clear();
@@ -273,5 +275,63 @@ where
 
     fn get_by_id(&self, id: &Id) -> Option<&Row> {
         DenseVecTable::get_by_id(self, id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::indices::EntityId;
+
+    use super::*;
+
+    #[test]
+    fn test_clear_drops() {
+        #[derive(Clone, Debug)]
+        struct Foo(*mut i32);
+        impl Drop for Foo {
+            fn drop(&mut self) {
+                let ptr = self.0;
+                if std::ptr::null() != ptr {
+                    unsafe {
+                        *ptr += 1;
+                    }
+                }
+            }
+        }
+
+        let mut foos = vec![0; 128];
+
+        let mut table = DenseVecTable::new();
+        let mut next_entity = EntityId(1);
+
+        for i in 0..128 {
+            table.insert_or_update(next_entity, Foo(&mut foos[i]));
+            // leave gaps
+            next_entity.0 += 2;
+        }
+        assert_eq!(table.count_set(), 128);
+
+        for f in foos.iter() {
+            assert_eq!(*f, 0);
+        }
+
+        let mut next_entity = EntityId(1);
+        // update items
+        for i in 0..128 {
+            table.insert_or_update(next_entity, Foo(&mut foos[i]));
+            next_entity.0 += 2;
+        }
+
+        assert_eq!(table.count_set(), 128);
+
+        for f in foos.iter() {
+            assert_eq!(*f, 1);
+        }
+
+        table.clear();
+
+        for f in foos.iter() {
+            assert_eq!(*f, 2);
+        }
     }
 }

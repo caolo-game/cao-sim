@@ -53,13 +53,13 @@ impl<T> TableId for T where
 }
 
 /// TableRows may be used as the row type of a table
-pub trait TableRow: 'static + Clone + Send + std::fmt::Debug + Serialize {}
-impl<T: 'static + Clone + Send + std::fmt::Debug + Serialize> TableRow for T {}
+pub trait TableRow: 'static + Clone + std::fmt::Debug {}
+impl<T: 'static + Clone + std::fmt::Debug> TableRow for T {}
 
 /// Components define both their shape (via their type) and the storage backend that shall be used to
 /// store them.
 pub trait Component<Id: TableId>: TableRow {
-    type Table: Table<Row = Self> + Send + std::fmt::Debug + Default + Serialize;
+    type Table: Table<Row = Self> + std::fmt::Debug + Default;
 }
 
 pub trait Table {
