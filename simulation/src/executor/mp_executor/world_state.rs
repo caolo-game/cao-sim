@@ -145,6 +145,8 @@ pub async fn update_world<'a>(
         })?;
     world.entities = entities.value;
     world.resources.time.value = Some(Time(entities.time));
+    // reset the positions storage
+    positions_system::update(FromWorldMut::new(world), FromWorld::new(world));
 
     let users = users.await.expect("Failed to join users").map_err(|err| {
         error!(logger, "Failed to get `users`, {:?}", err);
@@ -174,11 +176,6 @@ pub async fn update_world<'a>(
 
     // TODO: check for time match...
 
-    // TODO:
-    // terrain (in separate function)
-
-    // reset the positions storage
-    positions_system::update(FromWorldMut::new(world), FromWorld::new(world));
     Ok(())
 }
 
