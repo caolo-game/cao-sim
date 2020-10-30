@@ -233,15 +233,13 @@ type MoveToPosIntent = (
 );
 
 fn move_to_pos<'a>(
-    logger: impl Into<&'a slog::Logger>,
+    logger: &slog::Logger,
     bot: EntityId,
     to: WorldPosition,
     user_id: UserId,
     storage: &World,
 ) -> Result<Option<MoveToPosIntent>, OperationResult> {
     profile!("move_to_pos");
-
-    let logger = logger.into();
 
     let botpos = storage
         .view::<EntityId, components::PositionComponent>()
@@ -272,14 +270,15 @@ fn move_to_pos<'a>(
                     check_move_intent(logger, &intent, user_id, FromWorld::new(storage))
                 {
                     trace!(logger, "Bot {:?} path cache hit", bot);
-                    return Ok(Some((
+                    let result = (
                         intent,
                         Some(MutPathCacheIntent {
                             bot,
                             action: PathCacheIntentAction::Pop,
                         }),
                         None,
-                    )));
+                    );
+                    return Ok(Some(result));
                 }
             }
         }

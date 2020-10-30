@@ -5,7 +5,7 @@ mod output;
 
 use anyhow::Context;
 use cao_messages::world_capnp::world_state;
-use caolo_sim::{executor::Executor, prelude::*};
+use caolo_sim::{executor::mp_executor, executor::Executor, prelude::*};
 use mp_executor::MpExecutor;
 use slog::{debug, error, info, o, trace, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
@@ -318,6 +318,7 @@ fn main() {
     let mut redis_connection = redis_client
         .get_connection()
         .expect("Get redis connection failed");
+
     loop {
         let start = Instant::now();
 

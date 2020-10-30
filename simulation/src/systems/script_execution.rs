@@ -109,7 +109,6 @@ fn prepare_script_data(
     user_id: Option<UserId>,
     storage: &World,
 ) -> ScriptExecutionData {
-    let logger = logger.new(o!( "entity_id" => entity_id.0 ));
     let intents = BotIntents {
         entity_id,
         ..Default::default()
@@ -125,6 +124,7 @@ pub fn execute_single_script<'a>(
     storage: &'a World,
     vm: &mut VM<'a, ScriptExecutionData>,
 ) -> ExecutionResult {
+    let logger = logger.new(o!( "entity_id" => entity_id.0 ));
     let program = storage
         .view::<ScriptId, ScriptComponent>()
         .reborrow()
@@ -134,7 +134,6 @@ pub fn execute_single_script<'a>(
             ExecutionError::ScriptNotFound(script_id)
         })?;
 
-    let logger = logger.new(o!( "entity_id" => entity_id.0 ));
     vm.logger = logger.clone();
     let data = prepare_script_data(&logger, entity_id, user_id, storage);
     vm.auxiliary_data = data;

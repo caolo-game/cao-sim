@@ -2,9 +2,9 @@
 //!
 
 mod drone;
-mod execute;
+pub mod execute;
 mod queen;
-mod world_state;
+pub mod world_state;
 
 pub use self::drone::*;
 pub use self::queen::*;
@@ -19,7 +19,7 @@ use slog::{debug, error, info, o, Drain, Logger};
 use std::fmt::Display;
 use tokio_amqp::*;
 use uuid::Uuid;
-use world_state::update_world;
+use world_state::{update_world, WorldIoOptionFlags};
 
 use crate::{
     job_capnp::{script_batch_job, script_batch_result},
@@ -36,6 +36,7 @@ pub const WORLD_ENTITIES: &str = "CAO_WORLD_ENTITIES";
 pub const WORLD_CONFIG: &str = "CAO_WORLD_CONFIG";
 pub const WORLD_USERS: &str = "CAO_WORLD_USERS";
 pub const WORLD_SCRIPTS: &str = "CAO_WORLD_SCIPTS";
+pub const WORLD_TERRAIN: &str = "CAO_WORLD_TERRAIN";
 pub const JOB_QUEUE: &str = "CAO_JOB_QUEUE";
 pub const JOB_RESULTS_LIST: &str = "CAO_JOB_RESULTS_LIST";
 
@@ -255,7 +256,11 @@ impl MpExecutor {
             let expected_time = message.get_world_time();
             if expected_time != world.time() {
                 info!(self.logger, "Updating world");
-                update_world(self, world, Some(expected_time)).await?;
+                let mut options = WorldIoOptionFlags::new();
+                if world.positions.point_terrain.is_empty() {
+                    options = options.all();
+                }
+                update_world(self, world, Some(expected_time), options).await?;
                 self.logger = world
                     .logger
                     .new(o!("tick" => world.time(), "role" => format!("{}", self.role)));
@@ -325,17 +330,15 @@ impl Executor for MpExecutor {
                 self.logger = logger.clone();
             }
             self.update_role().await?;
+            let world = init_inmemory_storage(self.logger.clone());
             if matches!(self.role, Role::Queen(_)) {
-                let mut connection = self
-                    .client
-                    .get_connection()
-                    .map_err(MpExcError::RedisError)?;
-                redis::pipe()
-                    .del(WORLD_ENTITIES)
-                    .query(&mut connection)
-                    .map_err(MpExcError::RedisError)?;
+                info!(self.logger, "Sending world state to Drones");
+                let opts = WorldIoOptionFlags::new().all();
+                world_state::send_world(self, &world, opts)
+                    .await
+                    .expect("Failed to send initial world");
             }
-            Ok(init_inmemory_storage(self.logger.clone()))
+            Ok(world)
         })
     }
 
