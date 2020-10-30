@@ -12,8 +12,9 @@ use crate::{
 };
 
 use super::{
-    drone::Drone, parse_script_batch_result, world_state::send_world, MpExcError, MpExecutor, Role,
-    ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX,
+    drone::Drone, parse_script_batch_result, world_state::send_world,
+    world_state::WorldIoOptionFlags, MpExcError, MpExecutor, Role, ScriptBatchStatus, JOB_QUEUE,
+    JOB_RESULTS_LIST, QUEEN_MUTEX,
 };
 
 use arrayvec::ArrayVec;
@@ -107,7 +108,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
         .await
         .map_err(MpExcError::AmqpError)?;
 
-    send_world(executor, world).await?;
+    send_world(executor, world, WorldIoOptionFlags::new()).await?;
 
     let scripts_table = world.view::<EntityId, EntityScript>();
     let executions: Vec<(EntityId, EntityScript)> =
@@ -115,6 +116,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
     // split the work (TODO how?)
     // for now let's split it into groups of `chunk_size`
     let chunk_size = executor.options.script_chunk_size;
+    let _guard = executor.runtime.tokio_rt.enter();
     let mut message_status: HashMap<_, _> = executions
         .par_chunks(chunk_size)
         .enumerate()

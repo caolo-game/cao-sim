@@ -1,6 +1,9 @@
 use crate::prelude::World;
 
-use super::{queen::Queen, world_state::update_world, MpExcError, MpExecutor, Role, QUEEN_MUTEX};
+use super::{
+    queen::Queen, world_state::update_world, world_state::WorldIoOptionFlags, MpExcError,
+    MpExecutor, Role, QUEEN_MUTEX,
+};
 
 use chrono::{DateTime, TimeZone, Utc};
 use slog::{debug, info, o, Logger};
@@ -54,7 +57,11 @@ impl Drone {
 }
 
 pub async fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
-    update_world(executor, world, None).await?;
+    let mut options = WorldIoOptionFlags::new();
+    if world.positions.point_terrain.is_empty() {
+        options.all();
+    }
+    update_world(executor, world, None, options).await?;
     executor.logger = world
         .logger
         .new(o!("tick" => world.time(), "role" => format!("{}", executor.role)));
