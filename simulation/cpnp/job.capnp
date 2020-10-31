@@ -27,6 +27,8 @@ struct ScriptBatchResult
 {
     msgId @0: Uuid;
     intents @1: List(BotIntents);
+    # Timestamp of the World the worker used
+    worldTime @2: UInt64;
 }
 
 struct BotIntents
