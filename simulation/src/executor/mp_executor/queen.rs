@@ -21,7 +21,7 @@ use arrayvec::ArrayVec;
 use chrono::{DateTime, TimeZone, Utc};
 use lapin::{
     options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
-    types::FieldTable, BasicProperties,
+    options::QueuePurgeOptions, types::FieldTable, BasicProperties,
 };
 use slog::{debug, error, info, o, trace, warn, Logger};
 use uuid::Uuid;
@@ -88,7 +88,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
 
     debug!(executor.logger, "Initializing amqp.amqp_chans");
     // TODO:
-    // pls do these 3 in parallel
+    // pls do these in parallel
     let _job_q = executor
         .amqp_chan
         .queue_declare(
@@ -105,6 +105,19 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             QueueDeclareOptions::default(),
             FieldTable::default(),
         )
+        .await
+        .map_err(MpExcError::AmqpError)?;
+
+    // flush the current messages if any
+    // those are left-overs from previous executors
+    executor
+        .amqp_chan
+        .queue_purge(JOB_QUEUE, QueuePurgeOptions { nowait: true })
+        .await
+        .map_err(MpExcError::AmqpError)?;
+    executor
+        .amqp_chan
+        .queue_purge(JOB_RESULTS_LIST, QueuePurgeOptions { nowait: true })
         .await
         .map_err(MpExcError::AmqpError)?;
 
