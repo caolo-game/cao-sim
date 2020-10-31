@@ -146,10 +146,12 @@ impl MpExecutor {
         ) -> Result<MpExecutor, MpExcError> {
             let _g = rt.tokio_rt.enter();
 
+            info!(logger, "Connecting to redis, url {}", &options.redis_url);
             let client =
                 RedisClient::open(options.redis_url.as_str()).map_err(MpExcError::RedisError)?;
             let queen_mutex = Utc.timestamp_millis(0);
 
+            info!(logger, "Connecting to amqp, url {}", &options.amqp_url);
             let amqp_conn = lapin::Connection::connect(
                 options.amqp_url.as_str(),
                 lapin::ConnectionProperties::default().with_tokio(rt.tokio_rt.clone()),
@@ -163,6 +165,8 @@ impl MpExecutor {
                 .map_err(MpExcError::AmqpError)?;
 
             let tag = format!("{}", uuid::Uuid::new_v4());
+
+            info!(logger, "Finished setting up Executor, tag {}", tag);
 
             Ok(MpExecutor {
                 runtime: rt.clone(),
@@ -330,9 +334,12 @@ impl Executor for MpExecutor {
             if let Some(logger) = logger.as_ref() {
                 self.logger = logger.clone();
             }
+            info!(self.logger, "Initializing cao-sim mp-executor");
             self.update_role().await?;
+            info!(self.logger, "Initializing Storage");
             let mut world = init_inmemory_storage(self.logger.clone());
             if matches!(self.role, Role::Queen(_)) {
+                info!(self.logger, "Initializing Queen");
                 queen::initialize_queen(self, &mut world, &config).await?;
             }
             Ok(world)

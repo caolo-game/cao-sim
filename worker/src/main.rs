@@ -179,7 +179,7 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
         let mut card = cards.reborrow().get(i as u32);
         card.set_name(import.name);
         card.set_description(import.description);
-        card.set_ty(serde_json::to_string(&import.ty).unwrap().as_str());
+        card.set_ty(serde_json::to_string(&import.ty).expect("Set card type").as_str());
         {
             let len = import.input.len();
             let mut inputs = card.reborrow().init_input(len as u32);
@@ -292,7 +292,7 @@ fn main() {
                 ..Default::default()
             },
         ))
-        .unwrap();
+        .expect("Create executor");
     info!(logger, "Init storage");
     let mut storage = executor
         .initialize(
@@ -302,17 +302,17 @@ fn main() {
                 room_radius: game_conf.room_radius,
             },
         )
-        .unwrap();
+        .expect("Initialize executor");
     info!(logger, "Starting with {} actors", game_conf.n_actors);
 
-    sim_rt.block_on(executor.update_role()).unwrap();
+    sim_rt.block_on(executor.update_role()).expect("Update role");
 
     let redis_client = redis::Client::open(redis_url.as_str()).expect("Redis client");
     let pg_pool = sim_rt
         .block_on(PgPool::new(&env::var("DATABASE_URL").unwrap_or_else(
             |_| "postgres://postgres:admin@localhost:5432/caolo".to_owned(),
         )))
-        .unwrap();
+        .expect("Connect to PG");
 
     if executor.is_queen() {
         init::init_storage(logger.clone(), &mut storage, &game_conf);
