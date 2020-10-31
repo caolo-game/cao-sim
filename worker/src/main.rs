@@ -271,7 +271,7 @@ fn main() {
 
     info!(
         logger,
-        "Loaded Queen params:\nMutex expiry: {}\nScript chunk size: {}\nTick freq: {}",
+        "Loaded Queen params:\nMutex expiry: {}\nScript chunk size: {}\nTick freq: {:?}",
         queen_mutex_expiry_ms,
         script_chunk_size,
         tick_freq
