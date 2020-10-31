@@ -11,9 +11,6 @@ use serde::Serialize;
 use slog::{debug, o, Drain};
 use std::pin::Pin;
 
-#[cfg(feature = "log_tables")]
-use crate::storage::views::logging::LogGuard;
-
 storage!(
     module room_store key Room,
     table RoomConnections = room_connections,
@@ -98,10 +95,6 @@ pub struct World {
 
     #[serde(skip)]
     pub logger: slog::Logger,
-
-    #[cfg(feature = "log_tables")]
-    #[serde(skip)]
-    pub _guard: LogGuard,
 }
 
 macro_rules! impl_hastable {
@@ -185,12 +178,6 @@ impl World {
                 logger,
 
                 user: Default::default(),
-
-                #[cfg(feature = "log_tables")]
-                _guard: LogGuard {
-                    fname: "./tables.log".to_owned(),
-                    logger: logger.clone(),
-                },
             });
 
             // initialize the intent tables

@@ -21,30 +21,9 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
     pub fn from_table(t: &mut C::Table) -> Self {
         let ptr = unsafe { NonNull::new_unchecked(t) };
         let res: UnsafeView<Id, C> = Self(ptr);
-        res.log_table();
         res
     }
 
-    #[inline]
-    pub fn log_table(self) {
-        #[cfg(feature = "log_tables")]
-        {
-            use super::logging;
-            use crate::tables::traits::Table;
-
-            let key = C::Table::name();
-
-            let table = unsafe { self.0.as_ref() };
-            let val = serde_json::to_value(table).expect("Table serialization failed");
-
-            let mut table = logging::TABLE_LOG_HISTORY
-                .lock()
-                .expect("Failed to aquire TABLE_LOG_HISTORY");
-            let logger = table.entry(key).or_insert_with(Default::default);
-            let logger = unsafe { logger.inserter() };
-            logger(val);
-        }
-    }
 }
 
 impl<Id: TableId, C: Component<Id>> FromWorldMut for UnsafeView<Id, C>
@@ -55,9 +34,6 @@ where
         <World as HasTable<Id, C>>::unsafe_view(w)
     }
 
-    fn log(&self) {
-        self.log_table();
-    }
 }
 
 impl<Id: TableId, C: Component<Id>> Clone for UnsafeView<Id, C> {

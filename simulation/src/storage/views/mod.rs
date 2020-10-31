@@ -29,9 +29,6 @@ mod unwrap_mut;
 mod view;
 mod world_logger;
 
-#[cfg(feature = "log_tables")]
-pub mod logging;
-
 pub use unsafe_view::*;
 pub use unwrap::*;
 pub use unwrap_mut::*;
@@ -41,7 +38,6 @@ pub use world_logger::*;
 use super::{Component, DeleteById, TableId};
 use crate::indices::EntityId;
 use crate::prelude::World;
-use slog::trace;
 use std::ptr::NonNull;
 
 pub trait FromWorld<'a> {
@@ -50,7 +46,6 @@ pub trait FromWorld<'a> {
 
 pub trait FromWorldMut {
     fn new(w: &mut World) -> Self;
-    fn log(&self);
 }
 
 #[derive(Clone, Copy)]
@@ -82,15 +77,6 @@ impl FromWorldMut for DeferredDeleteEntityView {
             world: unsafe { NonNull::new_unchecked(w) },
         }
     }
-
-    fn log(&self) {
-        let logger = unsafe { &self.world.as_ref().logger };
-        trace!(
-            logger,
-            "DeferredDeleteEntityView to storage {:x?}",
-            self.world
-        );
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -120,15 +106,6 @@ impl FromWorldMut for DeleteEntityView {
             storage: unsafe { NonNull::new_unchecked(w) },
         }
     }
-
-    fn log(&self) {
-        let logger = unsafe { &self.storage.as_ref().logger };
-        trace!(
-            logger,
-            "DeferredDeleteEntityView to storage {:x?}",
-            self.storage
-        );
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -144,11 +121,6 @@ impl FromWorldMut for InsertEntityView {
         Self {
             storage: unsafe { NonNull::new_unchecked(w) },
         }
-    }
-
-    fn log(&self) {
-        let logger = unsafe { &self.storage.as_ref().logger };
-        trace!(logger, "InsertEntityView to storage {:x?}", self.storage);
     }
 }
 
@@ -185,9 +157,6 @@ macro_rules! implement_tuple {
                     )
                 }
 
-                fn log(&self) {
-                    self.0.log();
-                }
             }
     };
 
@@ -211,14 +180,6 @@ macro_rules! implement_tuple {
                     (
                         $($vv::new(storage)),*
                     )
-                }
-
-                #[allow(unused)]
-                fn log(&self) {
-                    let a = self;
-                    $(
-                       a.$id.log();
-                    )*
                 }
             }
     };
