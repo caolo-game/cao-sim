@@ -64,5 +64,4 @@ where
     let m = M::new(storage);
     let c = C::new(storage as &_);
     sys(M::clone(&m), c);
-    m.log();
 }

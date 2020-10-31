@@ -17,7 +17,6 @@ build="build.rs"
 [features]
 default = ["mp_executor"]
 mp_executor = ["capnpc", "capnp", "redis", "serde_json", "rmp-serde", "lapin", "tokio-amqp"]
-log_tables = ["lazy_static", "serde_json"]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
 

@@ -54,24 +54,4 @@ where
         let table = UnsafeView::new(w).as_ptr();
         UnwrapViewMut(NonNull::new(table).unwrap())
     }
-
-    fn log(&self) {
-        #[cfg(feature = "log_tables")]
-        {
-            use super::logging;
-            use crate::tables::traits::Table;
-
-            let key = C::Table::name();
-
-            let table = unsafe { self.0.as_ref() };
-            let val = serde_json::to_value(table).expect("Table serialization failed");
-
-            let mut table = logging::TABLE_LOG_HISTORY
-                .lock()
-                .expect("Failed to aquire TABLE_LOG_HISTORY");
-            let logger = table.entry(key).or_insert_with(Default::default);
-            let logger = unsafe { logger.inserter() };
-            logger(val);
-        }
-    }
 }
