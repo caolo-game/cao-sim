@@ -241,6 +241,8 @@ fn main() {
         .fuse();
     let logger = slog::Logger::root(drain, o!());
 
+    info!(logger, "Loaded game config {:?}", game_conf);
+
     let _sentry = env::var("SENTRY_URI")
         .ok()
         .map(|uri| {
@@ -253,6 +255,8 @@ fn main() {
 
     let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
 
+    info!(logger, "Loaded Redis Url {:?}", redis_url);
+
     let queen_mutex_expiry_ms = env::var("CAO_QUEEN_MUTEX_EXPIRY_MS")
         .ok()
         .and_then(|x| x.parse().ok())
@@ -264,6 +268,14 @@ fn main() {
         .unwrap_or(1024);
 
     let tick_freq = Duration::from_millis(game_conf.target_tick_freq_ms);
+
+    info!(
+        logger,
+        "Loaded Queen params:\nMutex expiry: {}\nScript chunk size: {}\nTick freq: {}",
+        queen_mutex_expiry_ms,
+        script_chunk_size,
+        tick_freq
+    );
 
     info!(logger, "Creating cao executor");
     let mut executor = sim_rt
