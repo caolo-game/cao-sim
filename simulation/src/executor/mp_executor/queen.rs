@@ -4,6 +4,8 @@ use std::convert::TryFrom;
 
 use crate::{
     components::EntityScript,
+    executor::execute_map_generation,
+    executor::GameConfig,
     intents::{self, BotIntents},
     job_capnp::script_batch_job,
     prelude::{EntityId, World},
@@ -12,9 +14,11 @@ use crate::{
 };
 
 use super::{
-    drone::Drone, parse_script_batch_result, world_state::send_world,
-    world_state::WorldIoOptionFlags, MpExcError, MpExecutor, Role, ScriptBatchStatus, JOB_QUEUE,
-    JOB_RESULTS_LIST, QUEEN_MUTEX,
+    drone::Drone,
+    parse_script_batch_result,
+    world_state::WorldIoOptionFlags,
+    world_state::{self, send_world},
+    MpExcError, MpExecutor, Role, ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX,
 };
 
 use arrayvec::ArrayVec;
@@ -105,19 +109,6 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             QueueDeclareOptions::default(),
             FieldTable::default(),
         )
-        .await
-        .map_err(MpExcError::AmqpError)?;
-
-    // flush the current messages if any
-    // those are left-overs from previous executors
-    executor
-        .amqp_chan
-        .queue_purge(JOB_QUEUE, QueuePurgeOptions { nowait: false })
-        .await
-        .map_err(MpExcError::AmqpError)?;
-    executor
-        .amqp_chan
-        .queue_purge(JOB_RESULTS_LIST, QueuePurgeOptions { nowait: false })
         .await
         .map_err(MpExcError::AmqpError)?;
 
@@ -349,4 +340,42 @@ async fn enqueue_job(
         .await
         .map_err(MpExcError::AmqpError)?;
     Ok(ScriptBatchStatus::new(msg_id, from, to))
+}
+
+pub async fn initialize_queen(
+    executor: &mut MpExecutor,
+    world: &mut World,
+    config: &GameConfig,
+) -> Result<(), MpExcError> {
+    info!(executor.logger, "Generating map");
+    execute_map_generation(executor.logger.clone(), &mut *world, &config)
+        .expect("Failed to generate world map");
+
+    info!(executor.logger, "Sending world state to Drones");
+    let opts = WorldIoOptionFlags::new().all();
+    world_state::send_world(executor, world, opts)
+        .await
+        .expect("Failed to send initial world");
+    // flush the current messages if any
+    // those are left-overs from previous executors
+    executor
+        .amqp_chan
+        .queue_purge(JOB_QUEUE, QueuePurgeOptions { nowait: false })
+        .await
+        .map(|_| ())
+        .unwrap_or_else(|err| {
+            warn!(executor.logger, "Failed to purge job queue {:?}", err);
+        });
+    executor
+        .amqp_chan
+        .queue_purge(JOB_RESULTS_LIST, QueuePurgeOptions { nowait: false })
+        .await
+        .map(|_| ())
+        .unwrap_or_else(|err| {
+            warn!(
+                executor.logger,
+                "Failed to purge job results queue {:?}", err
+            );
+        });
+    Ok(())
 }
