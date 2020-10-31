@@ -113,7 +113,8 @@ pub async fn update_world<'a>(
     let entities = get_timed_state(&executor.client, WORLD_ENTITIES, requested_time);
     let entities = rt.spawn(entities);
 
-    let config = get_timed_state(&executor.client, WORLD_CONFIG, requested_time);
+    // config isn't updated every tick
+    let config = get_timed_state(&executor.client, WORLD_CONFIG, None);
     let config = rt.spawn(config);
 
     let users = get_timed_state(&executor.client, WORLD_USERS, requested_time);
@@ -123,7 +124,8 @@ pub async fn update_world<'a>(
     let scripts = rt.spawn(scripts);
 
     if options.has_option(WorldIoOptions::Terrain) {
-        let terrain = get_timed_state(&executor.client, WORLD_TERRAIN, requested_time);
+        // terrain isn't updated every tick
+        let terrain = get_timed_state(&executor.client, WORLD_TERRAIN, None);
         let terrain = rt.spawn(terrain);
         let terrain = terrain
             .await
