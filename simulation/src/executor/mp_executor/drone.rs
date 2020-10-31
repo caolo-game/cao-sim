@@ -57,11 +57,7 @@ impl Drone {
 }
 
 pub async fn forward_drone(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
-    let mut options = WorldIoOptionFlags::new();
-    if world.positions.point_terrain.is_empty() {
-        options.all();
-    }
-    update_world(executor, world, None, options).await?;
+    update_world(executor, world, None, WorldIoOptionFlags::new().all()).await?;
     executor.logger = world
         .logger
         .new(o!("tick" => world.time(), "role" => format!("{}", executor.role)));
