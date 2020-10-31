@@ -29,7 +29,8 @@ serde = "1"
 serde_derive = "1"
 redis = { version= "0.16", features=["tokio-comp"] }
 rand="*"
-sentry = "0.19"
+sentry = "0.20"
+sentry-slog = "0.20"
 anyhow = "1"
 thiserror = "1"
 sqlx = { version="0.3", features=["postgres", "chrono", "uuid", "json", "tls"] }

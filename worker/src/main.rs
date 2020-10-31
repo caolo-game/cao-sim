@@ -179,7 +179,11 @@ fn send_schema(logger: Logger, client: &redis::Client) -> anyhow::Result<()> {
         let mut card = cards.reborrow().get(i as u32);
         card.set_name(import.name);
         card.set_description(import.description);
-        card.set_ty(serde_json::to_string(&import.ty).expect("Set card type").as_str());
+        card.set_ty(
+            serde_json::to_string(&import.ty)
+                .expect("Set card type")
+                .as_str(),
+        );
         {
             let len = import.input.len();
             let mut inputs = card.reborrow().init_input(len as u32);
@@ -247,7 +251,8 @@ fn main() {
         .ok()
         .map(|uri| {
             let options: sentry::ClientOptions = uri.as_str().into();
-            sentry::init(options)
+            let integration = sentry_slog::SlogIntegration::default();
+            sentry::init(options.add_integration(integration))
         })
         .ok_or_else(|| {
             warn!(logger, "Sentry URI was not provided");
@@ -305,7 +310,9 @@ fn main() {
         .expect("Initialize executor");
     info!(logger, "Starting with {} actors", game_conf.n_actors);
 
-    sim_rt.block_on(executor.update_role()).expect("Update role");
+    sim_rt
+        .block_on(executor.update_role())
+        .expect("Update role");
 
     let redis_client = redis::Client::open(redis_url.as_str()).expect("Redis client");
     let pg_pool = sim_rt
