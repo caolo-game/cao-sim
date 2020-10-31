@@ -25,7 +25,7 @@ use arrayvec::ArrayVec;
 use chrono::{DateTime, TimeZone, Utc};
 use lapin::{
     options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
-    options::QueuePurgeOptions, types::FieldTable, BasicProperties,
+    types::FieldTable, BasicProperties,
 };
 use slog::{debug, error, info, o, trace, warn, Logger};
 use uuid::Uuid;
@@ -356,26 +356,8 @@ pub async fn initialize_queen(
     world_state::send_world(executor, world, opts)
         .await
         .expect("Failed to send initial world");
-    // flush the current messages if any
+    // TODO:
+    // flush the current messages in the job queue if any
     // those are left-overs from previous executors
-    executor
-        .amqp_chan
-        .queue_purge(JOB_QUEUE, QueuePurgeOptions { nowait: false })
-        .await
-        .map(|_| ())
-        .unwrap_or_else(|err| {
-            warn!(executor.logger, "Failed to purge job queue {:?}", err);
-        });
-    executor
-        .amqp_chan
-        .queue_purge(JOB_RESULTS_LIST, QueuePurgeOptions { nowait: false })
-        .await
-        .map(|_| ())
-        .unwrap_or_else(|err| {
-            warn!(
-                executor.logger,
-                "Failed to purge job results queue {:?}", err
-            );
-        });
     Ok(())
 }
