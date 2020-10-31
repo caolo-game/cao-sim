@@ -206,6 +206,19 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                 unsafe { &*(&msg_id.get_d4() as *const u64 as *const [u8; 8]) },
             )
             .expect("Failed to parse msgid");
+
+            let msg_time = message.get_world_time();
+            if msg_time != world.time() {
+                error!(
+                    executor.logger,
+                    "Got an intent msg ({}) with invalid timestamp. Expected: {} Actual: {}",
+                    msg_id,
+                    world.time(),
+                    msg_time
+                );
+                continue;
+            }
+
             let status = message_status
                 .entry(msg_id)
                 .or_insert_with(|| ScriptBatchStatus::new(msg_id, 0, executions.len()));
@@ -214,8 +227,18 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                     status.finished = Some(Utc::now());
                     for int in ints {
                         let msg = int.get_payload().expect("Failed to read payload");
-                        let bot_int =
-                            rmp_serde::from_slice(msg).expect("Failed to deserialize BotIntents");
+                        let bot_int = match rmp_serde::from_slice(msg) {
+                            Ok(ints) => ints,
+                            Err(err) => {
+                                error!(
+                                    executor.logger,
+                                    "Failed to deserialize intents of message {} {:?}. Discarding",
+                                    msg_id,
+                                    err
+                                );
+                                continue;
+                            }
+                        };
                         intents.push(bot_int);
                     }
                 }

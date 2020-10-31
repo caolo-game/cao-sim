@@ -42,6 +42,7 @@ pub async fn execute_batch_script_update(
     root.reborrow()
         .set_msg_id(msg_id_msg)
         .map_err(MpExcError::MessageSerializeError)?;
+    root.reborrow().set_world_time(world.time());
     let mut intents_msg = root.reborrow().init_intents(intents.len() as u32);
     for (i, intent) in intents.into_iter().enumerate() {
         let mut intent_msg = intents_msg.reborrow().get(i as u32);
