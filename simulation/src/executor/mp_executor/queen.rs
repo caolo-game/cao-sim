@@ -112,12 +112,12 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
     // those are left-overs from previous executors
     executor
         .amqp_chan
-        .queue_purge(JOB_QUEUE, QueuePurgeOptions { nowait: true })
+        .queue_purge(JOB_QUEUE, QueuePurgeOptions { nowait: false })
         .await
         .map_err(MpExcError::AmqpError)?;
     executor
         .amqp_chan
-        .queue_purge(JOB_RESULTS_LIST, QueuePurgeOptions { nowait: true })
+        .queue_purge(JOB_RESULTS_LIST, QueuePurgeOptions { nowait: false })
         .await
         .map_err(MpExcError::AmqpError)?;
 
