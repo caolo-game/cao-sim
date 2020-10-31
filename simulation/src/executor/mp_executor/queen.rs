@@ -1,4 +1,3 @@
-use options::QueuePurgeOptions;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -25,11 +24,8 @@ use super::{
 use arrayvec::ArrayVec;
 use chrono::{DateTime, TimeZone, Utc};
 use lapin::{
-    options::BasicGetOptions,
-    options::BasicPublishOptions,
-    options::{self, QueueDeclareOptions},
-    types::FieldTable,
-    BasicProperties,
+    options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
+    types::FieldTable, BasicProperties,
 };
 use slog::{debug, error, info, o, trace, warn, Logger};
 use uuid::Uuid;
@@ -94,7 +90,25 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
         .new(o!("tick" => current_world_time, "role" => format!("{}", executor.role)));
     info!(executor.logger, "Tick starting");
 
-    debug!(executor.logger, "Initializing amqp.amqp_chans");
+    debug!(executor.logger, "Initializing amqp.amqp_channels");
+    executor
+        .amqp_chan
+        .queue_declare(
+            JOB_QUEUE,
+            QueueDeclareOptions::default(),
+            FieldTable::default(),
+        )
+        .await
+        .map_err(MpExcError::AmqpError)?;
+    executor
+        .amqp_chan
+        .queue_declare(
+            JOB_RESULTS_LIST,
+            QueueDeclareOptions::default(),
+            FieldTable::default(),
+        )
+        .await
+        .map_err(MpExcError::AmqpError)?;
 
     send_world(executor, world, WorldIoOptionFlags::new()).await?;
 
@@ -354,6 +368,34 @@ pub async fn initialize_queen(
     world: &mut World,
     config: &GameConfig,
 ) -> Result<(), MpExcError> {
+    // flush the current messages in the job queue if any
+    // those are left-overs from previous executors
+    let rt = executor.runtime.tokio_rt.clone();
+    let q_purge = {
+        let logger = executor.logger.clone();
+        // appearantly purge closes the channel...
+        let chan_a = executor.amqp_connection.create_channel();
+        let chan_b = executor.amqp_connection.create_channel();
+        rt.spawn(async move {
+            info!(logger, "Purging job queues");
+            let chan = chan_a.await.map_err(MpExcError::AmqpError)?;
+            chan.queue_purge(JOB_QUEUE, Default::default())
+                .await
+                .unwrap_or_else(|err| {
+                    warn!(logger, "Failed to purge {}: {:?}", err, JOB_QUEUE);
+                    0
+                });
+            let chan = chan_b.await.map_err(MpExcError::AmqpError)?;
+            chan.queue_purge(JOB_RESULTS_LIST, Default::default())
+                .await
+                .unwrap_or_else(|err| {
+                    warn!(logger, "Failed to purge {}: {:?}", err, JOB_QUEUE);
+                    0
+                });
+            Ok(())
+        })
+    };
+
     info!(executor.logger, "Generating map");
     execute_map_generation(executor.logger.clone(), &mut *world, &config)
         .expect("Failed to generate world map");
@@ -363,28 +405,8 @@ pub async fn initialize_queen(
     world_state::send_world(executor, world, opts)
         .await
         .expect("Failed to send initial world");
-    // TODO:
-    // flush the current messages in the job queue if any
-    // those are left-overs from previous executors
-    // TODO:
-    // pls do these in parallel
-    executor
-        .amqp_chan
-        .queue_declare(
-            JOB_QUEUE,
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
-        .await
-        .map_err(MpExcError::AmqpError)?;
-    executor
-        .amqp_chan
-        .queue_declare(
-            JOB_RESULTS_LIST,
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
-        .await
-        .map_err(MpExcError::AmqpError)?;
+
+    q_purge.await.expect("Failed to join queue purge thread")?;
+
     Ok(())
 }

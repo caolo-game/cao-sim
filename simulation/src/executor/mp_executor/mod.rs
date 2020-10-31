@@ -54,7 +54,7 @@ pub struct MpExecutor {
 
     client: RedisClient,
 
-    _amqp_conn: lapin::Connection,
+    amqp_connection: lapin::Connection,
     amqp_chan: lapin::Channel,
 
     role: Role,
@@ -172,7 +172,7 @@ impl MpExecutor {
                 runtime: rt.clone(),
                 tag,
                 logger,
-                _amqp_conn: amqp_conn,
+                amqp_connection: amqp_conn,
                 amqp_chan: channel,
                 role: Role::Drone(Drone { queen_mutex }),
                 client,
