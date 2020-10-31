@@ -1,3 +1,4 @@
+use options::QueuePurgeOptions;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -24,8 +25,11 @@ use super::{
 use arrayvec::ArrayVec;
 use chrono::{DateTime, TimeZone, Utc};
 use lapin::{
-    options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
-    types::FieldTable, BasicProperties,
+    options::BasicGetOptions,
+    options::BasicPublishOptions,
+    options::{self, QueueDeclareOptions},
+    types::FieldTable,
+    BasicProperties,
 };
 use slog::{debug, error, info, o, trace, warn, Logger};
 use uuid::Uuid;
@@ -91,26 +95,6 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
     info!(executor.logger, "Tick starting");
 
     debug!(executor.logger, "Initializing amqp.amqp_chans");
-    // TODO:
-    // pls do these in parallel
-    let _job_q = executor
-        .amqp_chan
-        .queue_declare(
-            JOB_QUEUE,
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
-        .await
-        .map_err(MpExcError::AmqpError)?;
-    let _result_q = executor
-        .amqp_chan
-        .queue_declare(
-            JOB_RESULTS_LIST,
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
-        .await
-        .map_err(MpExcError::AmqpError)?;
 
     send_world(executor, world, WorldIoOptionFlags::new()).await?;
 
@@ -382,5 +366,25 @@ pub async fn initialize_queen(
     // TODO:
     // flush the current messages in the job queue if any
     // those are left-overs from previous executors
+    // TODO:
+    // pls do these in parallel
+    executor
+        .amqp_chan
+        .queue_declare(
+            JOB_QUEUE,
+            QueueDeclareOptions::default(),
+            FieldTable::default(),
+        )
+        .await
+        .map_err(MpExcError::AmqpError)?;
+    executor
+        .amqp_chan
+        .queue_declare(
+            JOB_RESULTS_LIST,
+            QueueDeclareOptions::default(),
+            FieldTable::default(),
+        )
+        .await
+        .map_err(MpExcError::AmqpError)?;
     Ok(())
 }
