@@ -118,8 +118,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
     // split the work (TODO how?)
     // for now let's split it into groups of `chunk_size`
     let chunk_size = executor.options.script_chunk_size;
-    let _guard = executor.runtime.tokio_rt.enter();
-    let mut message_status: HashMap<_, _> = executions
+    let message_status_futures: Vec<_> = executions
         .par_chunks(chunk_size)
         .enumerate()
         // skip the first chunk, let's execute it on this node
@@ -147,20 +146,22 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             (msg_id, job)
         })
         .try_fold(
-            || HashMap::with_capacity(executions.len() / chunk_size + 1),
+            || Vec::with_capacity(executions.len() / chunk_size + 1),
             |mut message_status, (msg_id, job)| {
-                let job = executor
-                    .runtime
-                    .block_on(job)
-                    .expect("Failed to join tokio task")?;
-                message_status.insert(msg_id, job);
+                message_status.push((msg_id, job));
                 Ok(message_status)
             },
         )
-        .try_reduce(HashMap::new, |a, mut b| {
+        .try_reduce(Vec::new, |a, mut b| {
             b.extend(a);
             Ok(b)
         })?;
+
+    let mut message_status = HashMap::with_capacity(message_status_futures.len());
+    for (msg_id, future) in message_status_futures {
+        let status = future.await.expect("Failed to join enqueue job")?;
+        message_status.insert(msg_id, status);
+    }
 
     debug!(executor.logger, "Executing the first chunk");
     let mut intents: Vec<BotIntents> = match executions.chunks(chunk_size).next() {
