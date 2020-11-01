@@ -16,7 +16,7 @@ build="build.rs"
 
 [features]
 default = ["mp_executor"]
-mp_executor = ["capnpc", "capnp", "sqlx", "serde_json", "rmp-serde", "lapin", "tokio-amqp"]
+mp_executor = ["capnpc", "capnp", "sqlx", "serde_json", "rmp-serde", "lapin", "async-amqp", "async-std"]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
 
@@ -29,7 +29,6 @@ cao_storage_derive = { path = "../cao-storage-derive" }
 cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, features=["http"] }
 
 rayon = { version="1" }
-tokio = { version = "0.3", features = ["rt", "stream"] }
 
 slog = { version="2", features=["max_level_trace", "release_max_level_info"] }
 slog-async = "*"
@@ -49,11 +48,13 @@ lazy_static = { version="1", optional=true }
 serde_json = { version="1", optional=true }
 rmp-serde = { version="0.14", optional=true }
 capnp = { version="0.13", optional=true }
-sqlx = { version="0.4.0-beta.1", default-features=false, features=["postgres", "chrono", "tls", "uuid", "runtime-tokio", "macros"], optional=true}
+sqlx = { version="0.4.0-beta.1", features=["postgres", "chrono", "tls", "uuid", "macros"], optional=true}
 lapin = { version= "1", optional=true }
-tokio-amqp = { version="0.2", optional=true }
+async-amqp = { version="0.1", optional=true }
+async-std = { version="*", optional=true }
 
 [dev-dependencies]
+async-std = { version="*", features=["attributes"] }
 criterion = "0.3"
 serde_json = "*"
 # env_logger needs to be compiled without default features so the test suite can capture the logs

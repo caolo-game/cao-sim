@@ -39,11 +39,7 @@ impl<Id: TableId> Component<Id> for Time {
 }
 
 #[derive(Clone)]
-pub struct RuntimeGuard {
-    /// This underlying executor is subject to change so let's not publish that...
-    #[cfg(feature = "mp_executor")]
-    pub(crate) tokio_rt: std::sync::Arc<tokio::runtime::Runtime>,
-}
+pub struct RuntimeGuard {}
 
 #[cfg(feature = "mp_executor")]
 impl RuntimeGuard {
@@ -51,12 +47,7 @@ impl RuntimeGuard {
     where
         F: std::future::Future,
     {
-        self.tokio_rt.block_on(f)
-    }
-
-    /// Enter the underlying runtime context
-    pub fn enter<'a>(&'a self) -> impl Sized + 'a {
-        self.tokio_rt.enter()
+        async_std::task::block_on(f)
     }
 }
 
@@ -64,21 +55,5 @@ impl RuntimeGuard {
 /// let _cao_rt = caolo_sim::init_runtime();
 /// ```
 pub fn init_runtime() -> RuntimeGuard {
-    #[cfg(feature = "mp_executor")]
-    {
-        let tokio_rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .worker_threads(4)
-            .build()
-            .expect("Failed to init tokio runtime");
-
-        RuntimeGuard {
-            #[cfg(feature = "mp_executor")]
-            tokio_rt: std::sync::Arc::new(tokio_rt),
-        }
-    }
-    #[cfg(not(feature = "mp_executor"))]
-    {
-        RuntimeGuard {}
-    }
+    RuntimeGuard {}
 }

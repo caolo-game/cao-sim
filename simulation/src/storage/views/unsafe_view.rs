@@ -23,7 +23,6 @@ impl<Id: TableId, C: Component<Id>> UnsafeView<Id, C> {
         let res: UnsafeView<Id, C> = Self(ptr);
         res
     }
-
 }
 
 impl<Id: TableId, C: Component<Id>> FromWorldMut for UnsafeView<Id, C>
@@ -33,7 +32,6 @@ where
     fn new(w: &mut World) -> Self {
         <World as HasTable<Id, C>>::unsafe_view(w)
     }
-
 }
 
 impl<Id: TableId, C: Component<Id>> Clone for UnsafeView<Id, C> {

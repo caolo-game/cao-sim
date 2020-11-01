@@ -12,13 +12,13 @@ pub use self::error::*;
 pub use self::queen::*;
 
 use capnp::{message::ReaderOptions, message::TypedReader, serialize::try_read_message};
-use chrono::{DateTime, Duration, TimeZone, Utc};
+use chrono::{DateTime, Duration, Utc};
 use execute::execute_batch_script_update;
 use lapin::options::BasicGetOptions;
 
+use async_amqp::*;
 use slog::{debug, error, info, o, Drain, Logger};
 use std::fmt::Display;
-use tokio_amqp::*;
 use uuid::Uuid;
 use world_state::{update_world, WorldIoOptionFlags};
 
@@ -65,16 +65,16 @@ pub struct MpExecutor {
 #[derive(Debug, Clone, Copy)]
 pub enum Role {
     /// This is the main/coordinator instance
-    Queen(Queen),
+    Queen,
     /// This is a worker instance
-    Drone(Drone),
+    Drone,
 }
 
 impl Display for Role {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Role::Queen(_) => write!(f, "Queen"),
-            Role::Drone(_) => write!(f, "Drone"),
+            Role::Queen => write!(f, "Queen"),
+            Role::Drone => write!(f, "Drone"),
         }
     }
 }
@@ -109,17 +109,17 @@ impl Default for ExecutorOptions {
 
 impl MpExecutor {
     pub async fn new(
+        role: Role,
         rt: &RuntimeGuard,
         logger: impl Into<Option<Logger>>,
         options: impl Into<Option<ExecutorOptions>>,
     ) -> Result<Self, MpExcError> {
         async fn _new(
+            role: Role,
             rt: &RuntimeGuard,
             logger: Logger,
             options: ExecutorOptions,
         ) -> Result<MpExecutor, MpExcError> {
-            let _g = rt.tokio_rt.enter();
-
             info!(
                 logger,
                 "Connecting to postgres, url {}", &options.postgres_url
@@ -130,12 +130,10 @@ impl MpExecutor {
                 .connect(options.postgres_url.as_str())
                 .await?;
 
-            let queen_mutex = Utc.timestamp_millis(0);
-
             info!(logger, "Connecting to amqp, url {}", &options.amqp_url);
             let amqp_conn = lapin::Connection::connect(
                 options.amqp_url.as_str(),
-                lapin::ConnectionProperties::default().with_tokio(rt.tokio_rt.clone()),
+                lapin::ConnectionProperties::default().with_async_std(),
             )
             .await
             .map_err(MpExcError::AmqpError)?;
@@ -145,7 +143,7 @@ impl MpExecutor {
                 .await
                 .map_err(MpExcError::AmqpError)?;
 
-            let tag = uuid::Uuid::new_v4();
+            let tag = Uuid::new_v4();
             info!(logger, "Finished setting up Executor, tag {}", tag);
 
             Ok(MpExecutor {
@@ -155,7 +153,7 @@ impl MpExecutor {
                 logger,
                 amqp_connection: amqp_conn,
                 amqp_chan: channel,
-                role: Role::Drone(Drone { queen_mutex }),
+                role,
                 options,
             })
         }
@@ -168,7 +166,7 @@ impl MpExecutor {
             slog::Logger::root(drain, o!())
         });
 
-        _new(rt, logger.clone(), options.into().unwrap_or_default())
+        _new(role, rt, logger.clone(), options.into().unwrap_or_default())
             .await
             .map_err(|err| {
                 error!(logger, "Failed to initialize Executor {:?}", err);
@@ -178,36 +176,7 @@ impl MpExecutor {
 
     /// Check if this instance is the Queen and if so still holds the mutex.
     pub fn is_queen(&self) -> bool {
-        match self.role {
-            Role::Queen(Queen { queen_mutex }) => Utc::now() < queen_mutex,
-            Role::Drone(_) => false,
-        }
-    }
-
-    /// Returns the current role of this instance
-    pub async fn update_role(&mut self) -> Result<&Role, MpExcError> {
-        debug!(self.logger, "Updating role of a {:?} process", self.role);
-        self.role = match self.role {
-            Role::Queen(p) => {
-                p.update_role(
-                    self.logger.clone(),
-                    &mut self.pool.acquire().await?,
-                    self.tag,
-                    self.options.queen_mutex_expiry_ms,
-                )
-                .await?
-            }
-            Role::Drone(d) => {
-                d.update_role(
-                    self.logger.clone(),
-                    &mut self.pool.acquire().await?,
-                    self.tag,
-                    self.options.queen_mutex_expiry_ms,
-                )
-                .await?
-            }
-        };
-        Ok(&self.role)
+        matches!(self.role, Role::Queen)
     }
 
     /// Execute until the queue is empty
@@ -234,9 +203,10 @@ impl MpExecutor {
                     options = options.all();
                 }
                 update_world(self, world, Some(expected_time), options).await?;
-                self.logger = world
-                    .logger
-                    .new(o!("tick" => world.time(), "role" => format!("{}", self.role)));
+                self.logger = world.logger.new(o!(
+                            "tag" => self.tag.to_string(),
+                            "tick" => world.time(),
+                            "role" => format!("{}", self.role)));
 
                 info!(self.logger, "Updating world done",);
             }
@@ -245,13 +215,11 @@ impl MpExecutor {
                     .get_msg_id()
                     .map_err(MpExcError::MessageDeserializeError)?;
 
-                let msg_id = uuid::Uuid::from_fields(
-                    msg_id.get_d1(),
-                    msg_id.get_d2(),
-                    msg_id.get_d3(),
-                    unsafe { &*(&msg_id.get_d4() as *const u64 as *const [u8; 8]) },
-                )
-                .expect("Failed to deserialize msg id");
+                let msg_id =
+                    Uuid::from_fields(msg_id.get_d1(), msg_id.get_d2(), msg_id.get_d3(), unsafe {
+                        &*(&msg_id.get_d4() as *const u64 as *const [u8; 8])
+                    })
+                    .expect("Failed to deserialize msg id");
                 error!(
                     self.logger,
                     "Failed to aquire expected world: {}. Skipping job {}", expected_time, msg_id
@@ -303,11 +271,9 @@ impl Executor for MpExecutor {
             if let Some(logger) = logger.as_ref() {
                 self.logger = logger.clone();
             }
-            info!(self.logger, "Initializing cao-sim mp-executor");
-            self.update_role().await?;
             info!(self.logger, "Initializing Storage");
             let mut world = init_inmemory_storage(self.logger.clone());
-            if matches!(self.role, Role::Queen(_)) {
+            if matches!(self.role, Role::Queen) {
                 info!(self.logger, "Initializing Queen");
                 queen::initialize_queen(self, &mut world, &config).await?;
             }
@@ -319,10 +285,9 @@ impl Executor for MpExecutor {
         profile!("world_forward");
         let rt = self.runtime.clone();
         rt.block_on(async move {
-            self.update_role().await?;
             match self.role {
-                Role::Queen(_) => queen::forward_queen(self, world).await?,
-                Role::Drone(_) => drone::forward_drone(self, world).await?,
+                Role::Queen => queen::forward_queen(self, world).await?,
+                Role::Drone => drone::forward_drone(self, world).await?,
             }
             Ok(())
         })
