@@ -60,6 +60,10 @@ where
         })
     }
 
+    pub fn iter_rooms(&self) -> impl Iterator<Item = (Room, &MortonTable<Axial, Row>)> {
+        self.table.iter().map(|(room, table)| (Room(room), table))
+    }
+
     /// Shallow clear,
     /// leaves the 'overworld' level intact and clears the rooms.
     pub fn clear(&mut self) {
@@ -130,8 +134,8 @@ where
                 .iter()
                 .map(|(wp, _)| {
                     MortonKey::new(
-                        u16::try_from(wp.room.q).unwrap(),
-                        u16::try_from(wp.room.r).unwrap(),
+                        u16::try_from(wp.room.q).expect("expected room q to fit into u16"),
+                        u16::try_from(wp.room.r).expect("expected room r to fit into u16"),
                     )
                 })
                 .collect::<Vec<_>>();
@@ -151,20 +155,19 @@ where
         // TODO invidual extends can run in parallel
         let mut iter = self.table.iter_mut();
         iter.try_for_each(move |(room_id, ref mut room)| {
-            if let Some(items) = groups.get(&room_id) {
-                // extend each group by their corresponding values
-                room.extend(
-                    items
-                        .iter()
-                        .map(|(WorldPosition { pos, .. }, row)| (*pos, row.clone())),
-                )
-                .map_err(|error| ExtendFailure::InnerExtendFailure {
-                    room: room_id,
-                    error,
-                })
-            } else {
-                Ok(())
-            }
+            let items = groups
+                .get(&room_id)
+                .ok_or_else(|| ExtendFailure::RoomNotExists(room_id))?;
+            // extend each group by their corresponding values
+            room.extend(
+                items
+                    .iter()
+                    .map(|(WorldPosition { pos, .. }, row)| (*pos, row.clone())),
+            )
+            .map_err(|error| ExtendFailure::InnerExtendFailure {
+                room: room_id,
+                error,
+            })
         })?;
 
         Ok(())
