@@ -57,7 +57,7 @@ COPY --from=deps /caolo/target ./target
 COPY --from=deps /caolo/Cargo.lock ./Cargo.lock
 
 COPY ./migrations ./migrations
-COPY ./build.sh ./build.sh
+COPY ./bash-scripts/build.sh ./build.sh
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./simulation/ ./simulation/
 COPY ./cao-storage-derive/ ./cao-storage-derive/
@@ -75,11 +75,11 @@ RUN apt-get install libssl-dev libcurl4-openssl-dev -y
 # RUN apt-get install valgrind -y
 # RUN apt-get install heaptrack -y
 
-
+COPY ./bash-scripts/ ./
 COPY ./migrations ./migrations
 COPY ./diesel.toml ./diesel.toml
 COPY --from=build /caolo/target/release/caolo-worker ./caolo-worker
 COPY --from=build /caolo/bin/diesel ./diesel
 COPY ./worker/run-profile.sh ./run-profile.sh
 
-ENTRYPOINT [ "./caolo-worker" ]
+ENTRYPOINT [ "./run.sh" ]
