@@ -18,11 +18,11 @@ use super::{
     parse_script_batch_result,
     world_state::WorldIoOptionFlags,
     world_state::{self, send_world},
-    MpExcError, MpExecutor, Role, ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST, QUEEN_MUTEX,
+    MpExcError, MpExecutor, Role, ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST,
 };
 
 use arrayvec::ArrayVec;
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use lapin::{
     options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
     types::FieldTable, BasicProperties,
@@ -37,49 +37,44 @@ pub struct Queen {
 }
 
 impl Queen {
-    pub async fn update_role(
+    pub async fn update_role<'a>(
         mut self,
         logger: Logger,
-        connection: &mut redis::aio::Connection,
-        new_expiry: i64,
+        connection: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
+        id: Uuid,
         mutex_expiry_ms: i64,
     ) -> Result<Role, MpExcError> {
-        // add a bit of bias to let the current Queen re-aquire first
-        let res: Option<Vec<String>> = redis::pipe()
-            .getset(QUEEN_MUTEX, new_expiry)
-            .expire(
-                QUEEN_MUTEX,
-                (mutex_expiry_ms / 1000) as usize + 1, // round up
-            )
-            .ignore()
-            .query_async(connection)
-            .await
-            .map_err(MpExcError::RedisError)?;
-        let res: Option<i64> = res
-            .as_ref()
-            .and_then(|s| s.get(0))
-            .and_then(|s| s.parse().ok());
-        let res = match res {
-            Some(res) if res != self.queen_mutex.timestamp_millis() => {
-                // another process aquired the mutex
-                info!(
-                    logger,
-                    "Another process has been promoted to Queen. Demoting this process to Drone"
-                );
-                Role::Drone(Drone {
-                    queen_mutex: Utc.timestamp_millis(res),
-                })
-            }
-            _ => {
-                self.queen_mutex = Utc.timestamp_millis(new_expiry);
-                debug!(
-                    logger,
-                    "Queen mutex has been re-aquired until {}", self.queen_mutex
-                );
-                Role::Queen(self)
-            }
-        };
-        Ok(res)
+        let new_expiry = Utc::now() + chrono::Duration::milliseconds(mutex_expiry_ms);
+        struct MxRes {
+            f1: Option<Uuid>,
+            f2: Option<DateTime<Utc>>,
+        }
+
+        let result = sqlx::query_as!(
+            MxRes,
+            r#"SELECT * FROM caolo_sim_try_aquire_queen_mutex($1, $2)"#,
+            id,
+            new_expiry
+        )
+        .fetch_one(connection)
+        .await?;
+
+        let queen_id = result.f1.expect("Expected mutex aquire to return a row");
+        let queen_cont = result.f2.expect("Expected mutex aquire to return a row");
+
+        if queen_id == id {
+            self.queen_mutex = queen_cont;
+            return Ok(Role::Queen(self));
+        }
+
+        warn!(
+            logger,
+            "Another process: {} aquired the queen mutex. Demoting to Drone", queen_id
+        );
+
+        Ok(Role::Drone(Drone {
+            queen_mutex: queen_cont,
+        }))
     }
 }
 
@@ -149,7 +144,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             || Vec::with_capacity(executions.len() / chunk_size + 1),
             |mut message_status, (msg_id, job)| {
                 message_status.push((msg_id, job));
-                Ok(message_status)
+                Ok::<_, MpExcError>(message_status)
             },
         )
         .try_reduce(Vec::new, |a, mut b| {
@@ -393,7 +388,7 @@ pub async fn initialize_queen(
                     warn!(logger, "Failed to purge {}: {:?}", err, JOB_QUEUE);
                     0
                 });
-            Ok(())
+            Ok::<_, MpExcError>(())
         })
     };
 

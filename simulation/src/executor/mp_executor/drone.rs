@@ -2,11 +2,12 @@ use crate::prelude::World;
 
 use super::{
     queen::Queen, world_state::update_world, world_state::WorldIoOptionFlags, MpExcError,
-    MpExecutor, Role, QUEEN_MUTEX,
+    MpExecutor, Role,
 };
 
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use slog::{debug, info, o, Logger};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Drone {
@@ -15,41 +16,44 @@ pub struct Drone {
 }
 
 impl Drone {
-    pub async fn update_role(
+    pub async fn update_role<'a>(
         mut self,
         logger: Logger,
-        connection: &mut redis::aio::Connection,
-        now: DateTime<Utc>,
-        new_expiry: i64,
+        connection: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
+        id: Uuid,
         mutex_expiry_ms: i64,
     ) -> Result<Role, MpExcError> {
-        // add a bit of bias to let the current Queen re-aquire first
-        let queen_expired = now.timestamp_millis() >= (self.queen_mutex.timestamp_millis() + 50);
-        if !queen_expired {
-            return Ok(Role::Drone(self));
+        let new_expiry = Utc::now() + chrono::Duration::milliseconds(mutex_expiry_ms);
+
+        struct MxRes {
+            f1: Option<Uuid>,
+            f2: Option<DateTime<Utc>>,
         }
-        debug!(logger, "Queen mutex has expired. Attempting to aquire");
-        let (success, res) = redis::pipe()
-            .cmd("SET")
-            .arg(QUEEN_MUTEX)
-            .arg(new_expiry)
-            .arg("NX")
-            .arg("PX")
-            .arg(mutex_expiry_ms)
-            .get(QUEEN_MUTEX)
-            .query_async(connection)
-            .await
-            .map_err(MpExcError::RedisError)?;
+
+        let result = sqlx::query_as!(
+            MxRes,
+            r#"SELECT * FROM caolo_sim_try_aquire_queen_mutex($1, $2)"#,
+            id,
+            new_expiry
+        )
+        .fetch_one(connection)
+        .await?;
+
+        let queen_id = result.f1.expect("Expected mutex aquire to return a row");
+        let queen_cont = result.f2.expect("Expected mutex aquire to return a row");
+
+        let success = id == queen_id;
+
         Ok(if success {
             info!(
                 logger,
                 "Aquired Queen mutex. Promoting this process to Queen"
             );
             Role::Queen(Queen {
-                queen_mutex: Utc.timestamp_millis(res),
+                queen_mutex: queen_cont,
             })
         } else {
-            self.queen_mutex = Utc.timestamp_millis(res);
+            self.queen_mutex = queen_cont;
             debug!(logger, "Another process aquired the mutex.");
             Role::Drone(self)
         })
