@@ -7,7 +7,7 @@ use cao_messages::command_capnp::command_result;
 use caolo_sim::prelude::*;
 use capnp::message::{ReaderOptions, TypedReader};
 use capnp::serialize::try_read_message;
-use redis::Commands;
+use lapin::options::BasicGetOptions;
 use slog::{error, o, trace, warn, Logger};
 
 type InputMsg = TypedReader<capnp::serialize::OwnedSegments, input_message::Owned>;
@@ -85,25 +85,27 @@ fn handle_single_message(
     Ok(msg_id)
 }
 
-pub fn handle_messages(
+pub async fn handle_messages(
     logger: Logger,
     storage: &mut World,
-    connection: &mut redis::Connection,
+    channel: lapin::Channel,
 ) -> anyhow::Result<()> {
     trace!(logger, "handling incoming messages");
 
     let mut response = Vec::with_capacity(1_000_000);
 
     // log errors, but otherwise ignore them, so the loop may continue, retrying later
-    while let Ok(Some(message)) = connection
-        .rpop::<_, Option<Vec<u8>>>("INPUTS")
+    while let Ok(Some(message)) = channel
+        .basic_get("INPUTS", BasicGetOptions { no_ack: true })
+        .await
         .map_err(|e| {
             error!(logger, "Failed to GET message {:?}", e);
         })
         .map::<Option<InputMsg>, _>(|message| {
             message.and_then(|message| {
+                let delivery = message.delivery;
                 try_read_message(
-                    message.as_slice(),
+                    delivery.data.as_slice(),
                     ReaderOptions {
                         traversal_limit_in_words: 512,
                         nesting_limit: 64,
@@ -119,9 +121,8 @@ pub fn handle_messages(
     {
         match handle_single_message(&logger, message, storage, &mut response) {
             Ok(msg_id) => {
-                let _: () = connection
-                    .set_ex(format!("{}", msg_id), response.as_slice(), 30)
-                    .expect("Failed to send command result");
+                // TODO
+                error!(logger, "Message response not implemented!");
             }
             Err(err) => {
                 error!(logger, "Message handling failed, {:?}", err);

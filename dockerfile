@@ -42,22 +42,28 @@ COPY ./.cargo/ ./.cargo/
 RUN cargo --version
 
 RUN apt-get update
-RUN apt-get install lld clang capnproto -y --fix-missing
+RUN apt-get install lld clang capnproto postgresql postgresql-contrib sudo -y --fix-missing
 
 WORKDIR /caolo
+
+RUN cargo install diesel_cli --no-default-features --features=postgres --root .
+
+ENV DATABASE_URL=postgres://postgres:postgres@localhost:5432/caolo
+
 
 # copy the cache
 COPY --from=deps $CARGO_HOME $CARGO_HOME
 COPY --from=deps /caolo/target ./target
 COPY --from=deps /caolo/Cargo.lock ./Cargo.lock
 
+COPY ./migrations ./migrations
+COPY ./build.sh ./build.sh
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./simulation/ ./simulation/
 COPY ./cao-storage-derive/ ./cao-storage-derive/
 COPY ./worker/ ./worker/
 
-WORKDIR /caolo/worker
-RUN cargo build --release --no-default-features --features=jemallocator
+RUN ./build.sh
 
 # ========== Copy the built binary to a scratch container, to minimize the image size ==========
 
@@ -70,7 +76,10 @@ RUN apt-get install libssl-dev libcurl4-openssl-dev -y
 # RUN apt-get install heaptrack -y
 
 
+COPY ./migrations ./migrations
+COPY ./diesel.toml ./diesel.toml
 COPY --from=build /caolo/target/release/caolo-worker ./caolo-worker
+COPY --from=build /caolo/bin/diesel ./diesel
 COPY ./worker/run-profile.sh ./run-profile.sh
 
 ENTRYPOINT [ "./caolo-worker" ]
