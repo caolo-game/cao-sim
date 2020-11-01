@@ -16,7 +16,7 @@ build="build.rs"
 
 [features]
 default = ["mp_executor"]
-mp_executor = ["capnpc", "capnp", "redis", "serde_json", "rmp-serde", "lapin", "tokio-amqp"]
+mp_executor = ["capnpc", "capnp", "sqlx", "serde_json", "rmp-serde", "lapin", "tokio-amqp"]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
 
@@ -49,7 +49,7 @@ lazy_static = { version="1", optional=true }
 serde_json = { version="1", optional=true }
 rmp-serde = { version="0.14", optional=true }
 capnp = { version="0.13", optional=true }
-redis = { version= "0.16", features=["tokio-comp"], optional=true }
+sqlx = { version="0.4.0-beta.1", default-features=false, features=["postgres", "chrono", "tls", "uuid", "runtime-tokio", "macros"], optional=true}
 lapin = { version= "1", optional=true }
 tokio-amqp = { version="0.2", optional=true }
 

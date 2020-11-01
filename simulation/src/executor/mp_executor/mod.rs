@@ -2,18 +2,19 @@
 //!
 
 mod drone;
+mod error;
 pub mod execute;
 mod queen;
 pub mod world_state;
 
 pub use self::drone::*;
+pub use self::error::*;
 pub use self::queen::*;
 
 use capnp::{message::ReaderOptions, message::TypedReader, serialize::try_read_message};
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use execute::execute_batch_script_update;
 use lapin::options::BasicGetOptions;
-use redis::Client as RedisClient;
 
 use slog::{debug, error, info, o, Drain, Logger};
 use std::fmt::Display;
@@ -31,7 +32,6 @@ use crate::{
 
 use super::Executor;
 
-pub const QUEEN_MUTEX: &str = "CAO_QUEEN_MUTEX";
 pub const WORLD_ENTITIES: &str = "CAO_WORLD_ENTITIES";
 pub const WORLD_CONFIG: &str = "CAO_WORLD_CONFIG";
 pub const WORLD_USERS: &str = "CAO_WORLD_USERS";
@@ -50,16 +50,16 @@ type ScriptBatchResultReader =
 pub struct MpExecutor {
     pub logger: Logger,
     pub options: ExecutorOptions,
-    pub tag: String,
+    pub tag: Uuid,
 
-    client: RedisClient,
+    pub pool: sqlx::postgres::PgPool,
 
-    amqp_connection: lapin::Connection,
-    amqp_chan: lapin::Channel,
+    pub amqp_connection: lapin::Connection,
+    pub amqp_chan: lapin::Channel,
 
-    role: Role,
+    pub role: Role,
 
-    runtime: RuntimeGuard,
+    pub runtime: RuntimeGuard,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -81,7 +81,7 @@ impl Display for Role {
 
 #[derive(Debug)]
 pub struct ExecutorOptions {
-    pub redis_url: String,
+    pub postgres_url: String,
     pub amqp_url: String,
 
     pub queen_mutex_expiry_ms: i64,
@@ -92,45 +92,19 @@ pub struct ExecutorOptions {
 
 impl Default for ExecutorOptions {
     fn default() -> Self {
-        let redis_url =
-            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
+        let postgres_url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://postgres:admin@localhost:5432/caolo".to_owned());
         let amqp_url = std::env::var("AMQP_ADDR")
             .or_else(|_| std::env::var("CLOUDAMQP_URL"))
             .unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".to_owned());
         Self {
-            redis_url,
+            postgres_url,
             amqp_url,
             queen_mutex_expiry_ms: 2000,
             script_chunk_size: 1024,
             expected_frequency: Duration::seconds(1),
         }
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum MpExcError {
-    #[error("Redis error: {0:?}")]
-    RedisError(redis::RedisError),
-
-    #[error("Failed to serialize the world state: {0:?}")]
-    WorldSerializeError(rmp_serde::encode::Error),
-
-    #[error("Failed to deserialize the world state: {0:?}")]
-    WorldDeserializeError(rmp_serde::decode::Error),
-
-    #[error("Failed to serialize message {0:?}")]
-    MessageSerializeError(capnp::Error),
-    #[error("Failed to deserialize message {0:?}")]
-    MessageDeserializeError(capnp::Error),
-
-    #[error("The queen node lost its mutex while executing a world update")]
-    QueenRoleLost,
-
-    #[error("AmqpError {0:?}")]
-    AmqpError(lapin::Error),
-
-    #[error("Time mismatch while updating world. Requested: {requested}. Actual: {actual}")]
-    WorldTimeMismatch { requested: u64, actual: u64 },
 }
 
 impl MpExecutor {
@@ -146,9 +120,16 @@ impl MpExecutor {
         ) -> Result<MpExecutor, MpExcError> {
             let _g = rt.tokio_rt.enter();
 
-            info!(logger, "Connecting to redis, url {}", &options.redis_url);
-            let client =
-                RedisClient::open(options.redis_url.as_str()).map_err(MpExcError::RedisError)?;
+            info!(
+                logger,
+                "Connecting to postgres, url {}", &options.postgres_url
+            );
+            let pool = sqlx::postgres::PgPoolOptions::new()
+                .max_connections(4)
+                .min_connections(2)
+                .connect(options.postgres_url.as_str())
+                .await?;
+
             let queen_mutex = Utc.timestamp_millis(0);
 
             info!(logger, "Connecting to amqp, url {}", &options.amqp_url);
@@ -164,18 +145,17 @@ impl MpExecutor {
                 .await
                 .map_err(MpExcError::AmqpError)?;
 
-            let tag = format!("{}", uuid::Uuid::new_v4());
-
+            let tag = uuid::Uuid::new_v4();
             info!(logger, "Finished setting up Executor, tag {}", tag);
 
             Ok(MpExecutor {
                 runtime: rt.clone(),
+                pool,
                 tag,
                 logger,
                 amqp_connection: amqp_conn,
                 amqp_chan: channel,
                 role: Role::Drone(Drone { queen_mutex }),
-                client,
                 options,
             })
         }
@@ -207,22 +187,12 @@ impl MpExecutor {
     /// Returns the current role of this instance
     pub async fn update_role(&mut self) -> Result<&Role, MpExcError> {
         debug!(self.logger, "Updating role of a {:?} process", self.role);
-        let now = Utc::now();
-        let new_expiry: i64 =
-            (now + Duration::milliseconds(self.options.queen_mutex_expiry_ms)).timestamp_millis();
-
-        let mut connection = self
-            .client
-            .get_async_connection()
-            .await
-            .map_err(MpExcError::RedisError)?;
-
         self.role = match self.role {
             Role::Queen(p) => {
                 p.update_role(
                     self.logger.clone(),
-                    &mut connection,
-                    new_expiry,
+                    &mut self.pool.acquire().await?,
+                    self.tag,
                     self.options.queen_mutex_expiry_ms,
                 )
                 .await?
@@ -230,9 +200,8 @@ impl MpExecutor {
             Role::Drone(d) => {
                 d.update_role(
                     self.logger.clone(),
-                    &mut connection,
-                    now,
-                    new_expiry,
+                    &mut self.pool.acquire().await?,
+                    self.tag,
                     self.options.queen_mutex_expiry_ms,
                 )
                 .await?

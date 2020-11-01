@@ -1,6 +1,5 @@
 use std::{collections::hash_map::DefaultHasher, hash::Hasher};
 
-use redis::Client as RedisClient;
 use serde::{de::DeserializeOwned, Serialize};
 use slog::{debug, error, info, Logger};
 
@@ -68,24 +67,30 @@ impl WorldIoOptionFlags {
 }
 
 pub async fn get_timed_state<'a, T>(
-    client: &'a RedisClient,
+    client: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
     key: &'a str,
     requested_time: Option<u64>,
 ) -> Result<TimeCodedDe<T>, MpExcError>
 where
     T: DeserializeOwned + 'static,
 {
-    let mut connection = client
-        .get_async_connection()
-        .await
-        .map_err(MpExcError::RedisError)?;
-    let store: Vec<Vec<u8>> = redis::pipe()
-        .get(key)
-        .query_async(&mut connection)
-        .await
-        .map_err(MpExcError::RedisError)?;
-    let data: TimeCodedDe<T> =
-        rmp_serde::from_read(&store[0][..]).map_err(MpExcError::WorldDeserializeError)?;
+    struct Foo {
+        value_message_packed: Vec<u8>,
+    }
+    let data = sqlx::query_as!(
+        Foo,
+        r#"
+    SELECT value_message_packed
+    FROM world
+    WHERE field=$1
+        "#,
+        key
+    )
+    .fetch_one(client)
+    .await
+    .map_err(MpExcError::SqlxError)?;
+    let data: TimeCodedDe<T> = rmp_serde::from_read(data.value_message_packed.as_slice())
+        .map_err(MpExcError::WorldDeserializeError)?;
     match requested_time {
         Some(requested_time) if data.time != requested_time => Err(MpExcError::WorldTimeMismatch {
             requested: requested_time,
@@ -112,22 +117,37 @@ pub async fn update_world<'a>(
     // Create the get+deserialize task for each Store
     // Spawn the task on the tokio runtime
     //
-    let entities = get_timed_state(&executor.client, WORLD_ENTITIES, requested_time);
+    let entities = {
+        let mut conn = executor.pool.acquire().await?;
+        async move { get_timed_state(&mut conn, WORLD_ENTITIES, requested_time).await }
+    };
     let entities = rt.spawn(entities);
 
     // config isn't updated every tick
-    let config = get_timed_state(&executor.client, WORLD_CONFIG, None);
+    let config = {
+        let mut conn = executor.pool.acquire().await?;
+        async move { get_timed_state(&mut conn, WORLD_CONFIG, None).await }
+    };
     let config = rt.spawn(config);
 
-    let users = get_timed_state(&executor.client, WORLD_USERS, requested_time);
+    let users = {
+        let mut conn = executor.pool.acquire().await?;
+        async move { get_timed_state(&mut conn, WORLD_USERS, requested_time).await }
+    };
     let users = rt.spawn(users);
 
-    let scripts = get_timed_state(&executor.client, WORLD_SCRIPTS, requested_time);
+    let scripts = {
+        let mut conn = executor.pool.acquire().await?;
+        async move { get_timed_state(&mut conn, WORLD_SCRIPTS, requested_time).await }
+    };
     let scripts = rt.spawn(scripts);
 
     if options.has_option(WorldIoOptions::Terrain) {
         // terrain isn't updated every tick
-        let terrain = get_timed_state(&executor.client, WORLD_TERRAIN, None);
+        let terrain = {
+            let mut conn = executor.pool.acquire().await?;
+            async move { get_timed_state(&mut conn, WORLD_TERRAIN, None).await }
+        };
         let terrain = rt.spawn(terrain);
         let terrain = terrain
             .await
@@ -217,60 +237,81 @@ pub async fn send_world<'a>(
     let executor = unsafe { &*(executor as *const MpExecutor) as &'static MpExecutor };
     let rt = &executor.runtime.tokio_rt;
 
-    let entities = set_timed_state(
-        executor.logger.clone(),
-        &executor.client,
-        WORLD_ENTITIES,
-        time,
-        &world.entities,
-    );
+    let entities = {
+        let mut conn = executor.pool.acquire().await?;
+        async move {
+            set_timed_state(
+                executor.logger.clone(),
+                &mut conn,
+                WORLD_ENTITIES,
+                time,
+                &world.entities,
+            )
+            .await
+        }
+    };
     let entities = rt.spawn(entities);
 
-    let users = set_timed_state(
-        executor.logger.clone(),
-        &executor.client,
-        WORLD_USERS,
-        time,
-        &world.user,
-    );
+    let users = {
+        let mut conn = executor.pool.acquire().await?;
+        async move {
+            set_timed_state(
+                executor.logger.clone(),
+                &mut conn,
+                WORLD_USERS,
+                time,
+                &world.user,
+            )
+            .await
+        }
+    };
     let users = rt.spawn(users);
 
-    let scripts = set_timed_state(
-        executor.logger.clone(),
-        &executor.client,
-        WORLD_SCRIPTS,
-        time,
-        &world.scripts,
-    );
+    let scripts = {
+        let mut conn = executor.pool.acquire().await?;
+        async move {
+            set_timed_state(
+                executor.logger.clone(),
+                &mut conn,
+                WORLD_SCRIPTS,
+                time,
+                &world.scripts,
+            )
+            .await
+        }
+    };
     let scripts = rt.spawn(scripts);
 
     let config = if options.has_option(WorldIoOptions::Config) {
-        let config = set_timed_state(
-            executor.logger.clone(),
-            &executor.client,
-            WORLD_CONFIG,
-            time,
-            &world.config,
-        );
+        let conn = executor.pool.acquire().await?;
         rt.spawn(async move {
-            config.await?;
-            Ok(())
+            let mut conn = conn;
+            set_timed_state(
+                executor.logger.clone(),
+                &mut conn,
+                WORLD_CONFIG,
+                time,
+                &world.config,
+            )
+            .await
         })
     } else {
         rt.spawn(async move { Ok(()) })
     };
 
     let terrain = if options.has_option(WorldIoOptions::Terrain) {
-        let terrain = set_timed_state(
-            executor.logger.clone(),
-            &executor.client,
-            WORLD_TERRAIN,
-            time,
-            &world.positions.point_terrain,
-        );
+        let conn = executor.pool.acquire().await?;
         let f = rt.spawn(async move {
-            terrain.await?;
-            Ok(())
+            let mut conn = conn;
+            set_timed_state(
+                executor.logger.clone(),
+                &mut conn,
+                WORLD_TERRAIN,
+                time,
+                &world.positions.point_terrain,
+            )
+            .await?;
+            Ok::<_, MpExcError>(())
         });
         let mut hasher = DefaultHasher::new();
         world.hash_terrain(&mut hasher);
@@ -292,7 +333,7 @@ pub async fn send_world<'a>(
 
 pub async fn set_timed_state<'a, T>(
     logger: Logger,
-    client: &'a RedisClient,
+    client: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
     key: &'a str,
     time: u64,
     value: &'a T,
@@ -300,11 +341,6 @@ pub async fn set_timed_state<'a, T>(
 where
     T: Serialize + 'static,
 {
-    let mut connection = client
-        .get_async_connection()
-        .await
-        .map_err(MpExcError::RedisError)?;
-
     let payload = TimeCodedSer { time, value };
     let payload: Vec<u8> =
         rmp_serde::to_vec_named(&payload).map_err(MpExcError::WorldSerializeError)?;
@@ -316,12 +352,21 @@ where
         key
     );
 
-    redis::pipe()
-        .set(key, payload)
-        .ignore()
-        .query_async(&mut connection)
-        .await
-        .map_err(MpExcError::RedisError)?;
+    sqlx::query!(
+        r#"
+    INSERT INTO world (field, world_timestamp,value_message_packed)
+    VALUES ($1, $2, $3)
+    ON CONFLICT(field)
+    DO UPDATE
+    SET value_message_packed=$3, world_timestamp=$2, updated=now()
+        "#,
+        key,
+        time as i64,
+        payload
+    )
+    .execute(client)
+    .await
+    .map_err(MpExcError::SqlxError)?;
 
     Ok(())
 }
