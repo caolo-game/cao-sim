@@ -19,7 +19,6 @@ pub enum UpdateProgramError {
 }
 type UpdateResult = Result<(), UpdateProgramError>;
 
-/// Update all programs submitted via the PROGRAM field in the Redis storage
 pub fn update_program(
     logger: Logger,
     storage: &mut World,

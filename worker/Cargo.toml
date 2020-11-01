@@ -32,9 +32,10 @@ sentry = "0.20"
 sentry-slog = "0.20"
 anyhow = "1"
 thiserror = "1"
-sqlx = { version="0.4.0-beta.1", default-features=false, features=["postgres", "chrono", "tls", "uuid", "runtime-tokio", "macros"]}
-tokio = { version = "0.3", features = ["rt", "rt-multi-thread", "macros"] }
+sqlx = { version="0.4.0-beta.1", features=["postgres", "chrono", "tls", "uuid", "macros"]}
 lapin = { version= "1" }
+async-amqp = { version="0.1" }
+async-std = { version="*" }
 
 dep-dotenv = { version="0.14", optional=true, package="dotenv" }
 uuid = { version="0.8", features=["v4"] }

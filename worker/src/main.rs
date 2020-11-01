@@ -3,8 +3,9 @@ mod init;
 mod input;
 
 use anyhow::Context;
+use async_amqp::*;
 use caolo_sim::{executor::mp_executor, executor::Executor, prelude::*};
-use mp_executor::MpExecutor;
+use mp_executor::{MpExecutor, Role};
 use slog::{debug, error, info, o, trace, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
 use std::{
@@ -109,7 +110,6 @@ async fn send_schema<'a>(
 fn main() {
     init();
     let sim_rt = caolo_sim::init_runtime();
-    let _guard = sim_rt.enter();
 
     let game_conf = config::GameConfig::load();
 
@@ -135,9 +135,21 @@ fn main() {
             warn!(logger, "Sentry URI was not provided");
         });
 
-    let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379/0".to_owned());
-
-    info!(logger, "Loaded Redis Url {:?}", redis_url);
+    let role = match env::var("ROLE")
+        .map(|s| s.to_lowercase())
+        .as_ref()
+        .map(|s| s.as_str())
+    {
+        Ok("queen") => Role::Queen,
+        Ok("drone") => Role::Drone,
+        _ => {
+            warn!(
+                logger,
+                "Env var ROLE not set (or invalid). Defaulting to role 'Drone'"
+            );
+            Role::Drone
+        }
+    };
 
     let queen_mutex_expiry_ms = env::var("CAO_QUEEN_MUTEX_EXPIRY_MS")
         .ok()
@@ -164,6 +176,7 @@ fn main() {
     info!(logger, "Creating cao executor");
     let mut executor = sim_rt
         .block_on(MpExecutor::new(
+            role,
             &sim_rt,
             logger.clone(),
             mp_executor::ExecutorOptions {
@@ -189,13 +202,10 @@ fn main() {
         .expect("Initialize executor");
     info!(logger, "Starting with {} actors", game_conf.n_actors);
 
-    sim_rt
-        .block_on(executor.update_role())
-        .expect("Update role");
-
     if executor.is_queen() {
         init::init_storage(logger.clone(), &mut storage, &game_conf);
 
+        let logger = logger.clone();
         sim_rt
             .block_on(async move {
                 let pg_conn = sqlx::postgres::PgPoolOptions::new()
@@ -203,7 +213,7 @@ fn main() {
                     .await
                     .expect("Connect to PG");
 
-                send_schema(logger.clone(), &mut pg_conn.acquire().await?).await
+                send_schema(logger, &mut pg_conn.acquire().await?).await
             })
             .expect("Send schema");
     }
@@ -216,6 +226,19 @@ fn main() {
         .as_str(),
         sentry::Level::Info,
     );
+
+    let amqp_url = std::env::var("AMQP_ADDR")
+        .or_else(|_| std::env::var("CLOUDAMQP_URL"))
+        .unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".to_owned());
+
+    let amqp_conn = sim_rt
+        .block_on(lapin::Connection::connect(
+            amqp_url.as_str(),
+            lapin::ConnectionProperties::default().with_async_std(),
+        ))
+        .expect("Failed to connect to amqp");
+
+    let channel = sim_rt.block_on(amqp_conn.create_channel()).unwrap();
 
     loop {
         let start = Instant::now();
@@ -237,9 +260,11 @@ fn main() {
         while sleep_duration > Duration::from_millis(0) {
             let start = Instant::now();
             sim_rt
-                .block_on(executor.update_role())
-                .expect("Failed to update executors role");
-            input::handle_messages(logger.clone(), &mut storage, &mut redis_connection)
+                .block_on(input::handle_messages(
+                    logger.clone(),
+                    &mut storage,
+                    channel.clone(),
+                ))
                 .map_err(|err| {
                     error!(logger, "Failed to handle inputs {:?}", err);
                 })
