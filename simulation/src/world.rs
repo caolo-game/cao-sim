@@ -1,4 +1,3 @@
-use crate::components::game_config::GameConfig;
 use crate::components::*;
 use crate::indices::*;
 use crate::intents::*;
@@ -7,9 +6,10 @@ use crate::storage::views::{UnsafeView, View};
 use crate::tables::morton_hierarchy::ExtendFailure;
 use crate::tables::{Component, TableId};
 use crate::Time;
+use crate::{components::game_config::GameConfig, prelude::Axial};
 use serde::Serialize;
 use slog::{debug, o, Drain};
-use std::pin::Pin;
+use std::{hash::Hasher, pin::Pin};
 
 storage!(
     module room_store key Room,
@@ -199,6 +199,20 @@ impl World {
         });
 
         _new(logger)
+    }
+
+    pub fn hash_terrain(&self, mut hasher: impl Hasher) {
+        for (wp, TerrainComponent(t)) in self.positions.point_terrain.iter() {
+            let WorldPosition {
+                room: Axial { q: rq, r: rr },
+                pos: Axial { q, r },
+            } = wp;
+            hasher.write_i32(rq);
+            hasher.write_i32(rr);
+            hasher.write_i32(q);
+            hasher.write_i32(r);
+            hasher.write_u8(*t as u8);
+        }
     }
 
     pub fn view<Id: TableId, C: Component<Id>>(&self) -> View<Id, C>

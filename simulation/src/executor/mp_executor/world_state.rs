@@ -1,6 +1,8 @@
+use std::{collections::hash_map::DefaultHasher, hash::Hasher};
+
 use redis::Client as RedisClient;
 use serde::{de::DeserializeOwned, Serialize};
-use slog::{debug, error, Logger};
+use slog::{debug, error, info, Logger};
 
 use crate::{
     prelude::FromWorld, prelude::FromWorldMut, prelude::World, systems::positions_system, Time,
@@ -135,6 +137,10 @@ pub async fn update_world<'a>(
                 err
             })?;
         world.positions.point_terrain = terrain.value;
+        let mut hasher = DefaultHasher::new();
+        world.hash_terrain(&mut hasher);
+        let hash = hasher.finish();
+        info!(executor.logger, "Loaded terrain {:0x}", hash);
     }
 
     // Finally wait for all tasks to complete
@@ -148,6 +154,18 @@ pub async fn update_world<'a>(
     world.entities = entities.value;
     world.resources.time.value = Some(Time(entities.time));
     // reset the positions storage
+    world.positions.point_entity.deep_clear();
+    world
+        .positions
+        .point_entity
+        .extend_rooms(
+            world
+                .positions
+                .point_terrain
+                .iter_rooms()
+                .map(|(room, _)| room),
+        )
+        .expect("Failed to initialize the rooms of entity-positions");
     positions_system::update(FromWorldMut::new(world), FromWorld::new(world));
 
     let users = users.await.expect("Failed to join users").map_err(|err| {
@@ -243,17 +261,22 @@ pub async fn send_world<'a>(
     };
 
     let terrain = if options.has_option(WorldIoOptions::Terrain) {
-        let config = set_timed_state(
+        let terrain = set_timed_state(
             executor.logger.clone(),
             &executor.client,
             WORLD_TERRAIN,
             time,
             &world.positions.point_terrain,
         );
-        rt.spawn(async move {
-            config.await?;
+        let f = rt.spawn(async move {
+            terrain.await?;
             Ok(())
-        })
+        });
+        let mut hasher = DefaultHasher::new();
+        world.hash_terrain(&mut hasher);
+        let hash = hasher.finish();
+        info!(executor.logger, "Sending terrain {:0x}", hash);
+        f
     } else {
         rt.spawn(async move { Ok(()) })
     };
