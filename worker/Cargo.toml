@@ -27,14 +27,14 @@ chrono = { version="0.4", features=["serde"] }
 serde_json = "1"
 serde = "1"
 serde_derive = "1"
-redis = { version= "0.16", features=["tokio-comp"] }
 rand="*"
 sentry = "0.20"
 sentry-slog = "0.20"
 anyhow = "1"
 thiserror = "1"
-sqlx = { version="0.3", features=["postgres", "chrono", "uuid", "json", "tls"] }
+sqlx = { version="0.4.0-beta.1", default-features=false, features=["postgres", "chrono", "tls", "uuid", "runtime-tokio", "macros"]}
 tokio = { version = "0.3", features = ["rt", "rt-multi-thread", "macros"] }
+lapin = { version= "1" }
 
 dep-dotenv = { version="0.14", optional=true, package="dotenv" }
 uuid = { version="0.8", features=["v4"] }
