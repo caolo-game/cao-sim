@@ -155,9 +155,11 @@ where
         // TODO invidual extends can run in parallel
         let mut iter = self.table.iter_mut();
         iter.try_for_each(move |(room_id, ref mut room)| {
-            let items = groups
-                .get(&room_id)
-                .ok_or_else(|| ExtendFailure::RoomNotExists(room_id))?;
+            let items = match groups.get(&room_id) {
+                Some(i) => i,
+                // no inserts in this room
+                None => return Ok(()),
+            };
             // extend each group by their corresponding values
             room.extend(
                 items
