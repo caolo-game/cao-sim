@@ -14,15 +14,14 @@ use crate::{
 };
 
 use super::{
-    drone::Drone,
     parse_script_batch_result,
     world_state::WorldIoOptionFlags,
     world_state::{self, send_world},
-    MpExcError, MpExecutor, Role, ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST,
+    MpExcError, MpExecutor, ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST,
 };
 
 use arrayvec::ArrayVec;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use lapin::{
     options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
     types::FieldTable, BasicProperties,
@@ -30,59 +29,12 @@ use lapin::{
 use slog::{debug, error, info, o, trace, warn, Logger};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy)]
-pub struct Queen {
-    /// Timestamp of the queen mutex
-    pub queen_mutex: DateTime<Utc>,
-}
-
-impl Queen {
-    pub async fn update_role<'a>(
-        mut self,
-        logger: Logger,
-        connection: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
-        id: Uuid,
-        mutex_expiry_ms: i64,
-    ) -> Result<Role, MpExcError> {
-        let new_expiry = Utc::now() + chrono::Duration::milliseconds(mutex_expiry_ms);
-        struct MxRes {
-            f1: Option<Uuid>,
-            f2: Option<DateTime<Utc>>,
-        }
-
-        let result = sqlx::query_as!(
-            MxRes,
-            r#"SELECT * FROM caolo_sim_try_aquire_queen_mutex($1, $2)"#,
-            id,
-            new_expiry
-        )
-        .fetch_one(connection)
-        .await?;
-
-        let queen_id = result.f1.expect("Expected mutex aquire to return a row");
-        let queen_cont = result.f2.expect("Expected mutex aquire to return a row");
-
-        if queen_id == id {
-            self.queen_mutex = queen_cont;
-            return Ok(Role::Queen(self));
-        }
-
-        warn!(
-            logger,
-            "Another process: {} aquired the queen mutex. Demoting to Drone", queen_id
-        );
-
-        Ok(Role::Drone(Drone {
-            queen_mutex: queen_cont,
-        }))
-    }
-}
-
 pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
     let current_world_time = world.time();
-    executor.logger = world
-        .logger
-        .new(o!("tick" => current_world_time, "role" => format!("{}", executor.role)));
+    executor.logger = world.logger.new(o!(
+                "tag" => executor.tag.to_string(),
+                "tick" => current_world_time, 
+                "role" => format!("{}", executor.role)));
     info!(executor.logger, "Tick starting");
 
     debug!(executor.logger, "Initializing amqp.amqp_channels");
@@ -129,7 +81,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             // the compiler can't tell that `executor` lives long enough, so we'll give it a hint
             let executor: &'static MpExecutor = unsafe { std::mem::transmute(&*executor) };
             let msg = build_job_msg(msg_id, from, to, current_world_time);
-            let job = executor.runtime.tokio_rt.spawn(enqueue_job(
+            let job = async_std::task::spawn(enqueue_job(
                 &executor.logger,
                 &executor.amqp_chan,
                 msg,
@@ -154,7 +106,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
 
     let mut message_status = HashMap::with_capacity(message_status_futures.len());
     for (msg_id, future) in message_status_futures {
-        let status = future.await.expect("Failed to join enqueue job")?;
+        let status = future.await?;
         message_status.insert(msg_id, status);
     }
 
@@ -172,11 +124,6 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
     'retry: loop {
         // execute jobs while the queue isn't empty
         executor.execute_batch_script_jobs(world).await?;
-        let new_role = executor.update_role().await?;
-        assert!(
-            matches!(new_role, Role::Queen(_)),
-            "Queen role has been lost while executing a tick"
-        );
 
         trace!(executor.logger, "Checking jobs' status");
         while let Some(message) = executor
@@ -366,13 +313,12 @@ pub async fn initialize_queen(
 ) -> Result<(), MpExcError> {
     // flush the current messages in the job queue if any
     // those are left-overs from previous executors
-    let rt = executor.runtime.tokio_rt.clone();
     let q_purge = {
         let logger = executor.logger.clone();
         // appearantly purge closes the channel...
         let chan_a = executor.amqp_connection.create_channel();
         let chan_b = executor.amqp_connection.create_channel();
-        rt.spawn(async move {
+        async_std::task::spawn(async move {
             info!(logger, "Purging job queues");
             let chan = chan_a.await.map_err(MpExcError::AmqpError)?;
             chan.queue_purge(JOB_QUEUE, Default::default())
@@ -402,7 +348,7 @@ pub async fn initialize_queen(
         .await
         .expect("Failed to send initial world");
 
-    q_purge.await.expect("Failed to join queue purge thread")?;
+    q_purge.await?;
 
     Ok(())
 }

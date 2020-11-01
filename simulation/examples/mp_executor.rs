@@ -4,7 +4,7 @@ use cao_lang::compiler::{compile, CompilationUnit, CompileOptions};
 use caolo_sim::{
     components::EntityScript,
     components::ScriptComponent,
-    executor::{mp_executor::MpExecutor, Executor},
+    executor::{mp_executor::MpExecutor, mp_executor::Role, Executor},
     prelude::EntityId,
     prelude::ScriptId,
 };
@@ -12,7 +12,15 @@ use slog::{debug, o, Drain};
 use uuid::Uuid;
 
 fn main() {
-    std::env::set_var("RUST_LOG", "info,caolo_sim::executor::mp_executor=trace");
+    std::env::set_var("RUST_LOG", "info,caolo_sim::executor::mp_executor=info");
+
+    let mut role = Role::Drone;
+    for arg in std::env::args() {
+        if arg == "--queen" {
+            role = Role::Queen;
+            break;
+        }
+    }
 
     let rt = caolo_sim::init_runtime();
 
@@ -26,7 +34,7 @@ fn main() {
     let logger = slog::Logger::root(drain, o!());
 
     let mut executor = rt
-        .block_on(MpExecutor::new(&rt, logger.clone(), None))
+        .block_on(MpExecutor::new(role, &rt, logger.clone(), None))
         .unwrap();
     let mut world = executor
         .initialize(

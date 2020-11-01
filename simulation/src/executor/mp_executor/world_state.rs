@@ -1,3 +1,5 @@
+use async_std::prelude::*;
+use uuid::Uuid;
 use std::{collections::hash_map::DefaultHasher, hash::Hasher};
 
 use serde::{de::DeserializeOwned, Serialize};
@@ -109,7 +111,6 @@ pub async fn update_world<'a>(
     // SAFETY
     // we will block until all these tasks complete, so this lifetime should be fine
     let executor = unsafe { &mut *(executor as *mut MpExecutor) as &'static mut MpExecutor };
-    let rt = &executor.runtime.tokio_rt;
     let logger = executor.logger.clone();
     //
     // Update world in parallel.
@@ -121,26 +122,26 @@ pub async fn update_world<'a>(
         let mut conn = executor.pool.acquire().await?;
         async move { get_timed_state(&mut conn, WORLD_ENTITIES, requested_time).await }
     };
-    let entities = rt.spawn(entities);
+    let entities = async_std::task::spawn(entities);
 
     // config isn't updated every tick
     let config = {
         let mut conn = executor.pool.acquire().await?;
         async move { get_timed_state(&mut conn, WORLD_CONFIG, None).await }
     };
-    let config = rt.spawn(config);
+    let config = async_std::task::spawn(config);
 
     let users = {
         let mut conn = executor.pool.acquire().await?;
         async move { get_timed_state(&mut conn, WORLD_USERS, requested_time).await }
     };
-    let users = rt.spawn(users);
+    let users = async_std::task::spawn(users);
 
     let scripts = {
         let mut conn = executor.pool.acquire().await?;
         async move { get_timed_state(&mut conn, WORLD_SCRIPTS, requested_time).await }
     };
-    let scripts = rt.spawn(scripts);
+    let scripts = async_std::task::spawn(scripts);
 
     if options.has_option(WorldIoOptions::Terrain) {
         // terrain isn't updated every tick
@@ -148,14 +149,11 @@ pub async fn update_world<'a>(
             let mut conn = executor.pool.acquire().await?;
             async move { get_timed_state(&mut conn, WORLD_TERRAIN, None).await }
         };
-        let terrain = rt.spawn(terrain);
-        let terrain = terrain
-            .await
-            .expect("Failed to join terrain")
-            .map_err(|err| {
-                error!(logger, "Failed to get `terrain`, {:?}", err);
-                err
-            })?;
+        let terrain = async_std::task::spawn(terrain);
+        let terrain = terrain.await.map_err(|err| {
+            error!(logger, "Failed to get `terrain`, {:?}", err);
+            err
+        })?;
         world.positions.point_terrain = terrain.value;
         let mut hasher = DefaultHasher::new();
         world.hash_terrain(&mut hasher);
@@ -164,13 +162,10 @@ pub async fn update_world<'a>(
     }
 
     // Finally wait for all tasks to complete
-    let entities = entities
-        .await
-        .expect("Failed to join entities")
-        .map_err(|err| {
-            error!(logger, "Failed to get `entities`, {:?}", err);
-            err
-        })?;
+    let entities = entities.await.map_err(|err| {
+        error!(logger, "Failed to get `entities`, {:?}", err);
+        err
+    })?;
     world.entities = entities.value;
     world.resources.time.value = Some(Time(entities.time));
     // reset the positions storage
@@ -188,29 +183,23 @@ pub async fn update_world<'a>(
         .expect("Failed to initialize the rooms of entity-positions");
     positions_system::update(FromWorldMut::new(world), FromWorld::new(world));
 
-    let users = users.await.expect("Failed to join users").map_err(|err| {
+    let users = users.await.map_err(|err| {
         error!(logger, "Failed to get `users`, {:?}", err);
         err
     })?;
     world.user = users.value;
 
-    let scripts = scripts
-        .await
-        .expect("Failed to join scripts")
-        .map_err(|err| {
-            error!(logger, "Failed to get `scripts`, {:?}", err);
-            err
-        })?;
+    let scripts = scripts.await.map_err(|err| {
+        error!(logger, "Failed to get `scripts`, {:?}", err);
+        err
+    })?;
     world.scripts = scripts.value;
 
     if options.has_option(WorldIoOptions::Config) {
-        let config = config
-            .await
-            .expect("Failed to join config")
-            .map_err(|err| {
-                error!(logger, "Failed to get `config`, {:?}", err);
-                err
-            })?;
+        let config = config.await.map_err(|err| {
+            error!(logger, "Failed to get `config`, {:?}", err);
+            err
+        })?;
         world.config = config.value;
     }
 
@@ -235,7 +224,6 @@ pub async fn send_world<'a>(
     // This is just letting the Rust compiler know that the lifetimes are fine
     let world = unsafe { &*(world as *const World) as &'static World };
     let executor = unsafe { &*(executor as *const MpExecutor) as &'static MpExecutor };
-    let rt = &executor.runtime.tokio_rt;
 
     let entities = {
         let mut conn = executor.pool.acquire().await?;
@@ -243,6 +231,7 @@ pub async fn send_world<'a>(
             set_timed_state(
                 executor.logger.clone(),
                 &mut conn,
+                executor.tag,
                 WORLD_ENTITIES,
                 time,
                 &world.entities,
@@ -250,7 +239,7 @@ pub async fn send_world<'a>(
             .await
         }
     };
-    let entities = rt.spawn(entities);
+    let entities = async_std::task::spawn(entities);
 
     let users = {
         let mut conn = executor.pool.acquire().await?;
@@ -258,6 +247,7 @@ pub async fn send_world<'a>(
             set_timed_state(
                 executor.logger.clone(),
                 &mut conn,
+                executor.tag,
                 WORLD_USERS,
                 time,
                 &world.user,
@@ -265,7 +255,7 @@ pub async fn send_world<'a>(
             .await
         }
     };
-    let users = rt.spawn(users);
+    let users = async_std::task::spawn(users);
 
     let scripts = {
         let mut conn = executor.pool.acquire().await?;
@@ -273,6 +263,7 @@ pub async fn send_world<'a>(
             set_timed_state(
                 executor.logger.clone(),
                 &mut conn,
+                executor.tag,
                 WORLD_SCRIPTS,
                 time,
                 &world.scripts,
@@ -280,15 +271,16 @@ pub async fn send_world<'a>(
             .await
         }
     };
-    let scripts = rt.spawn(scripts);
+    let scripts = async_std::task::spawn(scripts);
 
     let config = if options.has_option(WorldIoOptions::Config) {
         let conn = executor.pool.acquire().await?;
-        rt.spawn(async move {
+        async_std::task::spawn(async move {
             let mut conn = conn;
             set_timed_state(
                 executor.logger.clone(),
                 &mut conn,
+                executor.tag,
                 WORLD_CONFIG,
                 time,
                 &world.config,
@@ -296,16 +288,17 @@ pub async fn send_world<'a>(
             .await
         })
     } else {
-        rt.spawn(async move { Ok(()) })
+        async_std::task::spawn(async move { Ok(()) })
     };
 
     let terrain = if options.has_option(WorldIoOptions::Terrain) {
         let conn = executor.pool.acquire().await?;
-        let f = rt.spawn(async move {
+        let f = async_std::task::spawn(async move {
             let mut conn = conn;
             set_timed_state(
                 executor.logger.clone(),
                 &mut conn,
+                executor.tag,
                 WORLD_TERRAIN,
                 time,
                 &world.positions.point_terrain,
@@ -319,14 +312,15 @@ pub async fn send_world<'a>(
         info!(executor.logger, "Sending terrain {:0x}", hash);
         f
     } else {
-        rt.spawn(async move { Ok(()) })
+        async_std::task::spawn(async move { Ok(()) })
     };
 
-    entities.await.expect("Failed to join entitites")?;
-    users.await.expect("Failed to join users")?;
-    scripts.await.expect("Failed to join scripts")?;
-    config.await.expect("Failed to join config")?;
-    terrain.await.expect("Failed to join terrain")?;
+    entities
+        .try_join(users)
+        .try_join(scripts)
+        .try_join(config)
+        .try_join(terrain)
+        .await?;
 
     Ok(())
 }
@@ -334,6 +328,7 @@ pub async fn send_world<'a>(
 pub async fn set_timed_state<'a, T>(
     logger: Logger,
     client: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
+    tag: Uuid,
     key: &'a str,
     time: u64,
     value: &'a T,
@@ -354,19 +349,19 @@ where
 
     sqlx::query!(
         r#"
-    INSERT INTO world (field, world_timestamp,value_message_packed)
-    VALUES ($1, $2, $3)
-    ON CONFLICT(field)
+    INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)
+    VALUES ($1, $4, $2, $3)
+    ON CONFLICT (field, queen_tag) 
     DO UPDATE
     SET value_message_packed=$3, world_timestamp=$2, updated=now()
         "#,
         key,
         time as i64,
-        payload
+        payload,
+        tag,
     )
     .execute(client)
-    .await
-    .map_err(MpExcError::SqlxError)?;
+    .await?;
 
     Ok(())
 }

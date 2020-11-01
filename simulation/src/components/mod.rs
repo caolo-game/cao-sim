@@ -9,7 +9,7 @@ pub use rooms::*;
 
 use crate::indices::{EntityId, UserId, WorldPosition};
 use crate::tables::{
-    btree::BTreeTable, morton::MortonTable, dense::DenseVecTable, Component, RoomMortonTable,
+    btree::BTreeTable, dense::DenseVecTable, morton::MortonTable, Component, RoomMortonTable,
     SpatialKey2d, TableId,
 };
 
