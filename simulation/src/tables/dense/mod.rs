@@ -22,6 +22,9 @@ where
     offset: usize,
     ids: Vec<Option<Id>>,
     data: Vec<mem::MaybeUninit<Row>>,
+
+    // stats
+    count: usize,
 }
 
 #[derive(Debug, Error)]
@@ -96,6 +99,7 @@ where
         let size = mem::size_of::<(Id, Row)>();
         let size = 1024 / size;
         Self {
+            count: 0,
             offset: 0,
             ids: Vec::with_capacity(size),
             data: Vec::with_capacity(size),
@@ -104,8 +108,8 @@ where
 
     /// Create a table from a slice of tuples.
     ///
-    /// Requires that every id in the slice is unique and are in sorted order
-    pub fn from_sorted_slice(data: &[(Id, Row)]) -> Result<Self, VecTableError<Id>> {
+    /// Requires that every id in the slice is unique and are sorted
+    pub fn from_sorted_vec(data: Vec<(Id, Row)>) -> Result<Self, VecTableError<Id>> {
         if data.is_empty() {
             return Ok(Self::new());
         }
@@ -113,30 +117,31 @@ where
         let last = data.last().unwrap().0;
         let len = last.as_usize() - offset + 1;
         let mut res = Self {
+            count: len,
             offset,
             ids: vec![None; len],
             data: Vec::with_capacity(len),
         };
         res.data.resize_with(len, MaybeUninit::uninit);
-        res.ids[0] = Some(data[0].0);
-        unsafe {
-            *res.data[0].as_mut_ptr() = data[0].1.clone();
-        }
+        let mut data = data.into_iter();
+        let first = data.next().unwrap();
+        res.ids[0] = Some(first.0);
+        res.data[0] = mem::MaybeUninit::new(first.1);
         if len == 1 {
             return Ok(res);
         }
-        let mut last = data[0].0;
-        for (id, row) in data[1..].iter() {
-            if id == &last {
+        let mut last = first.0;
+        for (id, row) in data {
+            if id == last {
                 return Err(VecTableError::DuplicateEntry(last));
             }
-            if id < &last {
+            if id < last {
                 return Err(VecTableError::UnsortedValues);
             }
-            last = *id;
+            last = id;
             let i = id.as_usize() - offset;
-            res.ids[i] = Some(*id);
-            res.data[i] = MaybeUninit::new(row.clone());
+            res.ids[i] = Some(id);
+            res.data[i] = MaybeUninit::new(row);
         }
         Ok(res)
     }
@@ -145,6 +150,7 @@ where
         let size = mem::size_of::<(Id, Row)>();
         let size = 1024 / size;
         Self {
+            count: 0,
             offset: 0,
             ids: Vec::with_capacity(size.min(cap)),
             data: Vec::with_capacity(size.min(cap)),
@@ -171,6 +177,7 @@ where
             let _old: Row =
                 unsafe { mem::replace(&mut self.data[i], MaybeUninit::new(row)).assume_init() };
         } else {
+            self.count += 1;
             self.data[i] = MaybeUninit::new(row);
             self.ids[i] = Some(id);
         }
@@ -204,7 +211,7 @@ where
     /// Meaning that a `len` method has to count the non-null elements.
     ///
     pub fn count_set(&self) -> usize {
-        self.iter().count()
+        self.count
     }
 
     pub fn iter(&self) -> impl TableIterator<Id, &Row> {
@@ -247,6 +254,7 @@ where
             let _val =
                 unsafe { mem::replace(&mut self.data[i], MaybeUninit::uninit()).assume_init() };
         }
+        self.count = 0;
         self.offset = 0;
         self.ids.clear();
         self.data.clear();
@@ -265,6 +273,7 @@ where
         if !self.contains_id(id) {
             return None;
         }
+        self.count -= 1;
         let ind = id.as_usize() - self.offset;
 
         self.ids[ind] = None;
