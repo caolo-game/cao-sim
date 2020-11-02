@@ -24,6 +24,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+
       - name: Install capnp
         run: sudo apt-get install capnproto -y
 
@@ -35,11 +36,13 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: ${{ matrix.flags }}
           RUSTDOCFLAGS: "-Cpanic=abort"
+          SQLX_OFFLINE: 1
 
       - name: Test benches
         run: cargo +${{ matrix.rust }} test --benches
         env:
           RUST_BACKTRACE: 1
+          SQLX_OFFLINE: 1
 
       - name: Install grcov
         if: ${{ matrix.rust == 'nightly' }}
@@ -67,10 +70,12 @@ jobs:
           toolchain: nightly
           components: clippy
           override: true
-          args: "--all-features --examples --tests --benches -D clippy::all -D warnings"
+
       - name: Install capnp
         run: sudo apt-get install capnproto -y
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
+        env:
+          SQLX_OFFLINE: 1

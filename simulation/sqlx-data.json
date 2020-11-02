@@ -1,0 +1,38 @@
+{
+  "db": "PostgreSQL",
+  "5e69d1a4c38e65556975327af9e22f24bfbc5088210c42c084ee4e110f67fabe": {
+    "query": "\n    SELECT value_message_packed\n    FROM world\n    WHERE field=$1\n        ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "value_message_packed",
+          "type_info": "Bytea"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "9dd075ae8eb7861875ce80eb7ce713f279602de1426dcb8ca09068755cb3093b": {
+    "query": "\n    INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)\n    VALUES ($1, $4, $2, $3)\n    ON CONFLICT (field, queen_tag) \n    DO UPDATE\n    SET value_message_packed=$3, world_timestamp=$2, updated=now()\n        ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int8",
+          "Bytea",
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  }
+}
