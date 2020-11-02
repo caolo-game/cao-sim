@@ -6,12 +6,13 @@ use anyhow::Context;
 use async_amqp::*;
 use caolo_sim::{executor::mp_executor, executor::Executor, prelude::*};
 use mp_executor::{MpExecutor, Role};
-use slog::{debug, error, info, o, trace, warn, Drain, Logger};
+use slog::{debug, error, info, o, warn, Drain, Logger};
 use sqlx::postgres::PgPool;
 use std::{
     env,
     time::{Duration, Instant},
 };
+use uuid::Uuid;
 
 #[cfg(feature = "jemallocator")]
 #[global_allocator]
@@ -41,70 +42,78 @@ fn tick(logger: Logger, exc: &mut impl Executor, storage: &mut World) {
 async fn send_schema<'a>(
     logger: Logger,
     connection: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
+    queen_tag: Uuid,
 ) -> anyhow::Result<()> {
-    todo!()
-    // use cao_messages::script_capnp::schema;
-    // debug!(logger, "Sending schema");
-    // let schema = caolo_sim::scripting_api::make_import();
-    // let imports = schema.imports();
-    //
-    // let mut msg = capnp::message::Builder::new_default();
-    // let mut root = msg.init_root::<schema::Builder>();
-    //
-    // let len = imports.len();
-    // let mut cards = root.reborrow().init_cards(len as u32);
-    // imports.iter().enumerate().for_each(|(i, import)| {
-    //     let import = &import.desc;
-    //     let mut card = cards.reborrow().get(i as u32);
-    //     card.set_name(import.name);
-    //     card.set_description(import.description);
-    //     card.set_ty(
-    //         serde_json::to_string(&import.ty)
-    //             .expect("Set card type")
-    //             .as_str(),
-    //     );
-    //     {
-    //         let len = import.input.len();
-    //         let mut inputs = card.reborrow().init_input(len as u32);
-    //         import
-    //             .input
-    //             .iter()
-    //             .enumerate()
-    //             .for_each(|(i, inp)| inputs.set(i as u32, inp));
-    //     }
-    //     {
-    //         let len = import.output.len();
-    //         let mut outputs = card.reborrow().init_output(len as u32);
-    //         import
-    //             .output
-    //             .iter()
-    //             .enumerate()
-    //             .for_each(|(i, inp)| outputs.set(i as u32, inp));
-    //     }
-    //     {
-    //         let len = import.constants.len();
-    //         let mut constants = card.reborrow().init_constants(len as u32);
-    //         import
-    //             .constants
-    //             .iter()
-    //             .enumerate()
-    //             .for_each(|(i, inp)| constants.set(i as u32, inp));
-    //     }
-    // });
-    //
-    // let mut payload = Vec::with_capacity(1_000_000);
-    // capnp::serialize::write_message(&mut payload, &msg)?;
-    //
-    // let mut con = client.get_connection()?;
-    //
-    // redis::pipe()
-    //     .cmd("SET")
-    //     .arg("SCHEMA")
-    //     .arg(payload)
-    //     .query(&mut con)
-    //     .with_context(|| "Failed to set SCHEMA")?;
-    //
-    // debug!(logger, "Sending schema done");
+    use cao_messages::script_capnp::schema;
+
+    debug!(logger, "Sending schema");
+    let schema = caolo_sim::scripting_api::make_import();
+    let imports = schema.imports();
+
+    let mut msg = capnp::message::Builder::new_default();
+    let mut root = msg.init_root::<schema::Builder>();
+
+    let len = imports.len();
+    let mut cards = root.reborrow().init_cards(len as u32);
+    imports.iter().enumerate().for_each(|(i, import)| {
+        let import = &import.desc;
+        let mut card = cards.reborrow().get(i as u32);
+        card.set_name(import.name);
+        card.set_description(import.description);
+        card.set_ty(
+            serde_json::to_string(&import.ty)
+                .expect("Set card type")
+                .as_str(),
+        );
+        {
+            let len = import.input.len();
+            let mut inputs = card.reborrow().init_input(len as u32);
+            import
+                .input
+                .iter()
+                .enumerate()
+                .for_each(|(i, inp)| inputs.set(i as u32, inp));
+        }
+        {
+            let len = import.output.len();
+            let mut outputs = card.reborrow().init_output(len as u32);
+            import
+                .output
+                .iter()
+                .enumerate()
+                .for_each(|(i, inp)| outputs.set(i as u32, inp));
+        }
+        {
+            let len = import.constants.len();
+            let mut constants = card.reborrow().init_constants(len as u32);
+            import
+                .constants
+                .iter()
+                .enumerate()
+                .for_each(|(i, inp)| constants.set(i as u32, inp));
+        }
+    });
+
+    let mut payload = Vec::with_capacity(1_000_000);
+    capnp::serialize::write_message(&mut payload, &msg)?;
+
+    sqlx::query!(
+        r#"
+    INSERT INTO scripting_schema (queen_tag, schema_message_packed)
+    VALUES ($1, $2)
+    ON CONFLICT (queen_tag)
+    DO UPDATE SET 
+    schema_message_packed=$2
+        "#,
+        queen_tag,
+        payload
+    )
+    .execute(connection)
+    .await
+    .with_context(|| "Failed to send schema")?;
+
+    debug!(logger, "Sending schema done");
+    Ok(())
 }
 
 fn main() {
@@ -206,6 +215,7 @@ fn main() {
         init::init_storage(logger.clone(), &mut storage, &game_conf);
 
         let logger = logger.clone();
+        let tag = executor.tag;
         sim_rt
             .block_on(async move {
                 let pg_conn = sqlx::postgres::PgPoolOptions::new()
@@ -213,7 +223,7 @@ fn main() {
                     .await
                     .expect("Connect to PG");
 
-                send_schema(logger, &mut pg_conn.acquire().await?).await
+                send_schema(logger, &mut pg_conn.acquire().await?, tag).await
             })
             .expect("Send schema");
     }
