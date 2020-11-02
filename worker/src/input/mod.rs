@@ -7,8 +7,11 @@ use cao_messages::command_capnp::command_result;
 use caolo_sim::prelude::*;
 use capnp::message::{ReaderOptions, TypedReader};
 use capnp::serialize::try_read_message;
-use lapin::options::BasicGetOptions;
-use slog::{error, o, trace, warn, Logger};
+use lapin::{
+    options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
+    types::FieldTable, BasicProperties,
+};
+use slog::{error, info, o, trace, warn, Logger};
 
 type InputMsg = TypedReader<capnp::serialize::OwnedSegments, input_message::Owned>;
 
@@ -120,9 +123,25 @@ pub async fn handle_messages(
         })
     {
         match handle_single_message(&logger, message, storage, &mut response) {
-            Ok(_msg_id) => {
-                // TODO
-                error!(logger, "Message response not implemented!");
+            Ok(msg_id) => {
+                let qname = format!("{}", msg_id);
+                let _q = channel
+                    .queue_declare(
+                        qname.as_str(),
+                        QueueDeclareOptions::default(),
+                        FieldTable::default(),
+                    )
+                    .await?;
+                channel
+                    .basic_publish(
+                        "",
+                        qname.as_str(),
+                        BasicPublishOptions::default(),
+                        response.clone(),
+                        BasicProperties::default(),
+                    )
+                    .await?;
+                info!(logger, "Message {} response sent!", msg_id);
             }
             Err(err) => {
                 error!(logger, "Message handling failed, {:?}", err);
