@@ -96,7 +96,7 @@ pub async fn handle_messages(
 
     // log errors, but otherwise ignore them, so the loop may continue, retrying later
     while let Ok(Some(message)) = channel
-        .basic_get("INPUTS", BasicGetOptions { no_ack: true })
+        .basic_get("CAO_COMMANDS", BasicGetOptions { no_ack: false })
         .await
         .map_err(|e| {
             error!(logger, "Failed to GET message {:?}", e);
@@ -120,7 +120,7 @@ pub async fn handle_messages(
         })
     {
         match handle_single_message(&logger, message, storage, &mut response) {
-            Ok(msg_id) => {
+            Ok(_msg_id) => {
                 // TODO
                 error!(logger, "Message response not implemented!");
             }
