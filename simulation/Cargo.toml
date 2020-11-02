@@ -3,62 +3,76 @@ name = "caolo-sim"
 version = "0.1.0"
 authors = ["Daniel Kiss <littlesnorrboy@gmail.com>"]
 edition = "2018"
-
-build="build.rs"
+build = "build.rs"
 
 # docker caching hack
 # [[bin]]
 # name = "caolo-simulation"
 # path = "src/dummy.rs"
 # required-features = []
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [features]
 default = ["mp_executor"]
-mp_executor = ["capnpc", "capnp", "sqlx", "serde_json", "rmp-serde", "lapin", "async-amqp", "async-std"]
+mp_executor = [
+    "capnpc",
+    "capnp",
+    "sqlx",
+    "serde_json",
+    "rmp-serde",
+    "lapin",
+    "async-amqp",
+    "async-std"
+]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
 
 [build-dependencies]
-capnpc = { version="0.13", optional=true }
+capnpc = { version = "0.13", optional = true }
 
 [dependencies]
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
 cao_storage_derive = { path = "../cao-storage-derive" }
-cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional=true, features=["http"] }
-
-rayon = { version="1" }
-
-slog = { version="2", features=["max_level_trace", "release_max_level_info"] }
+cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional = true, features = [
+    "http"
+] }
+rayon = { version = "1" }
+slog = { version = "2", features = [
+    "max_level_trace",
+    "release_max_level_info"
+] }
 slog-async = "*"
 slog-term = "*"
 slog-envlogger = "*"
-
-rand = { version= "0.7", features=["small_rng"] }
-chrono = { version= "0.4", features=["serde"] }
-uuid = { version="0.8", features=["serde", "v4"] }
-arrayvec = { version="0.5", features=["serde", "array-sizes-33-128"] }
+rand = { version = "0.7", features = ["small_rng"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "0.8", features = ["serde", "v4"] }
+arrayvec = { version = "0.5", features = ["serde", "array-sizes-33-128"] }
 serde = "1"
 serde_derive = "1"
 thiserror = "1"
 anyhow = "1"
-
-lazy_static = { version="1", optional=true }
-serde_json = { version="1", optional=true }
-rmp-serde = { version="0.14", optional=true }
-capnp = { version="0.13", optional=true }
-sqlx = { version="0.4.0-beta.1", features=["postgres", "chrono", "tls", "uuid", "macros"], optional=true}
-lapin = { version= "1", optional=true }
-async-amqp = { version="0.1", optional=true }
-async-std = { version="*", optional=true }
+lazy_static = { version = "1", optional = true }
+serde_json = { version = "1", optional = true }
+rmp-serde = { version = "0.14", optional = true }
+capnp = { version = "0.13", optional = true }
+sqlx = { version = "0.4.0-beta.1", features = [
+    "postgres",
+    "chrono",
+    "tls",
+    "uuid",
+    "macros",
+    "offline"
+], optional = true }
+lapin = { version = "1", optional = true }
+async-amqp = { version = "0.1", optional = true }
+async-std = { version = "*", optional = true }
 
 [dev-dependencies]
-async-std = { version="*", features=["attributes"] }
+async-std = { version = "*", features = ["attributes"] }
 criterion = "0.3"
 serde_json = "*"
 # env_logger needs to be compiled without default features so the test suite can capture the logs
-env_logger = { version="0.7", default-features=false }
+env_logger = { version = "0.7", default-features = false }
 slog-stdlog = "3"
 
 [[bench]]

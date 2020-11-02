@@ -24,3 +24,7 @@ deploy-heroku: worker
 	docker tag frenetiq/caolo-worker:bleeding registry.heroku.com/$(app)/worker
 	docker push registry.heroku.com/$(app)/worker
 	heroku container:release worker -a=$(app)
+
+sqlxprepare:
+	cd simulation && cargo sqlx prepare
+	cd worker && cargo sqlx prepare
