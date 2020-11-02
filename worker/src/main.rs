@@ -64,33 +64,27 @@ async fn send_schema<'a>(
                 .expect("Set card type")
                 .as_str(),
         );
-        {
-            let len = import.input.len();
-            let mut inputs = card.reborrow().init_input(len as u32);
-            import
-                .input
-                .iter()
-                .enumerate()
-                .for_each(|(i, inp)| inputs.set(i as u32, inp));
-        }
-        {
-            let len = import.output.len();
-            let mut outputs = card.reborrow().init_output(len as u32);
-            import
-                .output
-                .iter()
-                .enumerate()
-                .for_each(|(i, inp)| outputs.set(i as u32, inp));
-        }
-        {
-            let len = import.constants.len();
-            let mut constants = card.reborrow().init_constants(len as u32);
-            import
-                .constants
-                .iter()
-                .enumerate()
-                .for_each(|(i, inp)| constants.set(i as u32, inp));
-        }
+        let len = import.input.len();
+        let mut inputs = card.reborrow().init_input(len as u32);
+        import
+            .input
+            .iter()
+            .enumerate()
+            .for_each(|(i, inp)| inputs.set(i as u32, inp));
+        let len = import.output.len();
+        let mut outputs = card.reborrow().init_output(len as u32);
+        import
+            .output
+            .iter()
+            .enumerate()
+            .for_each(|(i, inp)| outputs.set(i as u32, inp));
+        let len = import.constants.len();
+        let mut constants = card.reborrow().init_constants(len as u32);
+        import
+            .constants
+            .iter()
+            .enumerate()
+            .for_each(|(i, inp)| constants.set(i as u32, inp));
     });
 
     let mut payload = Vec::with_capacity(1_000_000);
