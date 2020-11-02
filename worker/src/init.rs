@@ -46,7 +46,6 @@ pub fn init_storage(logger: Logger, storage: &mut World, config: &GameConfig) {
         }
     );
 
-
     let radius = config.room_radius;
     debug!(logger, "Reset position storage");
     let mut entities_by_pos = storage.unsafe_view::<WorldPosition, EntityComponent>();

@@ -1,6 +1,6 @@
 use async_std::prelude::*;
-use uuid::Uuid;
 use std::{collections::hash_map::DefaultHasher, hash::Hasher};
+use uuid::Uuid;
 
 use serde::{de::DeserializeOwned, Serialize};
 use slog::{debug, error, info, Logger};
