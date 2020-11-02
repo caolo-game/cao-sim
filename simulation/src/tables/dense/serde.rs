@@ -66,13 +66,8 @@ where
             }
         }
         let values = values.ok_or_else(|| de::Error::missing_field("data"))?;
-        let len = values.len();
-        DenseVecTable::from_sorted_slice(&values).map_err(|e| {
-            de::Error::invalid_length(
-                len,
-                &format!("Failed to build DenseVecTable {:?}", e).as_str(),
-            )
-        })
+        DenseVecTable::from_sorted_vec(values)
+            .map_err(|e| de::Error::custom(format!("Failed to build DenseVecTable {:?}", e)))
     }
 }
 
@@ -116,7 +111,7 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        let table = DenseVecTable::from_sorted_slice(points.as_slice()).unwrap();
+        let table = DenseVecTable::from_sorted_vec(points).unwrap();
 
         let s = serde_json::to_string(&table).unwrap();
         dbg!(&s);
