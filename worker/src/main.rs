@@ -7,7 +7,6 @@ use async_amqp::*;
 use caolo_sim::{executor::mp_executor, executor::Executor, prelude::*};
 use mp_executor::{MpExecutor, Role};
 use slog::{debug, error, info, o, warn, Drain, Logger};
-use sqlx::postgres::PgPool;
 use std::{
     env,
     time::{Duration, Instant},

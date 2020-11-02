@@ -1,5 +1,18 @@
 {
   "db": "PostgreSQL",
+  "4a1696477483cf1236a2ab80ffc6e2c7ea68232db2cfc763e8ea84dcdf720114": {
+    "query": "\n    INSERT INTO scripting_schema (queen_tag, schema_message_packed)\n    VALUES ($1, $2)\n    ON CONFLICT (queen_tag)\n    DO UPDATE SET \n    schema_message_packed=$2\n        ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "5e69d1a4c38e65556975327af9e22f24bfbc5088210c42c084ee4e110f67fabe": {
     "query": "\n    SELECT value_message_packed\n    FROM world\n    WHERE field=$1\n        ",
     "describe": {
