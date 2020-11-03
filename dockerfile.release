@@ -1,0 +1,11 @@
+FROM rust:latest AS deps
+
+WORKDIR /caolo
+RUN cargo install diesel_cli --no-default-features --features=postgres --root .
+
+FROM ubuntu:20.04
+
+COPY ./migrations ./migrations
+COPY --from=deps /caolo/bin/diesel ./diesel
+
+ENTRYPOINT ["./diesel", "migration", "run"]

@@ -17,8 +17,12 @@ bench-save:
 worker:
 	docker build -t frenetiq/caolo-worker:bleeding -f dockerfile .
 
-push: worker
+release:
+	docker build -t frenetiq/caolo-worker-release:bleeding -f dockerfile.release .
+
+push: worker release
 	docker push frenetiq/caolo-worker:bleeding
+	docker push frenetiq/caolo-worker-release:bleeding
 
 deploy-heroku: worker
 	docker tag frenetiq/caolo-worker:bleeding registry.heroku.com/$(app)/worker
