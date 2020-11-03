@@ -1,8 +1,8 @@
 use super::*;
 use crate::components::LogEntry;
 use crate::indices::EntityTime;
-use rayon::prelude::*;
-use serde_derive::{Deserialize, Serialize};
+use rayon::{iter::IntoParallelRefIterator, prelude::*};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Default, Debug, Serialize, Deserialize)]
@@ -13,17 +13,17 @@ where
 {
     data: BTreeMap<Id, Row>,
 }
+
 impl<'a, Id, Row> BTreeTable<Id, Row>
 where
     Id: TableId + Send,
     Row: TableRow + Send,
-    BTreeMap<Id, Row>: rayon::iter::IntoParallelRefIterator<'a>,
+    BTreeMap<Id, Row>: IntoParallelRefIterator<'a>,
 {
     pub fn par_iter(
         &'a self,
-    ) -> impl ParallelIterator<
-        Item = <BTreeMap<Id, Row> as rayon::iter::IntoParallelRefIterator<'_>>::Item,
-    > + 'a {
+    ) -> impl ParallelIterator<Item = <BTreeMap<Id, Row> as IntoParallelRefIterator<'_>>::Item> + 'a
+    {
         self.data.par_iter()
     }
 }

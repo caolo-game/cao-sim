@@ -98,7 +98,7 @@ mod tests {
     use rand::{thread_rng, Rng};
 
     #[test]
-    fn test_de_serialize() {
+    fn test_json_de_serialize() {
         let mut rng = thread_rng();
 
         let mut entity = EntityId(0);

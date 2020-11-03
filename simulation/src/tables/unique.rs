@@ -11,6 +11,7 @@ where
     Row: TableRow,
 {
     pub value: Option<Row>,
+    #[serde(skip)]
     _m: std::marker::PhantomData<Id>,
 }
 

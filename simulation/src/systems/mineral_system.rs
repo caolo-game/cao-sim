@@ -1,4 +1,4 @@
-use crate::components as comp;
+use crate::{components as comp, join};
 use crate::geometry::Axial;
 use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
@@ -36,69 +36,67 @@ pub fn update(
 
     // in case of an error we need to clean up the mineral
     // however best not to clean it inside the iterator, hmmm???
-    JoinIterator::new(
-        JoinIterator::new(minerals_it, entity_positions_it),
-        energy_iter,
-    )
-    .for_each(|(id, ((_resource, position), energy))| {
-        trace!(
-            logger,
-            "updating {:?} {:?} {:?} {:?}",
-            id,
-            _resource,
-            position,
-            energy
-        );
+    join!([minerals_it, entity_positions_it, energy_iter]).for_each(
+        |(id, (_resource, position, energy))| {
+            trace!(
+                logger,
+                "updating {:?} {:?} {:?} {:?}",
+                id,
+                _resource,
+                position,
+                energy
+            );
 
-        if energy.energy > 0 {
-            return;
-        }
-        trace!(logger, "Respawning {:?}", id);
-
-        let position_entities = position_entities
-            .table
-            .get_by_id(&position.0.room)
-            .expect("get room entities table");
-        let terrain_table = terrain_table
-            .table
-            .get_by_id(&position.0.room)
-            .expect("get room terrain table");
-
-        let position_entities = View::from_table(position_entities);
-        let terrain_table = View::from_table(terrain_table);
-
-        // respawning
-        let pos = random_uncontested_pos_in_range(
-            &logger,
-            position_entities,
-            terrain_table,
-            &mut rng,
-            position.0.pos,
-            15,
-            100,
-        );
-        trace!(
-            logger,
-            "Mineral [{:?}] has been depleted, respawning at {:?}",
-            id,
-            pos
-        );
-        match pos {
-            Some(pos) => {
-                energy.energy = energy.energy_max;
-                position.0.pos = pos;
+            if energy.energy > 0 {
+                return;
             }
-            None => {
-                error!(
-                    logger,
-                    "Failed to find adequate position for resource {:?}", id
-                );
-                unsafe {
-                    delete_entity_deferred.delete_entity(id);
+            trace!(logger, "Respawning mineral {:?}", id);
+
+            let position_entities = position_entities
+                .table
+                .get_by_id(&position.0.room)
+                .expect("get room entities table");
+            let terrain_table = terrain_table
+                .table
+                .get_by_id(&position.0.room)
+                .expect("get room terrain table");
+
+            let position_entities = View::from_table(position_entities);
+            let terrain_table = View::from_table(terrain_table);
+
+            // respawning
+            let pos = random_uncontested_pos_in_range(
+                &logger,
+                position_entities,
+                terrain_table,
+                &mut rng,
+                position.0.pos,
+                15,
+                100,
+            );
+            trace!(
+                logger,
+                "Mineral [{:?}] has been depleted, respawning at {:?}",
+                id,
+                pos
+            );
+            match pos {
+                Some(pos) => {
+                    energy.energy = energy.energy_max;
+                    position.0.pos = pos;
+                }
+                None => {
+                    error!(
+                        logger,
+                        "Failed to find adequate position for resource {:?}", id
+                    );
+                    unsafe {
+                        delete_entity_deferred.delete_entity(id);
+                    }
                 }
             }
-        }
-    });
+        },
+    );
 
     debug!(logger, "update minerals system done");
 }

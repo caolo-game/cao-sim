@@ -313,23 +313,4 @@ mod tests {
         setup_testing();
         let _world = init_inmemory_storage(None);
     }
-
-    #[test]
-    fn world_is_json_serializable() {
-        setup_testing();
-        let world = init_inmemory_storage(None);
-
-        let _payload = serde_json::to_vec(&*world).expect("Failed to serialize");
-    }
-
-    #[test]
-    fn world_is_rmp_to_json_serializable() {
-        setup_testing();
-        let world = init_inmemory_storage(None);
-
-        let payload = rmp_serde::to_vec_named(&*world).expect("Failed to serialize");
-
-        let _json: serde_json::Value =
-            rmp_serde::from_slice(payload.as_slice()).expect("Failed to deserialize");
-    }
 }
