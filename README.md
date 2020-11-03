@@ -13,10 +13,16 @@ Game simulation/back-end of Cao-Lo.
 ## Deploy dependencies
 
 - [PostgreSQL](https://www.postgresql.org/)
-- [Redis/KeyDB](https://keydb.dev/)
 - An AMQP Broker such as [RabbitMQ](https://www.rabbitmq.com/)
+- Diesel CLI `cargo install diesel_cli --no-default-features --features=postgres`
 
 
 ## Configuration
 
 __(TBA)__
+
+## Running migrations
+
+```sh
+diesel migration run
+```
