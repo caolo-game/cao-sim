@@ -10,7 +10,6 @@ use super::*;
 use mem::MaybeUninit;
 use rayon::prelude::*;
 use std::mem;
-use thiserror::Error;
 
 #[derive(Default, Debug)]
 pub struct DenseVecTable<Id, Row>
@@ -27,7 +26,7 @@ where
     count: usize,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum VecTableError<Id: std::fmt::Debug> {
     #[error("Attempted to insert {0:?} twice")]
     DuplicateEntry(Id),
