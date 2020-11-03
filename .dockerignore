@@ -9,6 +9,6 @@
 !rust-toolchain
 !migrations
 !diesel.toml
-!bash-scripts
+!bash-scripts/
 
 **/target/

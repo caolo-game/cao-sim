@@ -16,7 +16,7 @@ pub mod terrain;
 mod intents;
 mod systems;
 mod utils;
-mod world;
+pub mod world;
 
 #[derive(Clone, Debug, Default, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Time(pub u64);

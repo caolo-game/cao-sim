@@ -42,6 +42,7 @@ impl Component<WorldPosition> for EntityComponent {
     type Table = RoomMortonTable<Self>;
 }
 
+/// Has a body so it's not `null` when serializing
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Structure {}

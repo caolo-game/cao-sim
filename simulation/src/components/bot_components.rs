@@ -13,9 +13,10 @@ impl<Id: TableId> Component<Id> for MeleeAttackComponent {
     type Table = BTreeTable<Id, Self>;
 }
 
+/// Has a body so it's not `null` when serializing
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct Bot;
+pub struct Bot {}
 
 impl Component<EntityId> for Bot {
     type Table = DenseVecTable<EntityId, Self>;

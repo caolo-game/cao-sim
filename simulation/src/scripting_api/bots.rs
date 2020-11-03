@@ -451,7 +451,7 @@ mod tests {
             storage
             {
                 EntityId, Bot,
-                    .insert_or_update(bot_id, Bot);
+                    .insert_or_update(bot_id, Bot{});
                 EntityId, PositionComponent,
                     .insert_or_update(bot_id, PositionComponent(from));
                 EntityId, OwnedEntity,

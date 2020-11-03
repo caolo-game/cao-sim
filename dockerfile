@@ -63,7 +63,7 @@ COPY ./simulation/ ./simulation/
 COPY ./cao-storage-derive/ ./cao-storage-derive/
 COPY ./worker/ ./worker/
 
-RUN ./build.sh
+RUN bash ./build.sh
 
 # ========== Copy the built binary to a scratch container, to minimize the image size ==========
 
@@ -82,4 +82,4 @@ COPY --from=build /caolo/target/release/caolo-worker ./caolo-worker
 COPY --from=build /caolo/bin/diesel ./diesel
 COPY ./worker/run-profile.sh ./run-profile.sh
 
-ENTRYPOINT [ "./run.sh" ]
+ENTRYPOINT [ "bash", "./run.sh" ]

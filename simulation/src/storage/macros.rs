@@ -26,8 +26,8 @@
 ///     mutate
 ///     store
 ///     {
-///         EntityId, Bot, .insert_or_update(entity_1, Bot);
-///         EntityId, Bot, .insert_or_update(entity_2, Bot);
+///         EntityId, Bot, .insert_or_update(entity_1, Bot{});
+///         EntityId, Bot, .insert_or_update(entity_2, Bot{});
 ///         EntityId, CarryComponent,
 ///                  .insert_or_update(entity_1, CarryComponent{carry: 12, carry_max: 69});
 ///         EntityId, CarryComponent,
@@ -84,8 +84,8 @@ macro_rules! query {
 ///    mutate
 ///    store
 ///    {
-///        EntityId, Bot, .insert_or_update(entity_1, Bot);
-///        EntityId, Bot, .insert_or_update(entity_2, Bot);
+///        EntityId, Bot, .insert_or_update(entity_1, Bot{});
+///        EntityId, Bot, .insert_or_update(entity_2, Bot{});
 ///
 ///        EntityId, PositionComponent, .insert_or_update(entity_1, PositionComponent::default());
 ///        EntityId, PositionComponent, .insert_or_update(entity_2, PositionComponent::default());
@@ -145,8 +145,8 @@ macro_rules! query {
 ///     mutate
 ///     store
 ///     {
-///         EntityId, Bot, .insert_or_update(entity_1, Bot);
-///         EntityId, Bot, .insert_or_update(entity_2, Bot);
+///         EntityId, Bot, .insert_or_update(entity_1, Bot{});
+///         EntityId, Bot, .insert_or_update(entity_2, Bot{});
 ///
 ///         EntityId, PositionComponent, .insert_or_update(entity_1, PositionComponent::default());
 ///         EntityId, PositionComponent, .insert_or_update(entity_2, PositionComponent::default());
@@ -277,15 +277,30 @@ macro_rules! join {
     };
 }
 
+/// # `iterby`
+///
+///`iterby` will create `iterby_<name>` methods, that will iterate on the given table and output
+/// a tuple (struct) with all optional fields.
+/// To use this the given table must have an `iter` method returning a pair of (key, value), only
+/// for keys that are in the given table.
+/// Will call `get_by_id` for all other tables.
+///
+/// For this reason I do not recommend using this often, as hand written `join!`-s can be a lot
+/// more performant.
+///
+/// This is mostly here for serialization, when communicating with clients.
 #[macro_export(local_inner_macros)]
 macro_rules! storage {
     (
         module $module: ident
         key $id: ty,
         $(
-           $(attr $attr: meta )* table $row: ty = $name: ident
+            $(primary)* $(attr $attr: meta )* table $row: ty = $name: ident
         ),*
-        $(,)*
+
+        $(
+            iterby $it: ident
+        )*
     ) => {
         pub mod $module {
             use super::*;
@@ -297,11 +312,13 @@ macro_rules! storage {
 
             #[derive(Debug, cao_storage_derive::CaoStorage, Default, Serialize, Deserialize)]
             $(
-                #[cao_storage($id, $name, $row)]
+                #[cao_storage_table($id, $name, $row)]
+            )*
+            $(
+                #[cao_storage_iterby($it, $id)]
             )*
             pub struct Storage {
-                $(
-                $(#[ $attr ])*
+                $( $(#[ $attr ] )*
                 pub(crate) $name: <$row as crate::tables::Component<$id>>::Table ),
                 +,
             }

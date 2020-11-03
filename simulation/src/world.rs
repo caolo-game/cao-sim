@@ -14,37 +14,42 @@ use std::{hash::Hasher, pin::Pin};
 storage!(
     module room_store key Room,
     table RoomConnections = room_connections,
-    table RoomComponent = rooms,
+    table RoomComponent = rooms
 );
 
 storage!(
     module entity_store key EntityId,
 
-    table Bot = entity_bot,
-    table PositionComponent = entity_pos,
-    table SpawnBotComponent = entity_spawnbot,
-    table CarryComponent = entity_carry,
-    table Structure = entity_structure,
-    table HpComponent = entity_hp,
-    table EnergyRegenComponent = entity_energyregen,
-    table EnergyComponent = entity_energy,
-    table ResourceComponent = entity_resource,
-    table DecayComponent = entity_decay,
-    table EntityScript = entity_script,
-    table SpawnComponent = entity_spawn,
-    table SpawnQueueComponent = entity_spawnqueue,
-    table OwnedEntity = entity_owner,
-    table PathCacheComponent = entity_pathcache,
-    table MeleeAttackComponent = entity_melee,
+    table Bot = bot,
+    table PositionComponent = pos,
+    table SpawnBotComponent = spawnbot,
+    table CarryComponent = carry,
+    table Structure = structure,
+    table HpComponent = hp,
+    table EnergyRegenComponent = energyregen,
+    table EnergyComponent = energy,
+    table ResourceComponent = resource,
+    table DecayComponent = decay,
+    table EntityScript = script,
+    table SpawnComponent = spawn,
+    table SpawnQueueComponent = spawnqueue,
+    table OwnedEntity = owner,
+    table PathCacheComponent = pathcache,
+    table MeleeAttackComponent = melee,
 
     attr serde(skip) table ScriptHistory = script_history
+
+    iterby bot
+    iterby structure
 );
 
 storage!(
     module user_store key UserId,
 
     table UserComponent = user,
-    table EntityScript = user_default_script,
+    table EntityScript = user_default_script
+
+    iterby user
 );
 
 storage!(
@@ -60,21 +65,21 @@ storage!(
     table Intents<MutPathCacheIntent> = mut_path_cache_intents,
     table Intents<MeleeIntent> = melee_intents,
     table Intents<ScriptHistoryEntry> = script_history_intents,
-    table Intents<DeleteEntityIntent> = delete_entity_intents,
+    table Intents<DeleteEntityIntent> = delete_entity_intents
 );
 
 storage!(
     module config_store key ConfigKey,
 
     table RoomProperties = room_properties,
-    table GameConfig = game_config,
+    table GameConfig = game_config
 );
 
 storage!(
     module positions_store key WorldPosition,
     // don't forget to implement these in `reset_world_storage`
     table TerrainComponent = point_terrain,
-    attr serde(skip) table EntityComponent = point_entity,
+    attr serde(skip) table EntityComponent = point_entity
 );
 
 #[derive(Debug, Serialize)]
@@ -312,5 +317,51 @@ mod tests {
     fn check_world_sanity() {
         setup_testing();
         let _world = init_inmemory_storage(None);
+    }
+
+    #[test]
+    fn test_bot_serialization() {
+        setup_testing();
+        let mut world = init_inmemory_storage(None);
+
+        for _ in 0..4 {
+            let _entity = world.insert_entity(); // produce gaps
+            let entity = world.insert_entity();
+
+            world.entities.bot.insert_or_update(entity, Bot {});
+            world
+                .entities
+                .melee
+                .insert_or_update(entity, MeleeAttackComponent { strength: 128 });
+            world.entities.pos.insert_or_update(
+                entity,
+                PositionComponent(WorldPosition {
+                    room: Axial::new(42, 69),
+                    pos: Axial::new(16, 61),
+                }),
+            );
+        }
+
+        for _ in 0..2 {
+            let entity = world.insert_entity();
+
+            world
+                .entities
+                .structure
+                .insert_or_update(entity, Structure {});
+            world.entities.pos.insert_or_update(
+                entity,
+                PositionComponent(WorldPosition {
+                    room: Axial::new(42, 69),
+                    pos: Axial::new(16, 61),
+                }),
+            );
+        }
+
+        let bots: Vec<_> = world.entities.iterby_bot().collect();
+        serde_json::to_string_pretty(&bots).unwrap();
+
+        let structures: Vec<_> = world.entities.iterby_structure().collect();
+        serde_json::to_string_pretty(&structures).unwrap();
     }
 }
