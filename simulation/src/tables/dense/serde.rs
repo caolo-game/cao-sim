@@ -111,7 +111,7 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
-        let table = DenseVecTable::from_sorted_vec(points).unwrap();
+        let table = DenseVecTable::from_sorted_vec(points.clone()).unwrap();
 
         let s = serde_json::to_string(&table).unwrap();
         dbg!(&s);
