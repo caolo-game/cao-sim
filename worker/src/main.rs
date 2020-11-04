@@ -5,6 +5,7 @@ mod input;
 use anyhow::Context;
 use async_amqp::*;
 use caolo_sim::{executor::mp_executor, executor::Executor, prelude::*};
+use lapin::{options::QueueDeclareOptions, types::FieldTable};
 use mp_executor::{MpExecutor, Role};
 use slog::{debug, error, info, o, warn, Drain, Logger};
 use std::{
@@ -259,7 +260,19 @@ fn main() {
         ))
         .expect("Failed to connect to amqp");
 
-    let channel = sim_rt.block_on(amqp_conn.create_channel()).unwrap();
+    let channel = sim_rt
+        .block_on(async {
+            let channel = amqp_conn.create_channel().await?;
+            let _q = channel
+                .queue_declare(
+                    "CAO_COMMANDS",
+                    QueueDeclareOptions::default(),
+                    FieldTable::default(),
+                )
+                .await?;
+            Ok::<_, anyhow::Error>(channel)
+        })
+        .unwrap();
 
     loop {
         let start = Instant::now();
@@ -281,6 +294,10 @@ fn main() {
                 error!(logger, "Failed to send world output to storage {:?}", err);
             })
             .unwrap_or(());
+
+        sleep_duration = tick_freq
+            .checked_sub(Instant::now() - start)
+            .unwrap_or_else(|| Duration::from_millis(0));
 
         // use the sleep time to update inputs
         // this allows faster responses to clients as well as potentially spending less time on
