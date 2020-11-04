@@ -109,6 +109,27 @@ async fn send_schema<'a>(
     Ok(())
 }
 
+async fn output<'a>(
+    world: &'a World,
+    connection: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
+    queen_tag: Uuid,
+) -> anyhow::Result<()> {
+    let payload = world.as_json();
+    sqlx::query!(
+        r#"
+        INSERT INTO world_output (queen_tag, world_time, payload)
+        VALUES ($1, $2, $3);
+        "#,
+        queen_tag,
+        world.time() as i64,
+        payload
+    )
+    .execute(connection)
+    .await
+    .with_context(|| "Failed to insert current world state")?;
+    Ok(())
+}
+
 fn main() {
     init();
     let sim_rt = caolo_sim::init_runtime();
@@ -118,10 +139,7 @@ fn main() {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_envlogger::new(drain).fuse();
-    let drain = slog_async::Async::new(drain)
-        .overflow_strategy(slog_async::OverflowStrategy::DropAndReport)
-        .build()
-        .fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
     let logger = slog::Logger::root(drain, o!());
 
     info!(logger, "Loaded game config {:?}", game_conf);
@@ -137,7 +155,7 @@ fn main() {
             warn!(logger, "Sentry URI was not provided");
         });
 
-    let role = match env::var("ROLE")
+    let role = match env::var("CAO_ROLE")
         .map(|s| s.to_lowercase())
         .as_ref()
         .map(|s| s.as_str())
@@ -257,6 +275,13 @@ fn main() {
             continue;
         }
 
+        sim_rt
+            .block_on(output(&*storage, &executor.pool, executor.tag))
+            .map_err(|err| {
+                error!(logger, "Failed to send world output to storage {:?}", err);
+            })
+            .unwrap_or(());
+
         // use the sleep time to update inputs
         // this allows faster responses to clients as well as potentially spending less time on
         // inputs because handling them is built into the sleep cycle
@@ -266,7 +291,7 @@ fn main() {
                 .block_on(input::handle_messages(
                     logger.clone(),
                     &mut storage,
-                    channel.clone(),
+                    &channel,
                 ))
                 .map_err(|err| {
                     error!(logger, "Failed to handle inputs {:?}", err);
@@ -274,7 +299,10 @@ fn main() {
                 .unwrap_or(());
             sleep_duration = sleep_duration
                 .checked_sub(Instant::now() - start)
+                // the idea is to sleep for half of the remaining time, then handle messages again
+                .and_then(|d| d.checked_div(2))
                 .unwrap_or_else(|| Duration::from_millis(0));
+            std::thread::sleep(sleep_duration);
         }
     }
 }

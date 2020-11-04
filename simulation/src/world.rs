@@ -34,9 +34,9 @@ storage!(
     table SpawnComponent = spawn,
     table SpawnQueueComponent = spawnqueue,
     table OwnedEntity = owner,
-    table PathCacheComponent = pathcache,
     table MeleeAttackComponent = melee,
 
+    attr serde(skip) table PathCacheComponent = pathcache,
     attr serde(skip) table ScriptHistory = script_history
 
     iterby bot
@@ -289,6 +289,28 @@ impl World {
         clear_table!(EntityComponent);
 
         Ok(self)
+    }
+
+    #[cfg(feature = "serde_json")]
+    pub fn as_json(&self) -> serde_json::Value {
+        let bots = self
+            .entities
+            .iterby_bot()
+            .map(|mut payload| {
+                payload.pathcache = None;
+                payload
+            })
+            .collect::<Vec<_>>();
+        serde_json::json!({
+            // TODO group by room!
+            "bots": bots,
+            "structures": self.entities.iterby_structure().collect::<Vec<_>>(),
+            "resources": self.entities.iterby_resource().collect::<Vec<_>>(),
+            "terrain": &self.positions.point_terrain,
+
+            "roomProperties": &self.config.room_properties.value,
+            "gameConfig": &self.config.game_config.value,
+        })
     }
 }
 

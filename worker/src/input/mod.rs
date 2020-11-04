@@ -88,10 +88,10 @@ fn handle_single_message(
     Ok(msg_id)
 }
 
-pub async fn handle_messages(
+pub async fn handle_messages<'a>(
     logger: Logger,
-    storage: &mut World,
-    channel: lapin::Channel,
+    storage: &'a mut World,
+    channel: &'a lapin::Channel,
 ) -> anyhow::Result<()> {
     trace!(logger, "handling incoming messages");
 
