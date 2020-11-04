@@ -13,6 +13,20 @@
       "nullable": []
     }
   },
+  "4e3a1edab0d5a2ae55c0933e631ff761cf1cb231a70c854a06af7c98e51b7724": {
+    "query": "\n        INSERT INTO world_output (queen_tag, world_time, payload)\n        VALUES ($1, $2, $3);\n        ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int8",
+          "Jsonb"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "5e69d1a4c38e65556975327af9e22f24bfbc5088210c42c084ee4e110f67fabe": {
     "query": "\n    SELECT value_message_packed\n    FROM world\n    WHERE field=$1\n        ",
     "describe": {
@@ -48,14 +62,16 @@
       "nullable": []
     }
   },
-  "a2a2aa8e72c342f1cecf2e8b0092b1427dd52d3df7c241ac50f37f3ed45aa234": {
-    "query": "\n    INSERT INTO scripting_schema (queen_tag, payload)\n    VALUES ($1, $2)\n    ON CONFLICT (queen_tag)\n    DO UPDATE SET \n    payload=$2\n        ",
+  "bf6f95dc55806af1f011e83054b53af15a9dfd9ae53d5e397f3fb46f6e63188c": {
+    "query": "\n    INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)\n    VALUES ($1, $4, $2, $3)\n    ON CONFLICT (field) \n    DO UPDATE\n    SET value_message_packed=$3, world_timestamp=$2, updated=now()\n        ",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
-          "Uuid",
-          "Jsonb"
+          "Varchar",
+          "Int8",
+          "Bytea",
+          "Uuid"
         ]
       },
       "nullable": []

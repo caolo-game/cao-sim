@@ -13,6 +13,20 @@
       "nullable": []
     }
   },
+  "4e3a1edab0d5a2ae55c0933e631ff761cf1cb231a70c854a06af7c98e51b7724": {
+    "query": "\n        INSERT INTO world_output (queen_tag, world_time, payload)\n        VALUES ($1, $2, $3);\n        ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Int8",
+          "Jsonb"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "5e69d1a4c38e65556975327af9e22f24bfbc5088210c42c084ee4e110f67fabe": {
     "query": "\n    SELECT value_message_packed\n    FROM world\n    WHERE field=$1\n        ",
     "describe": {
