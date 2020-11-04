@@ -1,5 +1,5 @@
-use caolo_sim::indices::EntityId;
 use caolo_sim::tables::{btree::BTreeTable, dense::DenseVecTable, JoinIterator};
+use caolo_sim::{indices::EntityId, tables::flag::SparseFlagTable};
 use criterion::{black_box, criterion_group, Criterion};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -154,10 +154,10 @@ fn join_bt_bt_2pow15_dense(c: &mut Criterion) {
 fn join_flag_vec_sparse(c: &mut Criterion) {
     c.bench_function("join_flag_vec", |b| {
         let vectable = random_vec_table(1 << 12, 1 << 15);
-        let mut flags = DenseVecTable::new();
+        let mut flags = SparseFlagTable::<_, Flag>::default();
 
         for (id, _) in vectable.iter() {
-            flags.insert_or_update(id, Flag {});
+            flags.insert(id);
         }
 
         b.iter(move || {
