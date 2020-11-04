@@ -9,6 +9,9 @@ fn get_rand() -> impl rand::Rng {
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
+struct Flag {}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 struct LargeComponent {
     _a: [u8; 10],
     _b: [u8; 10],
@@ -148,6 +151,24 @@ fn join_bt_bt_2pow15_dense(c: &mut Criterion) {
     });
 }
 
+fn join_flag_vec_sparse(c: &mut Criterion) {
+    c.bench_function("join_flag_vec", |b| {
+        let vectable = random_vec_table(1 << 12, 1 << 15);
+        let mut flags = DenseVecTable::new();
+
+        for (id, _) in vectable.iter() {
+            flags.insert_or_update(id, Flag {});
+        }
+
+        b.iter(move || {
+            let it = JoinIterator::new(flags.iter(), vectable.iter());
+            for joined in it {
+                black_box(joined);
+            }
+        });
+    });
+}
+
 criterion_group!(
     join_benches,
     join_bt_bt_2pow15_dense,
@@ -158,5 +179,6 @@ criterion_group!(
     join_vec_vec_2pow15_sparse,
     join_btree_vec_2pow15_sparse,
     join_vec_btree_2pow15_sparse,
-    join_bt_bt_2pow15_sparse
+    join_bt_bt_2pow15_sparse,
+    join_flag_vec_sparse
 );
