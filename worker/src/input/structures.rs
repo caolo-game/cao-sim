@@ -124,7 +124,7 @@ pub fn place_structure(
         storage
         {
             EntityId, Structure,
-                .insert_or_update(entity_id, Structure{});
+                .insert(entity_id);
 
             EntityId, PositionComponent,
                 .insert_or_update(entity_id, PositionComponent(position));

@@ -110,15 +110,15 @@ fn spawn_bot(
         "spawn_bot spawn_id: {:?} entity_id: {:?}", spawn_id, entity_id
     );
 
-    let bot = match spawn_bots.delete(&entity_id) {
-        Some(bot) => bot,
+    match spawn_bots.delete(&entity_id) {
+        Some(_) => (),
         None => {
             warn!(logger, "Spawning bot {:?} was not found", entity_id);
             return;
         }
     };
 
-    bots.insert_or_update(entity_id, bot.bot);
+    bots.insert(entity_id);
     hps.insert_or_update(
         entity_id,
         HpComponent {

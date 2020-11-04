@@ -26,8 +26,8 @@
 ///     mutate
 ///     store
 ///     {
-///         EntityId, Bot, .insert_or_update(entity_1, Bot{});
-///         EntityId, Bot, .insert_or_update(entity_2, Bot{});
+///         EntityId, Bot, .insert(entity_1);
+///         EntityId, Bot, .insert(entity_2);
 ///         EntityId, CarryComponent,
 ///                  .insert_or_update(entity_1, CarryComponent{carry: 12, carry_max: 69});
 ///         EntityId, CarryComponent,
@@ -84,8 +84,8 @@ macro_rules! query {
 ///    mutate
 ///    store
 ///    {
-///        EntityId, Bot, .insert_or_update(entity_1, Bot{});
-///        EntityId, Bot, .insert_or_update(entity_2, Bot{});
+///        EntityId, Bot, .insert(entity_1);
+///        EntityId, Bot, .insert(entity_2);
 ///
 ///        EntityId, PositionComponent, .insert_or_update(entity_1, PositionComponent::default());
 ///        EntityId, PositionComponent, .insert_or_update(entity_2, PositionComponent::default());
@@ -145,8 +145,8 @@ macro_rules! query {
 ///     mutate
 ///     store
 ///     {
-///         EntityId, Bot, .insert_or_update(entity_1, Bot{});
-///         EntityId, Bot, .insert_or_update(entity_2, Bot{});
+///         EntityId, Bot, .insert(entity_1);
+///         EntityId, Bot, .insert(entity_2);
 ///
 ///         EntityId, PositionComponent, .insert_or_update(entity_1, PositionComponent::default());
 ///         EntityId, PositionComponent, .insert_or_update(entity_2, PositionComponent::default());

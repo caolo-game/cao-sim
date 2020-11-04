@@ -3,6 +3,7 @@
 //!
 use crate::components::{self, EntityComponent, PositionComponent};
 use crate::indices::{EntityId, UserId, WorldPosition};
+use crate::tables::traits::Table;
 use crate::scripting_api::OperationResult;
 use crate::storage::views::View;
 use crate::terrain;

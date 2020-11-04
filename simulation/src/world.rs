@@ -41,6 +41,7 @@ storage!(
 
     iterby bot
     iterby structure
+    iterby resource
 );
 
 storage!(
@@ -328,7 +329,7 @@ mod tests {
             let _entity = world.insert_entity(); // produce gaps
             let entity = world.insert_entity();
 
-            world.entities.bot.insert_or_update(entity, Bot {});
+            world.entities.bot.insert(entity);
             world
                 .entities
                 .melee
@@ -345,10 +346,7 @@ mod tests {
         for _ in 0..2 {
             let entity = world.insert_entity();
 
-            world
-                .entities
-                .structure
-                .insert_or_update(entity, Structure {});
+            world.entities.structure.insert(entity);
             world.entities.pos.insert_or_update(
                 entity,
                 PositionComponent(WorldPosition {

@@ -1,5 +1,8 @@
-use crate::indices::{EntityId, RoomPosition, ScriptId, UserId, WorldPosition};
 use crate::tables::{btree::BTreeTable, dense::DenseVecTable, Component, TableId};
+use crate::{
+    indices::{EntityId, RoomPosition, ScriptId, UserId, WorldPosition},
+    tables::flag::SparseFlagTable,
+};
 use arrayvec::ArrayVec;
 
 use serde::{Deserialize, Serialize};
@@ -19,7 +22,7 @@ impl<Id: TableId> Component<Id> for MeleeAttackComponent {
 pub struct Bot {}
 
 impl Component<EntityId> for Bot {
-    type Table = DenseVecTable<EntityId, Self>;
+    type Table = SparseFlagTable<EntityId, Self>;
 }
 
 /// Represent time to decay of bots

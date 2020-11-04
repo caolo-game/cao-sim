@@ -164,7 +164,7 @@ fn init_bot(
     ): InitBotMuts,
 ) {
     entity_scripts.insert_or_update(id, EntityScript(script_id));
-    bots.insert_or_update(id, Bot {});
+    bots.insert(id);
     carry_component.insert_or_update(
         id,
         CarryComponent {
@@ -224,7 +224,7 @@ fn init_spawn(
     (terrain,): InitSpawnConst,
 ) {
     trace!(logger, "init_spawn");
-    structures.insert_or_update(id, Structure {});
+    structures.insert(id);
     spawns.insert_or_update(id, SpawnComponent::default());
     spawn_queues.insert_or_update(id, SpawnQueueComponent::default());
     owners.insert_or_update(

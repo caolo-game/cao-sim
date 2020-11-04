@@ -7,10 +7,13 @@ pub use bot_components::*;
 pub use resources::*;
 pub use rooms::*;
 
-use crate::indices::{EntityId, UserId, WorldPosition};
 use crate::tables::{
     btree::BTreeTable, dense::DenseVecTable, morton::MortonTable, Component, RoomMortonTable,
     SpatialKey2d, TableId,
+};
+use crate::{
+    indices::{EntityId, UserId, WorldPosition},
+    tables::flag::SparseFlagTable,
 };
 
 use cao_lang::prelude::CompiledProgram;
@@ -48,7 +51,7 @@ impl Component<WorldPosition> for EntityComponent {
 pub struct Structure {}
 
 impl<Id: TableId> Component<Id> for Structure {
-    type Table = BTreeTable<Id, Self>;
+    type Table = SparseFlagTable<Id, Self>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
