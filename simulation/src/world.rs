@@ -293,20 +293,62 @@ impl World {
 
     #[cfg(feature = "serde_json")]
     pub fn as_json(&self) -> serde_json::Value {
+        use std::collections::HashMap;
+
+        fn pos2str(pos: Axial) -> String {
+            format!("{};{}", pos.q, pos.r)
+        }
+
         let bots = self
             .entities
             .iterby_bot()
-            .map(|mut payload| {
+            .filter_map(|mut payload| {
                 payload.pathcache = None;
-                payload
+                payload.pos.map(|_| payload)
             })
-            .collect::<Vec<_>>();
+            .fold(HashMap::new(), |mut map, payload| {
+                let room = payload.pos.unwrap().0.room;
+                let room = pos2str(room);
+                map.entry(room).or_insert_with(Vec::new).push(payload);
+                map
+            });
+        let structures = self
+            .entities
+            .iterby_structure()
+            .filter_map(|payload| payload.pos.map(|_| payload))
+            .fold(HashMap::new(), |mut map, payload| {
+                let room = payload.pos.unwrap().0.room;
+                let room = pos2str(room);
+                map.entry(room).or_insert_with(Vec::new).push(payload);
+                map
+            });
+
+        let resources = self
+            .entities
+            .iterby_resource()
+            .filter_map(|payload| payload.pos.map(|_| payload))
+            .fold(HashMap::new(), |mut map, payload| {
+                let room = payload.pos.unwrap().0.room;
+                let room = pos2str(room);
+                map.entry(room).or_insert_with(Vec::new).push(payload);
+                map
+            });
+
+        let terrain = self
+            .positions
+            .point_terrain
+            .iter()
+            .map(|(pos, terrain)| (pos2str(pos.room), (pos.pos, terrain)))
+            .fold(HashMap::new(), |mut map, (room, payload)| {
+                map.entry(room).or_insert_with(Vec::new).push(payload);
+                map
+            });
+
         serde_json::json!({
-            // TODO group by room!
             "bots": bots,
-            "structures": self.entities.iterby_structure().collect::<Vec<_>>(),
-            "resources": self.entities.iterby_resource().collect::<Vec<_>>(),
-            "terrain": &self.positions.point_terrain,
+            "structures": structures,
+            "resources": resources,
+            "terrain": terrain,
 
             "roomProperties": &self.config.room_properties.value,
             "gameConfig": &self.config.game_config.value,
