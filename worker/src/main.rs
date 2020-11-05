@@ -4,6 +4,7 @@ mod input;
 
 use anyhow::Context;
 use async_amqp::*;
+use cao_lang::SubProgramType;
 use caolo_sim::{executor::mp_executor, executor::Executor, prelude::*};
 use lapin::{options::QueueDeclareOptions, types::FieldTable};
 use mp_executor::{MpExecutor, Role};
@@ -44,52 +45,43 @@ async fn send_schema<'a>(
     connection: impl sqlx::Executor<'a, Database = sqlx::Postgres>,
     queen_tag: Uuid,
 ) -> anyhow::Result<()> {
-    use cao_messages::script_capnp::schema;
-
     debug!(logger, "Sending schema");
     let schema = caolo_sim::scripting_api::make_import();
     let imports = schema.imports();
 
-    let mut msg = capnp::message::Builder::new_default();
-    let mut root = msg.init_root::<schema::Builder>();
+    let basic_descs = cao_lang::compiler::description::get_instruction_descriptions();
 
-    let len = imports.len();
-    let mut cards = root.reborrow().init_cards(len as u32);
-    imports.iter().enumerate().for_each(|(i, import)| {
-        let import = &import.desc;
-        let mut card = cards.reborrow().get(i as u32);
-        card.set_name(import.name);
-        card.set_description(import.description);
-        card.set_ty(
-            serde_json::to_string(&import.ty)
-                .expect("Set card type")
-                .as_str(),
-        );
-        let len = import.input.len();
-        let mut inputs = card.reborrow().init_input(len as u32);
-        import
-            .input
-            .iter()
-            .enumerate()
-            .for_each(|(i, inp)| inputs.set(i as u32, inp));
-        let len = import.output.len();
-        let mut outputs = card.reborrow().init_output(len as u32);
-        import
-            .output
-            .iter()
-            .enumerate()
-            .for_each(|(i, inp)| outputs.set(i as u32, inp));
-        let len = import.constants.len();
-        let mut constants = card.reborrow().init_constants(len as u32);
-        import
-            .constants
-            .iter()
-            .enumerate()
-            .for_each(|(i, inp)| constants.set(i as u32, inp));
-    });
+    #[derive(serde::Serialize)]
+    struct Card<'a> {
+        name: &'a str,
+        description: &'a str,
+        ty: &'a str,
+        input: &'a [&'a str],
+        output: &'a [&'a str],
+        constants: &'a [&'a str],
+    }
 
-    let mut payload = Vec::with_capacity(1_000_000);
-    capnp::serialize::write_message(&mut payload, &msg)?;
+    let msg = imports
+        .iter()
+        .map(|import| Card {
+            name: import.desc.name,
+            description: import.desc.description,
+            constants: &*import.desc.constants,
+            input: &*import.desc.input,
+            output: &*import.desc.output,
+            ty: import.desc.ty.as_str(),
+        })
+        .chain(basic_descs.iter().map(|card| Card {
+            name: card.name,
+            description: card.description,
+            input: &*card.input,
+            output: &*card.output,
+            constants: &*card.constants,
+            ty: SubProgramType::Instruction.as_str(),
+        }))
+        .collect::<Vec<_>>();
+
+    let payload = rmp_serde::to_vec_named(&msg)?;
 
     sqlx::query!(
         r#"
@@ -140,7 +132,10 @@ fn main() {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::FullFormat::new(decorator).build().fuse();
     let drain = slog_envlogger::new(drain).fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
+    let drain = slog_async::Async::new(drain)
+        .overflow_strategy(slog_async::OverflowStrategy::Drop)
+        .build()
+        .fuse();
     let logger = slog::Logger::root(drain, o!());
 
     info!(logger, "Loaded game config {:?}", game_conf);
