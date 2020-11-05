@@ -5,6 +5,9 @@ RUN cargo install diesel_cli --no-default-features --features=postgres --root .
 
 FROM ubuntu:20.04
 
+RUN apt-get update
+RUN apt-get install libpq-dev -y
+
 COPY ./migrations ./migrations
 COPY --from=deps /caolo/bin/diesel ./diesel
 
