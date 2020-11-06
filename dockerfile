@@ -1,9 +1,11 @@
 FROM rust:latest AS deps
 
 RUN apt-get update
-RUN apt-get install lld clang capnproto -y --fix-missing
+RUN apt-get install lld clang libc-dev  pkgconf capnproto -y
 
 WORKDIR /caolo
+
+RUN capnp --version
 
 COPY ./.cargo/ ./.cargo/
 RUN cargo --version
@@ -42,44 +44,39 @@ COPY ./.cargo/ ./.cargo/
 RUN cargo --version
 
 RUN apt-get update
-RUN apt-get install lld clang capnproto postgresql postgresql-contrib sudo -y --fix-missing
+RUN apt-get install lld clang libc-dev  pkgconf libpq-dev capnproto -y
 
 WORKDIR /caolo
 
-RUN cargo install diesel_cli --no-default-features --features=postgres --root .
-
-ENV DATABASE_URL=postgres://postgres:postgres@localhost:5432/caolo
-
+RUN cargo install sqlx-cli --version=0.1.0-beta.1 --no-default-features --features=postgres --root .
 
 # copy the cache
 COPY --from=deps $CARGO_HOME $CARGO_HOME
 COPY --from=deps /caolo/target ./target
 COPY --from=deps /caolo/Cargo.lock ./Cargo.lock
 
-COPY ./migrations ./migrations
-COPY ./bash-scripts/build.sh ./build.sh
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./simulation/ ./simulation/
 COPY ./cao-storage-derive/ ./cao-storage-derive/
 COPY ./worker/ ./worker/
 
-RUN bash ./build.sh
+ENV SQLX_OFFLINE=1
+RUN cargo build --release
 
 # ========== Copy the built binary to a scratch container, to minimize the image size ==========
 
-FROM ubuntu:20.04
+FROM ubuntu:latest
 WORKDIR /caolo
 
-RUN apt-get update -y
-RUN apt-get install libssl-dev libcurl4-openssl-dev -y
+RUN apt-get update
+RUN apt-get install bash libpq-dev openssl -y
 # RUN apt-get install valgrind -y
 # RUN apt-get install heaptrack -y
 
 COPY ./bash-scripts/ ./
 COPY ./migrations ./migrations
-COPY ./diesel.toml ./diesel.toml
 COPY --from=build /caolo/target/release/caolo-worker ./caolo-worker
-COPY --from=build /caolo/bin/diesel ./diesel
+COPY --from=build /caolo/bin/sqlx ./sqlx
 COPY ./worker/run-profile.sh ./run-profile.sh
 
 ENTRYPOINT [ "bash", "./run.sh" ]

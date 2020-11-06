@@ -1,5 +1,5 @@
-#/usr/bin/bash
+#!/usr/bin/bash
 
 set -e
 
-./diesel database setup
+./sqlx migrate run

@@ -1,7 +1,7 @@
 FROM rust:latest AS deps
 
 WORKDIR /caolo
-RUN cargo install diesel_cli --no-default-features --features=postgres --root .
+RUN cargo install sqlx-cli --version=0.1.0-beta.1 --no-default-features --features=postgres --root .
 
 FROM ubuntu:20.04
 
@@ -9,6 +9,6 @@ RUN apt-get update
 RUN apt-get install libpq-dev -y
 
 COPY ./migrations ./migrations
-COPY --from=deps /caolo/bin/diesel ./diesel
+COPY --from=deps /caolo/bin/sqlx ./sqlx
 
-ENTRYPOINT ["./diesel", "migration", "run"]
+ENTRYPOINT ["./sqlx", "migrate", "run"]

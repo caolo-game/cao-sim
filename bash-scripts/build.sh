@@ -1,4 +1,4 @@
-#/usr/bin/bash
+#!/usr/bin/bash
 
 set -e
 
@@ -12,7 +12,8 @@ done
 
 sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres';"
 
-bin/diesel database setup
+bin/sqlx database create
+bin/sqlx migrate run
 
 # --features flag is not allowed in virtual workspace roots...
 cd worker

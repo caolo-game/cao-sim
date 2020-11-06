@@ -1,3 +1,21 @@
+CREATE extension IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE world(field VARCHAR NOT NULL,
+                   queen_tag UUID NOT NULL,
+                   world_timestamp BIGINT NOT NULL,
+                   created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+                   updated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+                   value_message_packed BYTEA NOT NULL,
+                   PRIMARY KEY (field, queen_tag)
+            );
+
+
+CREATE TABLE scripting_schema (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    queen_tag UUID NOT NULL UNIQUE,
+    schema_message_packed BYTEA NOT NULL
+);
+
 CREATE TABLE world_output (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     queen_tag UUID NOT NULL,
@@ -34,3 +52,4 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER world_cleanup AFTER INSERT
     ON world_output
     EXECUTE PROCEDURE on_world_ouput_insert();
+

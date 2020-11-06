@@ -15,10 +15,6 @@ use std::{
 };
 use uuid::Uuid;
 
-#[cfg(feature = "jemallocator")]
-#[global_allocator]
-static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
 fn init() {
     #[cfg(feature = "dotenv")]
     dep_dotenv::dotenv().unwrap_or_default();
