@@ -42,13 +42,16 @@ sqlx = { version = "0.4.0-beta.1", features = [
     "macros",
     "offline"
 ] }
-lapin = { version = "1", features=["openssl"] }
+lapin = { version = "1", features = ["openssl"] }
 async-amqp = { version = "0.1" }
 async-std = { version = "*" }
 dep-dotenv = { version = "0.14", optional = true, package = "dotenv" }
 uuid = { version = "0.8", features = ["v4"] }
 capnp = "0.13"
 rmp-serde = { version = "0.14" }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemallocator = "0.3.2"
 
 [dev-dependencies]
 env_logger = { version = "*", default-features = false }
