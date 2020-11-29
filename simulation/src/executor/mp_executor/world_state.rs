@@ -112,6 +112,7 @@ pub async fn update_world<'a>(
     // we will block until all these tasks complete, so this lifetime should be fine
     let executor = unsafe { &mut *(executor as *mut MpExecutor) as &'static mut MpExecutor };
     let logger = executor.logger.clone();
+    info!(logger, "Updating world state");
     //
     // Update world in parallel.
     //
@@ -149,7 +150,6 @@ pub async fn update_world<'a>(
             let mut conn = executor.pool.acquire().await?;
             async move { get_timed_state(&mut conn, WORLD_TERRAIN, None).await }
         };
-        let terrain = async_std::task::spawn(terrain);
         let terrain = terrain.await.map_err(|err| {
             error!(logger, "Failed to get `terrain`, {:?}", err);
             err

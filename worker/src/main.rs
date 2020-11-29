@@ -208,6 +208,7 @@ fn main() {
             },
         ))
         .expect("Create executor");
+    let logger = executor.logger.clone();
     info!(logger, "Init storage");
     let mut storage = executor
         .initialize(
@@ -228,6 +229,7 @@ fn main() {
     info!(logger, "Starting with {} actors", game_conf.n_actors);
 
     if executor.is_queen() {
+        info!(logger, "Running queen setup");
         init::init_storage(logger.clone(), &mut storage, &game_conf);
 
         let logger = logger.clone();

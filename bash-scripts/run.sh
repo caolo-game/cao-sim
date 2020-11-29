@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
+./diesel migration run
+
 set -e
 
-# TODO
-# ./sqlx migrate run
 ./caolo-worker

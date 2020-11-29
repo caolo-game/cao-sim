@@ -48,7 +48,7 @@ RUN apt-get install lld clang libc-dev  pkgconf libpq-dev capnproto -y
 
 WORKDIR /caolo
 
-RUN cargo install sqlx-cli --no-default-features --features=postgres --root .
+RUN cargo install diesel_cli --no-default-features --features=postgres --root .
 
 # copy the cache
 COPY --from=deps $CARGO_HOME $CARGO_HOME
@@ -76,7 +76,7 @@ RUN apt-get install bash libpq-dev openssl -y
 COPY ./bash-scripts/ ./
 COPY ./migrations ./migrations
 COPY --from=build /caolo/target/release/caolo-worker ./caolo-worker
-COPY --from=build /caolo/bin/sqlx ./sqlx
+COPY --from=build /caolo/bin/diesel ./diesel
 COPY ./worker/run-profile.sh ./run-profile.sh
 
 ENTRYPOINT [ "bash", "./run.sh" ]
