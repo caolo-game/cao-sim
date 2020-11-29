@@ -2,5 +2,6 @@
 
 set -e
 
-./sqlx migrate run
+# TODO
+# ./sqlx migrate run
 ./caolo-worker

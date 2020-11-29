@@ -3,10 +3,12 @@ mod init;
 mod input;
 
 use anyhow::Context;
-use async_amqp::*;
 use cao_lang::SubProgramType;
-use caolo_sim::{executor::mp_executor, executor::Executor, prelude::*};
-use lapin::{options::QueueDeclareOptions, types::FieldTable};
+use caolo_sim::{
+    executor::mp_executor::{self, MpExcError},
+    executor::Executor,
+    prelude::*,
+};
 use mp_executor::{MpExecutor, Role};
 use slog::{debug, error, info, o, warn, Drain, Logger};
 use std::{
@@ -88,7 +90,7 @@ async fn send_schema<'a>(
     INSERT INTO scripting_schema (queen_tag, schema_message_packed)
     VALUES ($1, $2)
     ON CONFLICT (queen_tag)
-    DO UPDATE SET 
+    DO UPDATE SET
     schema_message_packed=$2
         "#,
         queen_tag,
@@ -216,6 +218,13 @@ fn main() {
             },
         )
         .expect("Initialize executor");
+
+    let queue_url = std::env::var("MQ_ADDR").unwrap_or_else(|_| "ws://localhost:6942".to_owned());
+    let mut queue = sim_rt
+        .block_on(caoq_client::connect(queue_url.as_str()))
+        .map_err(MpExcError::QueueClientError)
+        .expect("failed to connect to msg bus");
+
     info!(logger, "Starting with {} actors", game_conf.n_actors);
 
     if executor.is_queen() {
@@ -243,31 +252,6 @@ fn main() {
         .as_str(),
         sentry::Level::Info,
     );
-
-    let amqp_url = std::env::var("AMQP_ADDR")
-        .or_else(|_| std::env::var("CLOUDAMQP_URL"))
-        .unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".to_owned());
-
-    let amqp_conn = sim_rt
-        .block_on(lapin::Connection::connect(
-            amqp_url.as_str(),
-            lapin::ConnectionProperties::default().with_async_std(),
-        ))
-        .expect("Failed to connect to amqp");
-
-    let channel = sim_rt
-        .block_on(async {
-            let channel = amqp_conn.create_channel().await?;
-            let _q = channel
-                .queue_declare(
-                    "CAO_COMMANDS",
-                    QueueDeclareOptions::default(),
-                    FieldTable::default(),
-                )
-                .await?;
-            Ok::<_, anyhow::Error>(channel)
-        })
-        .unwrap();
 
     loop {
         let start = Instant::now();
@@ -303,7 +287,7 @@ fn main() {
                 .block_on(input::handle_messages(
                     logger.clone(),
                     &mut storage,
-                    &channel,
+                    &mut queue,
                 ))
                 .map_err(|err| {
                     error!(logger, "Failed to handle inputs {:?}", err);

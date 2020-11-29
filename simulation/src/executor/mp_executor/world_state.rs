@@ -116,7 +116,7 @@ pub async fn update_world<'a>(
     // Update world in parallel.
     //
     // Create the get+deserialize task for each Store
-    // Spawn the task on the tokio runtime
+    // Spawn the task on the async_std runtime
     //
     let entities = {
         let mut conn = executor.pool.acquire().await?;
@@ -316,8 +316,8 @@ pub async fn send_world<'a>(
     };
 
     entities
-        .try_join(users)
         .try_join(scripts)
+        .try_join(users)
         .try_join(config)
         .try_join(terrain)
         .await?;
@@ -351,7 +351,7 @@ where
         r#"
     INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)
     VALUES ($1, $4, $2, $3)
-    ON CONFLICT (field, queen_tag) 
+    ON CONFLICT (field, queen_tag)
     DO UPDATE
     SET value_message_packed=$3, world_timestamp=$2, updated=now()
         "#,

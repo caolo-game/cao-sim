@@ -11,12 +11,11 @@ pub use self::drone::*;
 pub use self::error::*;
 pub use self::queen::*;
 
+use caoq_client::{Client as CaoQClient, MessageId};
 use capnp::{message::ReaderOptions, message::TypedReader, serialize::try_read_message};
 use chrono::{DateTime, Duration, Utc};
 use execute::execute_batch_script_update;
-use lapin::options::BasicGetOptions;
 
-use async_amqp::*;
 use slog::{debug, error, info, o, Drain, Logger};
 use std::fmt::Display;
 use uuid::Uuid;
@@ -38,7 +37,6 @@ pub const WORLD_USERS: &str = "CAO_WORLD_USERS";
 pub const WORLD_SCRIPTS: &str = "CAO_WORLD_SCIPTS";
 pub const WORLD_TERRAIN: &str = "CAO_WORLD_TERRAIN";
 pub const JOB_QUEUE: &str = "CAO_JOB_QUEUE";
-pub const JOB_RESULTS_LIST: &str = "CAO_JOB_RESULTS_LIST";
 
 type BatchScriptInputMsg<'a> = script_batch_job::Reader<'a>;
 type BatchScriptInputReader = TypedReader<capnp::serialize::OwnedSegments, script_batch_job::Owned>;
@@ -54,8 +52,7 @@ pub struct MpExecutor {
 
     pub pool: sqlx::postgres::PgPool,
 
-    pub amqp_connection: lapin::Connection,
-    pub amqp_chan: lapin::Channel,
+    pub queue: CaoQClient,
 
     pub role: Role,
 
@@ -82,7 +79,7 @@ impl Display for Role {
 #[derive(Debug)]
 pub struct ExecutorOptions {
     pub postgres_url: String,
-    pub amqp_url: String,
+    pub queue_url: String,
 
     pub queen_mutex_expiry_ms: i64,
     pub script_chunk_size: usize,
@@ -94,12 +91,11 @@ impl Default for ExecutorOptions {
     fn default() -> Self {
         let postgres_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:admin@localhost:5432/caolo".to_owned());
-        let amqp_url = std::env::var("AMQP_ADDR")
-            .or_else(|_| std::env::var("CLOUDAMQP_URL"))
-            .unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".to_owned());
+        let queue_url =
+            std::env::var("MQ_ADDR").unwrap_or_else(|_| "ws://localhost:6942".to_owned());
         Self {
             postgres_url,
-            amqp_url,
+            queue_url,
             queen_mutex_expiry_ms: 2000,
             script_chunk_size: 1024,
             expected_frequency: Duration::seconds(1),
@@ -130,18 +126,10 @@ impl MpExecutor {
                 .connect(options.postgres_url.as_str())
                 .await?;
 
-            info!(logger, "Connecting to amqp, url {}", &options.amqp_url);
-            let amqp_conn = lapin::Connection::connect(
-                options.amqp_url.as_str(),
-                lapin::ConnectionProperties::default().with_async_std(),
-            )
-            .await
-            .map_err(MpExcError::AmqpError)?;
-
-            let channel = amqp_conn
-                .create_channel()
+            info!(logger, "Connecting to queue, url {}", &options.queue_url);
+            let queue = caoq_client::connect(options.queue_url.as_str())
                 .await
-                .map_err(MpExcError::AmqpError)?;
+                .map_err(MpExcError::QueueClientError)?;
 
             let tag = Uuid::new_v4();
             info!(logger, "Finished setting up Executor, tag {}", tag);
@@ -151,10 +139,9 @@ impl MpExecutor {
                 pool,
                 tag,
                 logger,
-                amqp_connection: amqp_conn,
-                amqp_chan: channel,
                 role,
                 options,
+                queue,
             })
         }
 
@@ -182,15 +169,9 @@ impl MpExecutor {
     /// Execute until the queue is empty
     async fn execute_batch_script_jobs(&mut self, world: &mut World) -> Result<(), MpExcError> {
         debug!(self.logger, "Executing batch script jobs");
-        while let Some(message) = self
-            .amqp_chan
-            .basic_get(JOB_QUEUE, BasicGetOptions { no_ack: true })
-            .await
-            .map_err(MpExcError::AmqpError)?
-        {
-            let delivery = message.delivery;
-
-            let message = parse_script_batch(delivery.data)?.unwrap(); // FIXME
+        while let Some(delivery) = self.queue.pop_msg().await? {
+            let msg_id = delivery.id;
+            let message = parse_script_batch(delivery.payload)?.unwrap(); // FIXME
             let message: BatchScriptInputMsg = message.get().map_err(|err| {
                 error!(self.logger, "Failed to 'get' capnp message {:?}", err);
                 MpExcError::MessageDeserializeError(err)
@@ -211,21 +192,12 @@ impl MpExecutor {
                 info!(self.logger, "Updating world done",);
             }
             if world.time() != expected_time {
-                let msg_id = message
-                    .get_msg_id()
-                    .map_err(MpExcError::MessageDeserializeError)?;
-
-                let msg_id =
-                    Uuid::from_fields(msg_id.get_d1(), msg_id.get_d2(), msg_id.get_d3(), unsafe {
-                        &*(&msg_id.get_d4() as *const u64 as *const [u8; 8])
-                    })
-                    .expect("Failed to deserialize msg id");
                 error!(
                     self.logger,
-                    "Failed to aquire expected world: {}. Skipping job {}", expected_time, msg_id
+                    "Failed to aquire expected world: {}. Skipping job {:?}", expected_time, msg_id
                 );
             }
-            execute_batch_script_update(self, message, world)
+            execute_batch_script_update(self, msg_id, message, world)
                 .await
                 .map_err(|err| {
                     error!(self.logger, "Failed to execute message {}", err);
@@ -239,7 +211,7 @@ impl MpExecutor {
 
 #[derive(Debug, Clone)]
 struct ScriptBatchStatus {
-    id: Uuid,
+    id: MessageId,
     from: usize,
     to: usize,
     enqueued: DateTime<Utc>,
@@ -247,7 +219,7 @@ struct ScriptBatchStatus {
 }
 
 impl ScriptBatchStatus {
-    fn new(id: Uuid, from: usize, to: usize) -> Self {
+    fn new(id: MessageId, from: usize, to: usize) -> Self {
         Self {
             id,
             from,

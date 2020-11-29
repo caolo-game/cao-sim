@@ -1,18 +1,5 @@
 {
   "db": "PostgreSQL",
-  "4a1696477483cf1236a2ab80ffc6e2c7ea68232db2cfc763e8ea84dcdf720114": {
-    "query": "\n    INSERT INTO scripting_schema (queen_tag, schema_message_packed)\n    VALUES ($1, $2)\n    ON CONFLICT (queen_tag)\n    DO UPDATE SET \n    schema_message_packed=$2\n        ",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Uuid",
-          "Bytea"
-        ]
-      },
-      "nullable": []
-    }
-  },
   "4e3a1edab0d5a2ae55c0933e631ff761cf1cb231a70c854a06af7c98e51b7724": {
     "query": "\n        INSERT INTO world_output (queen_tag, world_time, payload)\n        VALUES ($1, $2, $3);\n        ",
     "describe": {
@@ -47,8 +34,21 @@
       ]
     }
   },
-  "9dd075ae8eb7861875ce80eb7ce713f279602de1426dcb8ca09068755cb3093b": {
-    "query": "\n    INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)\n    VALUES ($1, $4, $2, $3)\n    ON CONFLICT (field, queen_tag) \n    DO UPDATE\n    SET value_message_packed=$3, world_timestamp=$2, updated=now()\n        ",
+  "8de0672b7211287857293a881cde0a4766ebb823b985300620ab6f200ad7a575": {
+    "query": "\n    INSERT INTO scripting_schema (queen_tag, schema_message_packed)\n    VALUES ($1, $2)\n    ON CONFLICT (queen_tag)\n    DO UPDATE SET\n    schema_message_packed=$2\n        ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "b97f2a7052703ec33ea0b475e6c8300e88d2d9693341cf3deefc95602b320874": {
+    "query": "\n    INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)\n    VALUES ($1, $4, $2, $3)\n    ON CONFLICT (field, queen_tag)\n    DO UPDATE\n    SET value_message_packed=$3, world_timestamp=$2, updated=now()\n        ",
     "describe": {
       "columns": [],
       "parameters": {

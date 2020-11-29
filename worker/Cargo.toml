@@ -17,6 +17,7 @@ dotenv = ["dep-dotenv"]
 caolo-sim = { path = "../simulation" } # , features=["cao-profile"] }
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
 cao-messages = { git = "https://github.com/caolo-game/cao-messages.git" }
+caoq-client = { git = "https://github.com/caolo-game/cao-queue.git", branch = "main" }
 slog = { version = "2", features = [
     "max_level_trace",
     "release_max_level_info"
@@ -33,18 +34,16 @@ sentry = "0.20"
 sentry-slog = "0.20"
 anyhow = "1"
 thiserror = "1"
-sqlx = { version = "0.4.0-beta.1", features = [
+sqlx = { version = "0.4.1", features = [
     "json",
     "postgres",
     "chrono",
     "tls",
     "uuid",
     "macros",
+    "runtime-async-std-native-tls",
     "offline"
 ] }
-lapin = { version = "1", features = ["openssl"] }
-async-amqp = { version = "0.1" }
-async-std = { version = "*" }
 dep-dotenv = { version = "0.14", optional = true, package = "dotenv" }
 uuid = { version = "0.8", features = ["v4"] }
 capnp = "0.13"

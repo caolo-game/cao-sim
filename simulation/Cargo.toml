@@ -18,10 +18,9 @@ mp_executor = [
     "capnp",
     "sqlx",
     "serde_json",
-    "rmp-serde",
-    "lapin",
-    "async-amqp",
-    "async-std"
+    "caoq-client",
+    "async-std",
+    "rmp-serde"
 ]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
@@ -35,6 +34,7 @@ cao_storage_derive = { path = "../cao-storage-derive" }
 cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional = true, features = [
     "http"
 ] }
+caoq-client = { git = "https://github.com/caolo-game/cao-queue.git", optional = true, branch = "main" }
 rayon = { version = "1" }
 slog = { version = "2", features = [
     "max_level_trace",
@@ -53,19 +53,18 @@ thiserror = "1"
 anyhow = "1"
 lazy_static = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
-rmp-serde = { version = "0.14", optional = true }
 capnp = { version = "0.13", optional = true }
-sqlx = { version = "0.4.0-beta.1", features = [
+sqlx = { version = "0.4.1", features = [
     "postgres",
     "chrono",
     "tls",
     "uuid",
     "macros",
-    "offline"
+    "offline",
+    "runtime-async-std-native-tls"
 ], optional = true }
-lapin = { version = "1", optional = true , features=["openssl"]}
-async-amqp = { version = "0.1", optional = true }
-async-std = { version = "*", optional = true }
+async-std = { version = "1", optional = true }
+rmp-serde = { version = "0.14", optional = true }
 
 [dev-dependencies]
 async-std = { version = "*", features = ["attributes"] }

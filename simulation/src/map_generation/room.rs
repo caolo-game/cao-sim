@@ -20,9 +20,8 @@ use rand::Rng;
 use slog::{debug, error, trace, Logger};
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use thiserror::Error;
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum RoomGenerationError {
     #[error("Can not generate room with the given parameters: {radius}")]
     BadArguments { radius: u32 },

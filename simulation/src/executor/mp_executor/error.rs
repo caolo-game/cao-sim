@@ -17,8 +17,11 @@ pub enum MpExcError {
     #[error("The queen node lost its mutex while executing a world update")]
     QueenRoleLost,
 
-    #[error("AmqpError {0:?}")]
-    AmqpError(lapin::Error),
+    #[error("{0}")]
+    QueueError(caoq_client::CaoQError),
+
+    #[error("{0}")]
+    QueueClientError(caoq_client::ClientError),
 
     #[error("Time mismatch while updating world. Requested: {requested}. Actual: {actual}")]
     WorldTimeMismatch { requested: u64, actual: u64 },
@@ -30,20 +33,8 @@ impl From<sqlx::Error> for MpExcError {
     }
 }
 
-impl From<rmp_serde::encode::Error> for MpExcError {
-    fn from(err: rmp_serde::encode::Error) -> Self {
-        MpExcError::WorldSerializeError(err)
-    }
-}
-
-impl From<rmp_serde::decode::Error> for MpExcError {
-    fn from(err: rmp_serde::decode::Error) -> Self {
-        MpExcError::WorldDeserializeError(err)
-    }
-}
-
-impl From<lapin::Error> for MpExcError {
-    fn from(err: lapin::Error) -> Self {
-        MpExcError::AmqpError(err)
+impl From<caoq_client::CaoQError> for MpExcError {
+    fn from(err: caoq_client::CaoQError) -> Self {
+        MpExcError::QueueError(err)
     }
 }

@@ -48,7 +48,7 @@ RUN apt-get install lld clang libc-dev  pkgconf libpq-dev capnproto -y
 
 WORKDIR /caolo
 
-RUN cargo install sqlx-cli --version=0.1.0-beta.1 --no-default-features --features=postgres --root .
+RUN cargo install sqlx-cli --no-default-features --features=postgres --root .
 
 # copy the cache
 COPY --from=deps $CARGO_HOME $CARGO_HOME
@@ -60,7 +60,7 @@ COPY ./simulation/ ./simulation/
 COPY ./cao-storage-derive/ ./cao-storage-derive/
 COPY ./worker/ ./worker/
 
-ENV SQLX_OFFLINE=1
+ENV SQLX_OFFLINE=true
 RUN cargo build --release
 
 # ========== Copy the built binary to a scratch container, to minimize the image size ==========

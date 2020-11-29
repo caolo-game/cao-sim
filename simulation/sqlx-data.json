@@ -47,8 +47,21 @@
       ]
     }
   },
-  "9dd075ae8eb7861875ce80eb7ce713f279602de1426dcb8ca09068755cb3093b": {
-    "query": "\n    INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)\n    VALUES ($1, $4, $2, $3)\n    ON CONFLICT (field, queen_tag) \n    DO UPDATE\n    SET value_message_packed=$3, world_timestamp=$2, updated=now()\n        ",
+  "8de0672b7211287857293a881cde0a4766ebb823b985300620ab6f200ad7a575": {
+    "query": "\n    INSERT INTO scripting_schema (queen_tag, schema_message_packed)\n    VALUES ($1, $2)\n    ON CONFLICT (queen_tag)\n    DO UPDATE SET\n    schema_message_packed=$2\n        ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Bytea"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "b97f2a7052703ec33ea0b475e6c8300e88d2d9693341cf3deefc95602b320874": {
+    "query": "\n    INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)\n    VALUES ($1, $4, $2, $3)\n    ON CONFLICT (field, queen_tag)\n    DO UPDATE\n    SET value_message_packed=$3, world_timestamp=$2, updated=now()\n        ",
     "describe": {
       "columns": [],
       "parameters": {
@@ -62,19 +75,34 @@
       "nullable": []
     }
   },
-  "bf6f95dc55806af1f011e83054b53af15a9dfd9ae53d5e397f3fb46f6e63188c": {
-    "query": "\n    INSERT INTO world (field, queen_tag, world_timestamp,value_message_packed)\n    VALUES ($1, $4, $2, $3)\n    ON CONFLICT (field) \n    DO UPDATE\n    SET value_message_packed=$3, world_timestamp=$2, updated=now()\n        ",
+  "f9868b6c28c266402d55880fd7326b76f6fa01a0a023b5dd63885e2086de0c5c": {
+    "query": "\n            SELECT * FROM cao_sim_inputs\n            ORDER BY created\n            LIMIT 1;\n            ",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "payload",
+          "type_info": "Bytea"
+        },
+        {
+          "ordinal": 2,
+          "name": "created",
+          "type_info": "Timestamptz"
+        }
+      ],
       "parameters": {
-        "Left": [
-          "Varchar",
-          "Int8",
-          "Bytea",
-          "Uuid"
-        ]
+        "Left": []
       },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false
+      ]
     }
   }
 }

@@ -1,4 +1,4 @@
-use lapin::{options::BasicPublishOptions, BasicProperties};
+use caoq_client::MessageId;
 use slog::debug;
 
 use crate::prelude::World;
@@ -7,23 +7,14 @@ use crate::{
     systems::script_execution::execute_scripts,
 };
 
-use super::{BatchScriptInputMsg, MpExcError, MpExecutor, JOB_RESULTS_LIST};
+use super::{BatchScriptInputMsg, MpExcError, MpExecutor};
 
 pub async fn execute_batch_script_update(
     executor: &mut MpExecutor,
+    msg_id: MessageId,
     message: BatchScriptInputMsg<'_>,
     world: &mut World,
 ) -> Result<(), MpExcError> {
-    let msg_id_msg = message
-        .get_msg_id()
-        .map_err(MpExcError::MessageDeserializeError)?;
-    let msg_id = uuid::Uuid::from_fields(
-        msg_id_msg.get_d1(),
-        msg_id_msg.get_d2(),
-        msg_id_msg.get_d3(),
-        unsafe { &*(&msg_id_msg.get_d4() as *const u64 as *const [u8; 8]) },
-    )
-    .expect("Failed to deserialize msg id");
     debug!(executor.logger, "Executing message with id {:?}", msg_id);
 
     let scripts_table = world.view::<EntityId, EntityScript>();
@@ -39,9 +30,6 @@ pub async fn execute_batch_script_update(
 
     let mut msg = capnp::message::Builder::new_default();
     let mut root = msg.init_root::<script_batch_result::Builder>();
-    root.reborrow()
-        .set_msg_id(msg_id_msg)
-        .map_err(MpExcError::MessageSerializeError)?;
     root.reborrow().set_world_time(world.time());
     let mut intents_msg = root.reborrow().init_intents(intents.len() as u32);
     for (i, intent) in intents.into_iter().enumerate() {
@@ -59,20 +47,10 @@ pub async fn execute_batch_script_update(
         .map_err(MpExcError::MessageSerializeError)?;
     debug!(
         executor.logger,
-        "Sending result of message {}, {} bytes",
+        "Sending result of {:?}, {} bytes",
         msg_id,
         payload.len()
     );
-    executor
-        .amqp_chan
-        .basic_publish(
-            "",
-            JOB_RESULTS_LIST,
-            BasicPublishOptions::default(),
-            payload,
-            BasicProperties::default(),
-        )
-        .await
-        .map_err(MpExcError::AmqpError)?;
+    executor.queue.msg_response(msg_id, payload).await?;
     Ok(())
 }

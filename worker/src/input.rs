@@ -5,12 +5,10 @@ use anyhow::Context;
 use cao_messages::command_capnp::command::input_message::{self, Which as InputPayload};
 use cao_messages::command_capnp::command_result;
 use caolo_sim::prelude::*;
+
+use caoq_client::{MessageId, Role};
 use capnp::message::{ReaderOptions, TypedReader};
 use capnp::serialize::try_read_message;
-use lapin::{
-    options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
-    types::FieldTable, BasicProperties,
-};
 use slog::{error, info, o, trace, warn, Logger};
 
 type InputMsg = TypedReader<capnp::serialize::OwnedSegments, input_message::Owned>;
@@ -23,22 +21,17 @@ fn parse_uuid(id: &cao_messages::command_capnp::uuid::Reader) -> anyhow::Result<
 /// Write the response and return the msg id
 fn handle_single_message(
     logger: &Logger,
+    msg_id: MessageId,
     message: InputMsg,
     storage: &mut World,
     response: &mut Vec<u8>,
-) -> anyhow::Result<uuid::Uuid> {
+) -> anyhow::Result<()> {
     let message = message.get().with_context(|| "Failed to get typed msg")?;
-    let msg_id = parse_uuid(
-        &message
-            .reborrow()
-            .get_message_id()
-            .with_context(|| "Failed to get msg id")?,
-    )?;
-    let logger = logger.new(o!("msg_id" => format!("{}",msg_id)));
+    let logger = logger.new(o!("msg_id" => format!("{:?}",msg_id)));
     trace!(logger, "Handling message");
     let res = match message
         .which()
-        .with_context(|| format!("Failed to get msg body of message {}", msg_id))?
+        .with_context(|| format!("Failed to get msg body of message {:?}", msg_id))?
     {
         InputPayload::PlaceStructure(cmd) => {
             let cmd = cmd.with_context(|| "Failed to get PlaceStructure message")?;
@@ -83,32 +76,37 @@ fn handle_single_message(
         }
     };
 
-    response.clear();
     capnp::serialize::write_message(response, &msg)?;
-    Ok(msg_id)
+    Ok(())
 }
 
 pub async fn handle_messages<'a>(
     logger: Logger,
     storage: &'a mut World,
-    channel: &'a lapin::Channel,
+    queue: &'a mut caoq_client::Client,
 ) -> anyhow::Result<()> {
     trace!(logger, "handling incoming messages");
 
-    let mut response = Vec::with_capacity(1_000_000);
+    queue
+        .active_queue(
+            Role::Consumer,
+            "CAO_COMMANDS".to_owned(),
+            Some(caoq_client::QueueOptions { capacity: 1024 }),
+        )
+        .await?;
 
-    // log errors, but otherwise ignore them, so the loop may continue, retrying later
-    while let Ok(Some(message)) = channel
-        .basic_get("CAO_COMMANDS", BasicGetOptions { no_ack: false })
+    while let Ok(Some((msg_id, message))) = queue
+        .pop_msg()
         .await
         .map_err(|e| {
             error!(logger, "Failed to GET message {:?}", e);
         })
-        .map::<Option<InputMsg>, _>(|message| {
+        .map::<Option<(MessageId, InputMsg)>, _>(|message| {
             message.and_then(|message| {
-                let delivery = message.delivery;
+                let msg_id = message.id;
+                let delivery = message.payload;
                 try_read_message(
-                    delivery.data.as_slice(),
+                    delivery.as_slice(),
                     ReaderOptions {
                         traversal_limit_in_words: 512,
                         nesting_limit: 64,
@@ -118,30 +116,15 @@ pub async fn handle_messages<'a>(
                     error!(logger, "Failed to parse capnp message {:?}", err);
                 })
                 .ok()?
-                .map(|x| x.into_typed())
+                .map(|x| (msg_id, x.into_typed()))
             })
         })
     {
-        match handle_single_message(&logger, message, storage, &mut response) {
-            Ok(msg_id) => {
-                let qname = format!("{}", msg_id);
-                let _q = channel
-                    .queue_declare(
-                        qname.as_str(),
-                        QueueDeclareOptions::default(),
-                        FieldTable::default(),
-                    )
-                    .await?;
-                channel
-                    .basic_publish(
-                        "",
-                        qname.as_str(),
-                        BasicPublishOptions::default(),
-                        response.clone(),
-                        BasicProperties::default(),
-                    )
-                    .await?;
-                info!(logger, "Message {} response sent!", msg_id);
+        let mut response = Vec::with_capacity(1_000_000);
+        match handle_single_message(&logger, msg_id, message, storage, &mut response) {
+            Ok(_) => {
+                queue.msg_response(msg_id, response).await?;
+                info!(logger, "Message {:?} response sent!", msg_id);
             }
             Err(err) => {
                 error!(logger, "Message handling failed, {:?}", err);

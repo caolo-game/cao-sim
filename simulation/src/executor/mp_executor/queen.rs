@@ -1,4 +1,4 @@
-use rayon::prelude::*;
+use caoq_client::MessageId;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -17,142 +17,94 @@ use super::{
     parse_script_batch_result,
     world_state::WorldIoOptionFlags,
     world_state::{self, send_world},
-    MpExcError, MpExecutor, ScriptBatchStatus, JOB_QUEUE, JOB_RESULTS_LIST,
+    MpExcError, MpExecutor, ScriptBatchStatus, JOB_QUEUE,
 };
 
 use arrayvec::ArrayVec;
 use chrono::Utc;
-use lapin::{
-    options::BasicGetOptions, options::BasicPublishOptions, options::QueueDeclareOptions,
-    types::FieldTable, BasicProperties,
-};
 use slog::{debug, error, info, o, trace, warn, Logger};
-use uuid::Uuid;
 
 pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Result<(), MpExcError> {
     let current_world_time = world.time();
     executor.logger = world.logger.new(o!(
                 "tag" => executor.tag.to_string(),
-                "tick" => current_world_time, 
+                "tick" => current_world_time,
                 "role" => format!("{}", executor.role)));
     info!(executor.logger, "Tick starting");
 
-    debug!(executor.logger, "Initializing amqp.amqp_channels");
+    debug!(executor.logger, "Initializing queue");
+
+    let scripts_table = world.view::<EntityId, EntityScript>();
+
     executor
-        .amqp_chan
-        .queue_declare(
-            JOB_QUEUE,
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
+        .queue
+        .active_queue(
+            caoq_client::Role::ProdCon,
+            JOB_QUEUE.to_owned(),
+            Some(caoq_client::QueueOptions {
+                capacity: scripts_table.count_set() as u32,
+            }),
         )
-        .await
-        .map_err(MpExcError::AmqpError)?;
-    executor
-        .amqp_chan
-        .queue_declare(
-            JOB_RESULTS_LIST,
-            QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
-        .await
-        .map_err(MpExcError::AmqpError)?;
+        .await?;
 
     send_world(executor, world, WorldIoOptionFlags::new()).await?;
 
-    let scripts_table = world.view::<EntityId, EntityScript>();
     let executions: Vec<(EntityId, EntityScript)> =
         scripts_table.iter().map(|(i, x)| (i, *x)).collect();
     // split the work (TODO how?)
     // for now let's split it into groups of `chunk_size`
     let chunk_size = executor.options.script_chunk_size;
-    let message_status_futures: Vec<_> = executions
-        .par_chunks(chunk_size)
+    let logger = executor.logger.clone();
+    let mut message_status = HashMap::new();
+    for (i, chunk) in executions
+        .chunks(chunk_size)
         .enumerate()
         // skip the first chunk, let's execute it on this node
         .skip(1)
-        .map(|(i, chunk)| {
-            let from = i * chunk_size;
-            let to = from + chunk.len();
+    {
+        let from = i * chunk_size;
+        let to = from + chunk.len();
 
-            let msg_id = Uuid::new_v4();
-
-            // SAFETY
-            // we'll await these tasks in the 'fold' step so this should be fine
-            // the compiler can't tell that `executor` lives long enough, so we'll give it a hint
-            let executor: &'static MpExecutor = unsafe { std::mem::transmute(&*executor) };
-            let msg = build_job_msg(msg_id, from, to, current_world_time);
-            let job = async_std::task::spawn(enqueue_job(
-                &executor.logger,
-                &executor.amqp_chan,
-                msg,
-                msg_id,
-                from,
-                to,
-                current_world_time,
-            ));
-            (msg_id, job)
-        })
-        .try_fold(
-            || Vec::with_capacity(executions.len() / chunk_size + 1),
-            |mut message_status, (msg_id, job)| {
-                message_status.push((msg_id, job));
-                Ok::<_, MpExcError>(message_status)
-            },
+        let msg = build_job_msg(from, to, current_world_time);
+        let job = enqueue_job(
+            &logger,
+            &mut executor.queue,
+            msg,
+            from,
+            to,
+            current_world_time,
         )
-        .try_reduce(Vec::new, |a, mut b| {
-            b.extend(a);
-            Ok(b)
-        })?;
-
-    let mut message_status = HashMap::with_capacity(message_status_futures.len());
-    for (msg_id, future) in message_status_futures {
-        let status = future.await?;
-        message_status.insert(msg_id, status);
+        .await?;
+        let msg_id: MessageId = job.id;
+        message_status.insert(msg_id, job);
     }
 
-    debug!(executor.logger, "Executing the first chunk");
+    debug!(logger, "Executing the first chunk");
     let mut intents: Vec<BotIntents> = match executions.chunks(chunk_size).next() {
         Some(chunk) => execute_scripts(chunk, world),
         None => {
-            warn!(executor.logger, "No scripts to execute");
+            warn!(logger, "No scripts to execute");
             return post_script_update(executor, world, vec![]);
         }
     };
-    debug!(executor.logger, "Executing the first chunk done");
+    debug!(logger, "Executing the first chunk done");
 
     // wait for all messages to return
     'retry: loop {
         // execute jobs while the queue isn't empty
         executor.execute_batch_script_jobs(world).await?;
 
-        trace!(executor.logger, "Checking jobs' status");
-        while let Some(message) = executor
-            .amqp_chan
-            .basic_get(JOB_RESULTS_LIST, BasicGetOptions { no_ack: true })
-            .await
-            .map_err(MpExcError::AmqpError)?
-        {
-            let delivery = message.delivery;
-
-            let message = parse_script_batch_result(delivery.data)?.unwrap(); // FIXME
+        trace!(logger, "Checking jobs' status");
+        while let Some(delivery) = executor.queue.pop_msg().await? {
+            let msg_id = delivery.id;
+            let message = parse_script_batch_result(delivery.payload)?.unwrap(); // FIXME
             let message = message.get().map_err(MpExcError::MessageDeserializeError)?;
-            let msg_id = message
-                .get_msg_id()
-                .map_err(MpExcError::MessageDeserializeError)?;
-
-            let msg_id = uuid::Uuid::from_fields(
-                msg_id.get_d1(),
-                msg_id.get_d2(),
-                msg_id.get_d3(),
-                unsafe { &*(&msg_id.get_d4() as *const u64 as *const [u8; 8]) },
-            )
-            .expect("Failed to parse msgid");
 
             let msg_time = message.get_world_time();
             if msg_time != world.time() {
                 error!(
-                    executor.logger,
-                    "Got an intent msg ({}) with invalid timestamp. Expected: {} Actual: {}",
+                    logger,
+                    "Got an intent msg {:?} with invalid timestamp. Expected: {} Actual: {}",
                     msg_id,
                     world.time(),
                     msg_time
@@ -168,12 +120,12 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                     status.finished = Some(Utc::now());
                     for int in ints {
                         let msg = int.get_payload().expect("Failed to read payload");
-                        let bot_int = match rmp_serde::from_slice(msg) {
+                        let bot_int = match rmp_serde::from_read(msg) {
                             Ok(ints) => ints,
                             Err(err) => {
                                 error!(
-                                    executor.logger,
-                                    "Failed to deserialize intents of message {} {:?}. Discarding",
+                                    logger,
+                                    "Failed to deserialize intents of message {:?} {:?}. Discarding",
                                     msg_id,
                                     err
                                 );
@@ -184,7 +136,7 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
                     }
                 }
                 Err(err) => {
-                    error!(executor.logger, "Failed to read intents {:?}", err);
+                    error!(logger, "Failed to read intents {:?}", err);
                     continue;
                 }
             }
@@ -198,31 +150,20 @@ pub async fn forward_queen(executor: &mut MpExecutor, world: &mut World) -> Resu
             }
             let timeout = executor.options.expected_frequency;
             if (Utc::now() - status.enqueued) > timeout {
-                warn!(executor.logger, "Job {} has timed out.", status.id);
+                warn!(logger, "Job {:?} has timed out.", status.id);
                 if timeouts.try_push(*msg_id).is_err() {
-                    info!(executor.logger, "Requeueing {}", status.id);
-                    let msg = build_job_msg(*msg_id, status.from, status.to, current_world_time);
-                    *status = enqueue_job(
-                        &executor.logger,
-                        &executor.amqp_chan,
-                        msg,
-                        *msg_id,
-                        status.from,
-                        status.to,
-                        current_world_time,
-                    )
-                    .await?;
+                    break;
                 }
             }
         }
         for msg_id in timeouts {
-            info!(executor.logger, "Executing timed out job {}", msg_id);
+            info!(logger, "Executing timed out job {:?}", msg_id);
             let ScriptBatchStatus { from, to, .. } = message_status.remove(&msg_id).unwrap();
             let ints = execute_scripts(&executions[from..to], world);
             intents.extend_from_slice(ints.as_slice());
         }
         if count == message_status.len() {
-            debug!(executor.logger, "All jobs have returned");
+            debug!(logger, "All jobs have returned");
             break 'retry;
         }
     }
@@ -249,7 +190,6 @@ fn post_script_update(
 }
 
 fn build_job_msg(
-    msg_id: Uuid,
     from: usize,
     to: usize,
     time: u64,
@@ -257,12 +197,6 @@ fn build_job_msg(
     let mut msg = capnp::message::Builder::new_default();
     let mut root = msg.init_root::<script_batch_job::Builder>();
 
-    let mut id_msg = root.reborrow().init_msg_id();
-    let (d1, d2, d3, d4) = msg_id.as_fields();
-    id_msg.set_d1(d1);
-    id_msg.set_d2(d2);
-    id_msg.set_d3(d3);
-    id_msg.set_d4(unsafe { *(d4 as *const [u8; 8] as *const u64) });
     root.reborrow()
         .set_from_index(u32::try_from(from).expect("Expected index to be convertible to u32"));
     root.reborrow()
@@ -273,9 +207,8 @@ fn build_job_msg(
 
 async fn enqueue_job(
     logger: &Logger,
-    channel: &lapin::Channel,
+    client: &mut caoq_client::Client,
     msg: capnp::message::Builder<capnp::message::HeapAllocator>,
-    msg_id: Uuid,
     from: usize,
     to: usize,
     time: u64,
@@ -285,24 +218,14 @@ async fn enqueue_job(
         .map_err(MpExcError::MessageSerializeError)?;
     debug!(
         logger,
-        "pushing job: msg_id: {}, from: {}, to: {} time: {}; size: {}",
-        msg_id,
+        "pushing job: from: {}, to: {} time: {}; size: {}",
         from,
         to,
         time,
         payload.len()
     );
 
-    channel
-        .basic_publish(
-            "",
-            JOB_QUEUE,
-            BasicPublishOptions::default(),
-            payload,
-            BasicProperties::default(),
-        )
-        .await
-        .map_err(MpExcError::AmqpError)?;
+    let msg_id = client.push_msg(payload).await?;
     Ok(ScriptBatchStatus::new(msg_id, from, to))
 }
 
@@ -313,30 +236,15 @@ pub async fn initialize_queen(
 ) -> Result<(), MpExcError> {
     // flush the current messages in the job queue if any
     // those are left-overs from previous executors
-    let q_purge = {
-        let logger = executor.logger.clone();
-        // appearantly purge closes the channel...
-        let chan_a = executor.amqp_connection.create_channel();
-        let chan_b = executor.amqp_connection.create_channel();
-        async_std::task::spawn(async move {
-            info!(logger, "Purging job queues");
-            let chan = chan_a.await.map_err(MpExcError::AmqpError)?;
-            chan.queue_purge(JOB_QUEUE, Default::default())
-                .await
-                .unwrap_or_else(|err| {
-                    warn!(logger, "Failed to purge {}: {:?}", err, JOB_QUEUE);
-                    0
-                });
-            let chan = chan_b.await.map_err(MpExcError::AmqpError)?;
-            chan.queue_purge(JOB_RESULTS_LIST, Default::default())
-                .await
-                .unwrap_or_else(|err| {
-                    warn!(logger, "Failed to purge {}: {:?}", err, JOB_QUEUE);
-                    0
-                });
-            Ok::<_, MpExcError>(())
-        })
-    };
+    info!(executor.logger, "Purging job queues");
+    executor
+        .queue
+        .active_queue(caoq_client::Role::Producer, JOB_QUEUE.to_owned(), None)
+        .await
+        .unwrap_or(());
+    executor.queue.clear_queue().await.unwrap_or_else(|err| {
+        warn!(executor.logger, "Failed to purge {}: {:?}", err, JOB_QUEUE);
+    });
 
     info!(executor.logger, "Generating map");
     execute_map_generation(executor.logger.clone(), &mut *world, &config)
@@ -347,8 +255,6 @@ pub async fn initialize_queen(
     world_state::send_world(executor, world, opts)
         .await
         .expect("Failed to send initial world");
-
-    q_purge.await?;
 
     Ok(())
 }
