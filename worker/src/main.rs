@@ -169,11 +169,6 @@ fn main() {
         }
     };
 
-    let queen_mutex_expiry_ms = env::var("CAO_QUEEN_MUTEX_EXPIRY_MS")
-        .ok()
-        .and_then(|x| x.parse().ok())
-        .unwrap_or(2000);
-
     let script_chunk_size = env::var("CAO_QUEEN_SCRIPT_CHUNK_SIZE")
         .ok()
         .and_then(|x| x.parse().ok())
@@ -183,8 +178,7 @@ fn main() {
 
     info!(
         logger,
-        "Loaded Queen params:\nMutex expiry: {}\nScript chunk size: {}\nTick freq: {:?}",
-        queen_mutex_expiry_ms,
+        "Loaded Queen params:\nScript chunk size: {}\nTick freq: {:?}",
         script_chunk_size,
         tick_freq
     );
@@ -199,7 +193,6 @@ fn main() {
             logger.clone(),
             mp_executor::ExecutorOptions {
                 postgres_url: database_url.clone(),
-                queen_mutex_expiry_ms,
                 script_chunk_size,
                 expected_frequency: chrono::Duration::milliseconds(
                     game_conf.target_tick_freq_ms as i64,

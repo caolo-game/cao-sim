@@ -81,7 +81,6 @@ pub struct ExecutorOptions {
     pub postgres_url: String,
     pub queue_url: String,
 
-    pub queen_mutex_expiry_ms: i64,
     pub script_chunk_size: usize,
     /// Expected time to complete a tick
     pub expected_frequency: Duration,
@@ -96,7 +95,6 @@ impl Default for ExecutorOptions {
         Self {
             postgres_url,
             queue_url,
-            queen_mutex_expiry_ms: 2000,
             script_chunk_size: 1024,
             expected_frequency: Duration::seconds(1),
         }
