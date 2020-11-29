@@ -2,4 +2,4 @@
 
 set -e
 
-./sqlx migrate run
+./diesel migrate run
