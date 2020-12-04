@@ -36,13 +36,13 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: ${{ matrix.flags }}
           RUSTDOCFLAGS: "-Cpanic=abort"
-          SQLX_OFFLINE: 1
+          SQLX_OFFLINE: true
 
       - name: Test benches
         run: cargo +${{ matrix.rust }} test --benches
         env:
           RUST_BACKTRACE: 1
-          SQLX_OFFLINE: 1
+          SQLX_OFFLINE: true
 
       - name: Install grcov
         if: ${{ matrix.rust == 'nightly' }}
@@ -78,4 +78,4 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
         env:
-          SQLX_OFFLINE: 1
+          SQLX_OFFLINE: true
