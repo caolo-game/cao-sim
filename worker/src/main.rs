@@ -208,16 +208,16 @@ fn main() {
 
         tick(logger.clone(), &mut executor, &mut storage);
 
-        let mut sleep_duration = tick_freq
-            .checked_sub(Instant::now() - start)
-            .unwrap_or_else(|| Duration::from_millis(0));
-
         sim_rt
             .block_on(output(&*storage, &db_pool, tag))
             .map_err(|err| {
                 error!(logger, "Failed to send world output to storage {:?}", err);
             })
             .unwrap_or(());
+
+        let mut sleep_duration = tick_freq
+            .checked_sub(Instant::now() - start)
+            .unwrap_or_else(|| Duration::from_millis(0));
 
         // use the sleep time to update inputs
         // this allows faster responses to clients as well as potentially spending less time on
