@@ -4,12 +4,7 @@ mod input;
 
 use anyhow::Context;
 use cao_lang::SubProgramType;
-use caolo_sim::{
-    executor::mp_executor::{self, MpExcError},
-    executor::Executor,
-    prelude::*,
-};
-use mp_executor::{MpExecutor, Role};
+use caolo_sim::{executor::Executor, executor::SimpleExecutor, prelude::*};
 use slog::{debug, error, info, o, warn, Drain, Logger};
 use std::{
     env,
@@ -153,22 +148,6 @@ fn main() {
             warn!(logger, "Sentry URI was not provided");
         });
 
-    let role = match env::var("CAO_ROLE")
-        .map(|s| s.to_lowercase())
-        .as_ref()
-        .map(|s| s.as_str())
-    {
-        Ok("queen") => Role::Queen,
-        Ok("drone") => Role::Drone,
-        _ => {
-            warn!(
-                logger,
-                "Env var ROLE not set (or invalid). Defaulting to role 'Drone'"
-            );
-            Role::Drone
-        }
-    };
-
     let script_chunk_size = env::var("CAO_QUEEN_SCRIPT_CHUNK_SIZE")
         .ok()
         .and_then(|x| x.parse().ok())
@@ -185,23 +164,14 @@ fn main() {
     let database_url = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:admin@localhost:5432/caolo".to_owned());
 
+    let db_pool = sim_rt
+        .block_on(sqlx::PgPool::connect(database_url.as_str()))
+        .expect("failed to connect to database");
+
+    let tag = uuid::Uuid::new_v4();
+
     info!(logger, "Creating cao executor");
-    let mut executor = sim_rt
-        .block_on(MpExecutor::new(
-            role,
-            &sim_rt,
-            logger.clone(),
-            mp_executor::ExecutorOptions {
-                postgres_url: database_url.clone(),
-                script_chunk_size,
-                expected_frequency: chrono::Duration::milliseconds(
-                    game_conf.target_tick_freq_ms as i64,
-                ),
-                ..Default::default()
-            },
-        ))
-        .expect("Create executor");
-    let logger = executor.logger.clone();
+    let mut executor = SimpleExecutor;
     info!(logger, "Init storage");
     let mut storage = executor
         .initialize(
@@ -213,36 +183,21 @@ fn main() {
         )
         .expect("Initialize executor");
 
-    let queue_url = std::env::var("MQ_ADDR").unwrap_or_else(|_| "ws://localhost:6942".to_owned());
-    let mut queue = sim_rt
-        .block_on(caoq_client::connect(queue_url.as_str()))
-        .map_err(MpExcError::QueueClientError)
-        .expect("failed to connect to msg bus");
+    let queue_url =
+        std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_owned());
+    let redis_client = redis::Client::open(queue_url).expect("Failed to connect to redis");
 
     info!(logger, "Starting with {} actors", game_conf.n_actors);
 
-    if executor.is_queen() {
-        info!(logger, "Running queen setup");
-        init::init_storage(logger.clone(), &mut storage, &game_conf);
-
-        let logger = logger.clone();
-        let tag = executor.tag;
-        sim_rt
-            .block_on(async move {
-                let pg_conn = sqlx::postgres::PgPoolOptions::new()
-                    .connect(database_url.as_str())
-                    .await
-                    .expect("Connect to PG");
-
-                send_schema(logger, &mut pg_conn.acquire().await?, tag).await
-            })
-            .expect("Send schema");
-    }
+    sim_rt
+        .block_on(send_schema(logger.clone(), &db_pool, tag))
+        .expect("Failed to send schema");
+    init::init_storage(logger.clone(), &mut storage, &game_conf);
 
     sentry::capture_message(
         format!(
             "Caolo Worker {} initialization complete! Starting the game loop",
-            executor.tag
+            tag
         )
         .as_str(),
         sentry::Level::Info,
@@ -257,21 +212,12 @@ fn main() {
             .checked_sub(Instant::now() - start)
             .unwrap_or_else(|| Duration::from_millis(0));
 
-        if !executor.is_queen() {
-            std::thread::sleep(sleep_duration);
-            continue;
-        }
-
         sim_rt
-            .block_on(output(&*storage, &executor.pool, executor.tag))
+            .block_on(output(&*storage, &db_pool, tag))
             .map_err(|err| {
                 error!(logger, "Failed to send world output to storage {:?}", err);
             })
             .unwrap_or(());
-
-        sleep_duration = tick_freq
-            .checked_sub(Instant::now() - start)
-            .unwrap_or_else(|| Duration::from_millis(0));
 
         // use the sleep time to update inputs
         // this allows faster responses to clients as well as potentially spending less time on
@@ -282,7 +228,7 @@ fn main() {
                 .block_on(input::handle_messages(
                     logger.clone(),
                     &mut storage,
-                    &mut queue,
+                    &redis_client,
                 ))
                 .map_err(|err| {
                     error!(logger, "Failed to handle inputs {:?}", err);

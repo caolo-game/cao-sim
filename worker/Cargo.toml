@@ -17,7 +17,7 @@ dotenv = ["dep-dotenv"]
 caolo-sim = { path = "../simulation" } # , features=["cao-profile"] }
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
 cao-messages = { git = "https://github.com/caolo-game/cao-messages.git" }
-caoq-client = { git = "https://github.com/caolo-game/cao-queue.git", branch = "main" }
+redis = { version = "0.18", features = ["aio", "async-std-comp"] }
 slog = { version = "2", features = [
     "max_level_trace",
     "release_max_level_info"

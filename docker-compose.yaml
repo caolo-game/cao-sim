@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
 
-  caoq:
-    image: frenetiq/caoq:bleeding
+  redis:
+    image: eqalpha/keydb:latest
     ports:
-      - "5672:5672"
+      - "6379:6379"
