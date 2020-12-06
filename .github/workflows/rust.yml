@@ -28,20 +28,17 @@ jobs:
       - name: Install capnp
         run: sudo apt-get install capnproto -y
 
+      - name: Install test-all-features
+        run: cargo install test-all-features
+
       - name: Run tests
-        run: cargo +${{ matrix.rust }} test --all-features
+        run: cargo +${{ matrix.rust }} test-all-features --benches
         env:
           RUST_LOG: caolo_sim=trace
           RUST_BACKTRACE: 1
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: ${{ matrix.flags }}
           RUSTDOCFLAGS: "-Cpanic=abort"
-          SQLX_OFFLINE: true
-
-      - name: Test benches
-        run: cargo +${{ matrix.rust }} test --benches
-        env:
-          RUST_BACKTRACE: 1
           SQLX_OFFLINE: true
 
       - name: Install grcov
