@@ -14,14 +14,14 @@
       "nullable": []
     }
   },
-  "8de0672b7211287857293a881cde0a4766ebb823b985300620ab6f200ad7a575": {
-    "query": "\n    INSERT INTO scripting_schema (queen_tag, schema_message_packed)\n    VALUES ($1, $2)\n    ON CONFLICT (queen_tag)\n    DO UPDATE SET\n    schema_message_packed=$2\n        ",
+  "758640b113d6992d6dc5acf20d4d756f65f9e3a93f777e2cb03b02c021136620": {
+    "query": "\n    INSERT INTO scripting_schema (queen_tag, payload)\n    VALUES ($1, $2)\n    ON CONFLICT (queen_tag)\n    DO UPDATE SET\n    payload=$2\n        ",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
           "Uuid",
-          "Bytea"
+          "Jsonb"
         ]
       },
       "nullable": []

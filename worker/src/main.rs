@@ -78,15 +78,15 @@ async fn send_schema<'a>(
         }))
         .collect::<Vec<_>>();
 
-    let payload = rmp_serde::to_vec_named(&msg)?;
+    let payload = serde_json::to_value(&msg)?;
 
     sqlx::query!(
         r#"
-    INSERT INTO scripting_schema (queen_tag, schema_message_packed)
+    INSERT INTO scripting_schema (queen_tag, payload)
     VALUES ($1, $2)
     ON CONFLICT (queen_tag)
     DO UPDATE SET
-    schema_message_packed=$2
+    payload=$2
         "#,
         queen_tag,
         payload
