@@ -65,10 +65,10 @@ RUN cargo build --release
 
 # ========== Copy the built binary to a scratch container, to minimize the image size ==========
 
-FROM ubuntu:latest
+FROM ubuntu:18.04
 WORKDIR /caolo
 
-RUN apt-get update
+RUN apt-get update -y
 RUN apt-get install bash libpq-dev openssl -y
 # RUN apt-get install valgrind -y
 # RUN apt-get install heaptrack -y
