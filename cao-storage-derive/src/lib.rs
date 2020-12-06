@@ -110,7 +110,7 @@ fn impl_tables(
 
     // implement the functionality that's generic over the key for all key types
     //
-    let implementations = table_groups.into_iter().map(
+    let implementations = table_groups.iter().map(
         |(
             _key,
             TableMeta {

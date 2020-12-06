@@ -29,7 +29,7 @@ jobs:
         run: sudo apt-get install capnproto -y
 
       - name: Install test-all-features
-        run: cargo install test-all-features
+        run: cargo install cargo-test-all-features
 
       - name: Run tests
         run: cargo +${{ matrix.rust }} test-all-features --benches

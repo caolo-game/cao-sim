@@ -3,9 +3,9 @@
 //!
 use crate::components::{self, EntityComponent, PositionComponent};
 use crate::indices::{EntityId, UserId, WorldPosition};
-use crate::tables::traits::Table;
 use crate::scripting_api::OperationResult;
 use crate::storage::views::View;
+use crate::tables::traits::Table;
 use crate::terrain;
 use serde::{Deserialize, Serialize};
 use slog::{debug, trace, Logger};

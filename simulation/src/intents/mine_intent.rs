@@ -1,8 +1,8 @@
 use crate::components;
-use crate::tables::traits::Table;
 use crate::indices::{EntityId, UserId};
 use crate::scripting_api::OperationResult;
 use crate::storage::views::View;
+use crate::tables::traits::Table;
 use serde::{Deserialize, Serialize};
 use slog::{debug, Logger};
 

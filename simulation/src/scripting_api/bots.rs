@@ -232,7 +232,7 @@ type MoveToPosIntent = (
     Option<CachePathIntent>,
 );
 
-fn move_to_pos<'a>(
+fn move_to_pos(
     logger: &slog::Logger,
     bot: EntityId,
     to: WorldPosition,

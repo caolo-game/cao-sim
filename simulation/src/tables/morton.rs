@@ -22,10 +22,10 @@ pub use self::morton_key::*;
 pub use self::serde::*;
 use super::*;
 use litmax_bigmin::litmax_bigmin;
+use rayon::prelude::*;
 use skiplist::*;
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
-use rayon::prelude::*;
 
 // at most 15 bits long non-negative integers
 // having the 16th bit set might create problems in find_key

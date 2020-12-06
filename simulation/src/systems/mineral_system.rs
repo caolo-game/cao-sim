@@ -1,9 +1,9 @@
-use crate::{components as comp, join};
 use crate::geometry::Axial;
 use crate::indices::{EntityId, WorldPosition};
 use crate::profile;
 use crate::storage::views::{DeferredDeleteEntityView, UnsafeView, View, WorldLogger};
 use crate::tables::JoinIterator;
+use crate::{components as comp, join};
 use rand::Rng;
 use slog::{debug, error, trace, Logger};
 

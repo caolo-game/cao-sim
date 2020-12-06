@@ -47,16 +47,11 @@ where
     type Row = Row;
 
     fn delete(&mut self, id: &Self::Id) -> Option<Self::Row> {
-        match self.ids.binary_search(id) {
-            Ok(i) => {
-                self.ids.remove(i);
-                let res = std::mem::take(&mut self.default);
-                Some(res)
-            }
-            Err(_) => {
-                return None;
-            }
-        }
+        self.ids.binary_search(id).ok().map(|i| {
+            self.ids.remove(i);
+            let res = std::mem::take(&mut self.default);
+            res
+        })
     }
 
     fn get_by_id(&self, id: &Self::Id) -> Option<&Self::Row> {

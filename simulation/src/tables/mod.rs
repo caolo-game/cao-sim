@@ -3,10 +3,10 @@
 //!
 pub mod btree;
 pub mod dense;
+pub mod flag;
 pub mod iterators;
 pub mod morton;
 pub mod morton_hierarchy;
-pub mod flag;
 pub mod traits;
 pub mod unique;
 

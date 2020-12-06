@@ -1,9 +1,9 @@
 use crate::components::{Bot, EntityComponent, PositionComponent};
-use crate::tables::traits::Table;
 use crate::indices::{EmptyKey, EntityId, WorldPosition};
 use crate::intents::{Intents, MoveIntent};
 use crate::profile;
 use crate::storage::views::{UnsafeView, UnwrapViewMut, View, WorldLogger};
+use crate::tables::traits::Table;
 use rayon::prelude::*;
 use slog::{debug, trace, Logger};
 

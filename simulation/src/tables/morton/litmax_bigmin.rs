@@ -42,13 +42,19 @@ pub fn litmax_bigmin(
         let [x1, x2] = impl_litmax_bigmin(x1, x2, diff_msb / 2);
         debug_assert!(x1 < x2);
 
-        [MortonKey::new(x1 as u16, y2 as u16), MortonKey::new(x2 as u16, y1 as u16)]
+        [
+            MortonKey::new(x1 as u16, y2 as u16),
+            MortonKey::new(x2 as u16, y1 as u16),
+        ]
     } else {
         let [m1, y2] = impl_litmax_bigmin(y1, y2, diff_msb / 2);
         let y1 = m1 | y1;
         debug_assert!(y1 < y2);
 
-        [MortonKey::new(x2 as u16, y1 as u16), MortonKey::new(x1 as u16, y2 as u16)]
+        [
+            MortonKey::new(x2 as u16, y1 as u16),
+            MortonKey::new(x1 as u16, y2 as u16),
+        ]
     };
 
     debug_assert!(litmax.0 < bigmin.0);
