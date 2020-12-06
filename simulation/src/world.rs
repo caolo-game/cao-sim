@@ -1,3 +1,6 @@
+#[cfg(feature = "serde_json")]
+mod json_impl;
+
 use crate::components::*;
 use crate::indices::*;
 use crate::intents::*;
@@ -294,12 +297,8 @@ impl World {
     #[cfg(feature = "serde_json")]
     pub fn as_json(&self) -> serde_json::Value {
         use rayon::prelude::*;
-        use std::collections::HashMap;
 
-        fn pos2str(pos: Axial) -> String {
-            format!("{};{}", pos.q, pos.r)
-        }
-
+        // this can be quite a bit of data, so let's parallelize the serialization
         let result = [
             "bots",
             "structures",
@@ -314,60 +313,10 @@ impl World {
             Default::default,
             |mut output: serde_json::Map<String, _>, key: &str| {
                 let value: serde_json::Value = match key {
-                    "bots" => {
-                        let bots = self
-                            .entities
-                            .iterby_bot()
-                            .filter_map(|mut payload| {
-                                payload.pathcache = None;
-                                payload.pos.map(|_| payload)
-                            })
-                            .fold(HashMap::new(), |mut map, payload| {
-                                let room = payload.pos.unwrap().0.room;
-                                let room = pos2str(room);
-                                map.entry(room).or_insert_with(Vec::new).push(payload);
-                                map
-                            });
-                        serde_json::to_value(&bots).unwrap()
-                    }
-                    "structures" => {
-                        let structures = self
-                            .entities
-                            .iterby_structure()
-                            .filter_map(|payload| payload.pos.map(|_| payload))
-                            .fold(HashMap::new(), |mut map, payload| {
-                                let room = payload.pos.unwrap().0.room;
-                                let room = pos2str(room);
-                                map.entry(room).or_insert_with(Vec::new).push(payload);
-                                map
-                            });
-                        serde_json::to_value(&structures).unwrap()
-                    }
-                    "resources" => {
-                        let resources = self
-                            .entities
-                            .iterby_resource()
-                            .filter_map(|payload| payload.pos.map(|_| payload))
-                            .fold(HashMap::new(), |mut map, payload| {
-                                let room = payload.pos.unwrap().0.room;
-                                let room = pos2str(room);
-                                map.entry(room).or_insert_with(Vec::new).push(payload);
-                                map
-                            });
-                        serde_json::to_value(&resources).unwrap()
-                    }
-                    "terrain" => {
-                        let terrain = self
-                            .positions
-                            .point_terrain
-                            .iter()
-                            .map(|(pos, terrain)| (pos2str(pos.room), (pos.pos, terrain)))
-                            .fold(HashMap::new(), |mut map, (room, payload)| {
-                                map.entry(room).or_insert_with(Vec::new).push(payload);
-                                map
-                            });
-                        serde_json::to_value(&terrain).unwrap()
-                    }
+                    "bots" => json_impl::json_serialize_bots(&self),
+                    "structures" => json_impl::json_serialize_structures(&self),
+                    "resources" => json_impl::json_serialize_resources(&self),
+                    "terrain" => json_impl::json_serialize_terrain(&self),
                     "roomProperties" => {
                         serde_json::to_value(&self.config.room_properties.value).unwrap()
                     }
