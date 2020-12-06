@@ -39,9 +39,9 @@ impl<Id: TableId> Component<Id> for Time {
 }
 
 #[derive(Clone)]
-pub struct RuntimeGuard {}
+pub struct RuntimeGuard;
 
-#[cfg(feature = "mp_executor")]
+#[cfg(feature = "async-std")]
 impl RuntimeGuard {
     pub fn block_on<F>(&self, f: F) -> F::Output
     where
@@ -55,5 +55,5 @@ impl RuntimeGuard {
 /// let _cao_rt = caolo_sim::init_runtime();
 /// ```
 pub fn init_runtime() -> RuntimeGuard {
-    RuntimeGuard {}
+    RuntimeGuard
 }

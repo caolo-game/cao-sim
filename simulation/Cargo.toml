@@ -3,7 +3,6 @@ name = "caolo-sim"
 version = "0.1.0"
 authors = ["Daniel Kiss <littlesnorrboy@gmail.com>"]
 edition = "2018"
-build = "build.rs"
 
 # docker caching hack
 # [[bin]]
@@ -12,21 +11,9 @@ build = "build.rs"
 # required-features = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["mp_executor"]
-mp_executor = [
-    "capnpc",
-    "capnp",
-    "sqlx",
-    "serde_json",
-    "caoq-client",
-    "async-std",
-    "rmp-serde"
-]
+default = ["serde_json", "async-std"]
 # this option is provided for testing purposes and will NOT disable most parallelism in the engine.
 disable-parallelism = []
-
-[build-dependencies]
-capnpc = { version = "0.13", optional = true }
 
 [dependencies]
 cao-lang = { git = "https://github.com/caolo-game/cao-lang.git" }
@@ -34,7 +21,6 @@ cao_storage_derive = { path = "../cao-storage-derive" }
 cao-profile = { git = "https://github.com/caolo-game/cao-profile.git", optional = true, features = [
     "http"
 ] }
-caoq-client = { git = "https://github.com/caolo-game/cao-queue.git", optional = true, branch = "main" }
 rayon = { version = "1" }
 slog = { version = "2", features = [
     "max_level_trace",
@@ -53,18 +39,7 @@ thiserror = "1"
 anyhow = "1"
 lazy_static = { version = "1", optional = true }
 serde_json = { version = "1", optional = true }
-capnp = { version = "0.13", optional = true }
-sqlx = { version = "0.4.1", features = [
-    "postgres",
-    "chrono",
-    "tls",
-    "uuid",
-    "macros",
-    "offline",
-    "runtime-async-std-native-tls"
-], optional = true }
 async-std = { version = "1", optional = true }
-rmp-serde = { version = "0.14", optional = true }
 
 [dev-dependencies]
 async-std = { version = "*", features = ["attributes"] }

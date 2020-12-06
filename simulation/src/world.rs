@@ -293,66 +293,99 @@ impl World {
 
     #[cfg(feature = "serde_json")]
     pub fn as_json(&self) -> serde_json::Value {
+        use rayon::prelude::*;
         use std::collections::HashMap;
 
         fn pos2str(pos: Axial) -> String {
             format!("{};{}", pos.q, pos.r)
         }
 
-        let bots = self
-            .entities
-            .iterby_bot()
-            .filter_map(|mut payload| {
-                payload.pathcache = None;
-                payload.pos.map(|_| payload)
-            })
-            .fold(HashMap::new(), |mut map, payload| {
-                let room = payload.pos.unwrap().0.room;
-                let room = pos2str(room);
-                map.entry(room).or_insert_with(Vec::new).push(payload);
-                map
-            });
-        let structures = self
-            .entities
-            .iterby_structure()
-            .filter_map(|payload| payload.pos.map(|_| payload))
-            .fold(HashMap::new(), |mut map, payload| {
-                let room = payload.pos.unwrap().0.room;
-                let room = pos2str(room);
-                map.entry(room).or_insert_with(Vec::new).push(payload);
-                map
-            });
+        let result = [
+            "bots",
+            "structures",
+            "resources",
+            "terrain",
+            "roomProperties",
+            "gameConfig",
+        ]
+        .par_iter()
+        .cloned()
+        .fold(
+            Default::default,
+            |mut output: serde_json::Map<String, _>, key: &str| {
+                let value: serde_json::Value = match key {
+                    "bots" => {
+                        let bots = self
+                            .entities
+                            .iterby_bot()
+                            .filter_map(|mut payload| {
+                                payload.pathcache = None;
+                                payload.pos.map(|_| payload)
+                            })
+                            .fold(HashMap::new(), |mut map, payload| {
+                                let room = payload.pos.unwrap().0.room;
+                                let room = pos2str(room);
+                                map.entry(room).or_insert_with(Vec::new).push(payload);
+                                map
+                            });
+                        serde_json::to_value(&bots).unwrap()
+                    }
+                    "structures" => {
+                        let structures = self
+                            .entities
+                            .iterby_structure()
+                            .filter_map(|payload| payload.pos.map(|_| payload))
+                            .fold(HashMap::new(), |mut map, payload| {
+                                let room = payload.pos.unwrap().0.room;
+                                let room = pos2str(room);
+                                map.entry(room).or_insert_with(Vec::new).push(payload);
+                                map
+                            });
+                        serde_json::to_value(&structures).unwrap()
+                    }
+                    "resources" => {
+                        let resources = self
+                            .entities
+                            .iterby_resource()
+                            .filter_map(|payload| payload.pos.map(|_| payload))
+                            .fold(HashMap::new(), |mut map, payload| {
+                                let room = payload.pos.unwrap().0.room;
+                                let room = pos2str(room);
+                                map.entry(room).or_insert_with(Vec::new).push(payload);
+                                map
+                            });
+                        serde_json::to_value(&resources).unwrap()
+                    }
+                    "terrain" => {
+                        let terrain = self
+                            .positions
+                            .point_terrain
+                            .iter()
+                            .map(|(pos, terrain)| (pos2str(pos.room), (pos.pos, terrain)))
+                            .fold(HashMap::new(), |mut map, (room, payload)| {
+                                map.entry(room).or_insert_with(Vec::new).push(payload);
+                                map
+                            });
+                        serde_json::to_value(&terrain).unwrap()
+                    }
+                    "roomProperties" => {
+                        serde_json::to_value(&self.config.room_properties.value).unwrap()
+                    }
+                    "gameConfig" => serde_json::to_value(&self.config.game_config.value).unwrap(),
+                    _ => unreachable!(),
+                };
+                output.insert(key.to_string(), value);
+                output
+            },
+        )
+        .reduce(serde_json::Map::default, |mut output, rhs| {
+            for (key, value) in rhs {
+                output.insert(key, value);
+            }
+            output
+        });
 
-        let resources = self
-            .entities
-            .iterby_resource()
-            .filter_map(|payload| payload.pos.map(|_| payload))
-            .fold(HashMap::new(), |mut map, payload| {
-                let room = payload.pos.unwrap().0.room;
-                let room = pos2str(room);
-                map.entry(room).or_insert_with(Vec::new).push(payload);
-                map
-            });
-
-        let terrain = self
-            .positions
-            .point_terrain
-            .iter()
-            .map(|(pos, terrain)| (pos2str(pos.room), (pos.pos, terrain)))
-            .fold(HashMap::new(), |mut map, (room, payload)| {
-                map.entry(room).or_insert_with(Vec::new).push(payload);
-                map
-            });
-
-        serde_json::json!({
-            "bots": bots,
-            "structures": structures,
-            "resources": resources,
-            "terrain": terrain,
-
-            "roomProperties": &self.config.room_properties.value,
-            "gameConfig": &self.config.game_config.value,
-        })
+        result.into()
     }
 }
 

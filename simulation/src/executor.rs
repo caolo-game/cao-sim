@@ -1,6 +1,3 @@
-#[cfg(feature = "mp_executor")]
-pub mod mp_executor;
-
 use std::{convert::Infallible, fmt::Debug, pin::Pin};
 
 use slog::{debug, info, o, Logger};
