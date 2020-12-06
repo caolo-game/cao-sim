@@ -175,7 +175,7 @@ fn main() {
     info!(logger, "Init storage");
     let mut storage = executor
         .initialize(
-            None,
+            Some(logger.clone()),
             caolo_sim::executor::GameConfig {
                 world_radius: game_conf.world_radius,
                 room_radius: game_conf.room_radius,
