@@ -25,8 +25,6 @@ use litmax_bigmin::litmax_bigmin;
 use skiplist::*;
 use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
-
-#[cfg(not(feature = "disable-parallelism"))]
 use rayon::prelude::*;
 
 // at most 15 bits long non-negative integers
@@ -85,7 +83,6 @@ where
     }
 }
 
-#[cfg(not(feature = "disable-parallelism"))]
 impl<'a, Pos, Row> MortonTable<Pos, Row>
 where
     Pos: SpatialKey2d + Send,
