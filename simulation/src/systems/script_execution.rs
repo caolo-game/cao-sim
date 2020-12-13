@@ -100,6 +100,7 @@ pub fn execute_scripts(
         "Executing scripts done. Returning {:?} intents",
         intents.as_ref().map(|i| i.len())
     );
+    trace!(logger, "Intents {:#?}", intents);
     intents.unwrap_or_else(Vec::default)
 }
 

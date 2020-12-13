@@ -1,53 +1,59 @@
 {
-  "lanes": [
-    {
-      "name": "main",
-      "cards": [
+    "lanes": [
         {
-          "ScalarInt": 1
+            "name": "main",
+            "cards": [
+                {
+                    "ScalarInt": 1
+                },
+                {
+                    "StringLiteral": "Resource"
+                },
+                {
+                    "Call": "parse_find_constant"
+                },
+                {
+                    "Call": "find_closest_by_range"
+                },
+                {
+                    "ScalarInt": 0
+                },
+                {
+                    "Equals": null
+                },
+                {
+                    "JumpIfFalse": "resource-error"
+                },
+                {
+                    "CopyLast": null
+                },
+                {
+                    "Call": "approach_entity"
+                },
+                {
+                    "Pop": null
+                },
+                {
+                    "Call": "mine_resource"
+                },
+                {
+                    "StringLiteral": "We be mining bois"
+                },
+                {
+                    "Call": "console_log"
+                }
+            ]
         },
         {
-          "StringLiteral": "Resource"
-        },
-        {
-          "Call": "parse_find_constant"
-        },
-        {
-          "Call": "find_closest_by_range"
-        },
-        {
-          "ScalarInt": 0
-        },
-        {
-          "Equals": null
-        },
-        {
-          "JumpIfTrue": "resource-error"
-        },
-        {
-          "CopyLast": null
-        },
-        {
-          "Call": "approach_entity"
-        },
-        {
-          "Pop": null
-        },
-        {
-          "Call": "mine_resource"
+            "name": "resource-error",
+            "cards": [
+                {
+                    "StringLiteral": "No resource found"
+                },
+                {
+                    "Call": "console_log"
+                }
+            ]
         }
-      ]
-    },
-    {
-      "name": "resource-error",
-      "cards": [
-        {
-          "StringLiteral": "No resource found"
-        },
-        {
-          "Call": "console_log"
-        }
-      ]
-    }
-  ]
+    ]
 }

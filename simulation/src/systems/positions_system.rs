@@ -24,6 +24,4 @@ pub fn update(mut position_entities: Mut, (positions, WorldLogger(logger)): Cons
             error!(logger, "Failed to rebuild position_entities table {:?}", e);
         })
         .ok();
-
-    debug!(logger, "update positions system done");
 }

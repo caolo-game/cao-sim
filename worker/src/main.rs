@@ -18,7 +18,7 @@ static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 fn init() {
     #[cfg(feature = "dotenv")]
-    dep_dotenv::dotenv().unwrap_or_default();
+    dotenv::dotenv().unwrap_or_default();
 }
 
 fn tick(logger: Logger, exc: &mut impl Executor, storage: &mut World) {

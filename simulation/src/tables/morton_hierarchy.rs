@@ -77,6 +77,10 @@ where
         self.table.clear();
     }
 
+    pub fn contains_room(&self, id: Room) -> bool {
+        self.table.contains_key(&id.0)
+    }
+
     pub fn contains_key(&self, id: &WorldPosition) -> bool {
         self.table
             .get_by_id(&id.room)
@@ -151,6 +155,16 @@ where
         let groups: std::collections::HashMap<Axial, &[(WorldPosition, Row)]> =
             GroupByRooms::new(&values).collect();
         let groups = &groups;
+
+        {
+            let new_rooms = groups
+                .keys()
+                .filter(|room_id| !self.contains_room(Room(**room_id)))
+                .map(|rid| Room(*rid))
+                .collect::<Vec<_>>();
+
+            self.extend_rooms(new_rooms.into_iter())?;
+        }
 
         // TODO invidual extends can run in parallel
         let mut iter = self.table.iter_mut();

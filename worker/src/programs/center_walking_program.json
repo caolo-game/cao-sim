@@ -1,27 +1,47 @@
 {
-  "lanes": [
-    {
-      "name": "main",
-      "cards": [
+    "lanes": [
         {
-          "ScalarInt": 12
+            "name": "main",
+            "cards": [
+                {
+                    "ScalarInt": 15
+                },
+                {
+                    "ScalarInt": 18
+                },
+                {
+                    "ScalarInt": 16
+                },
+                {
+                    "ScalarInt": 26
+                },
+                {
+                    "Call": "world_position"
+                },
+                {
+                    "Call": "move_bot_to_position"
+                },
+                {
+                    "ScalarInt": 0
+                },
+                {
+                    "Equals": null
+                },
+                {
+                    "JumpIfFalse": "error"
+                }
+            ]
         },
         {
-          "ScalarInt": 12
-        },
-        {
-          "ScalarInt": 16
-        },
-        {
-          "ScalarInt": 15
-        },
-        {
-          "Call": "world_position"
-        },
-        {
-          "Call": "move_bot_to_position"
+            "name": "error",
+            "cards": [
+                {
+                    "StringLiteral": "Failed to move"
+                },
+                {
+                    "Call": "console_log"
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
