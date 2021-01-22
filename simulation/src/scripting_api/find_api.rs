@@ -272,12 +272,12 @@ mod tests {
 
         find_closest_by_range(&mut vm, constant).expect("find_closest_by_range exec");
 
-        let res = vm.stack_pop().expect("Expected an entity id");
+        let res = vm.stack_pop();
         let res =
             OperationResult::try_from(res).expect("Expected res to be a valid OperationResult");
         assert_eq!(res, OperationResult::Ok);
 
-        let res_id = vm.stack_pop().expect("Expected pointer");
+        let res_id = vm.stack_pop();
         if let Scalar::Pointer(p) = res_id {
             let res_id: EntityId = vm.get_value(p).expect("Expected entity_id to be set");
 
@@ -317,12 +317,12 @@ mod tests {
 
         find_closest_by_range(&mut vm, constant).expect("find_closest_by_range exec");
 
-        let res = vm.stack_pop().expect("Expected an entity id");
+        let res = vm.stack_pop();
         let res =
             OperationResult::try_from(res).expect("Expected res to be a valid OperationResult");
         assert_eq!(res, OperationResult::Ok);
 
-        let res_id = vm.stack_pop().expect("Expected pointer");
+        let res_id = vm.stack_pop();
         if let Scalar::Pointer(p) = res_id {
             let res_id: EntityId = vm.get_value(p).expect("Expected entity_id to be set");
 

@@ -3,7 +3,6 @@ mod init;
 mod input;
 
 use anyhow::Context;
-use cao_lang::SubProgramType;
 use caolo_sim::{executor::Executor, executor::SimpleExecutor, prelude::*};
 use slog::{debug, error, info, o, warn, Drain, Logger};
 use std::{
@@ -74,7 +73,7 @@ async fn send_schema<'a>(
             input: &*card.input,
             output: &*card.output,
             constants: &*card.constants,
-            ty: SubProgramType::Instruction.as_str(),
+            ty: card.ty.as_str(),
         }))
         .collect::<Vec<_>>();
 

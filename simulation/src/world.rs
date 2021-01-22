@@ -286,7 +286,7 @@ impl World {
                 table.clear();
                 table.extend_rooms(rooms.iter().cloned())?;
             };
-        };
+        }
 
         clear_table!(TerrainComponent);
         clear_table!(EntityComponent);

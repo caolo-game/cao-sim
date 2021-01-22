@@ -1,7 +1,7 @@
 FROM rust:latest AS deps
 
 WORKDIR /caolo
-RUN cargo install sqlx-cli --version=0.1.0-beta.1 --no-default-features --features=postgres --root .
+RUN cargo install sqlx-cli --version=0.1.0-beta.1 --no-default-features --features=postgres,runtime-async-std-native-tls --root .
 
 FROM ubuntu:20.04
 
