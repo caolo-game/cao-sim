@@ -401,7 +401,7 @@ checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
 [[package]]
 name = "cao-lang"
 version = "0.1.8"
-source = "git+https://github.com/caolo-game/cao-lang.git#a5299edd5763014a092b716c88ba50d579cac09d"
+source = "git+https://github.com/caolo-game/cao-lang.git#c987f0757a2cf51687d4ddb5be1db1fb834771dc"
 dependencies = [
  "arrayvec",
  "semver 0.11.0",
