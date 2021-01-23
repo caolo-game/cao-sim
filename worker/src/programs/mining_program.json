@@ -10,10 +10,10 @@
                     "StringLiteral": "Resource"
                 },
                 {
-                    "Call": "parse_find_constant"
+                    "Call": "Parse Find Constant"
                 },
                 {
-                    "Call": "find_closest_by_range"
+                    "Call": "Find Closest"
                 },
                 {
                     "ScalarInt": 0
@@ -28,19 +28,19 @@
                     "CopyLast": null
                 },
                 {
-                    "Call": "approach_entity"
+                    "Call": "Approach Entity"
                 },
                 {
                     "Pop": null
                 },
                 {
-                    "Call": "mine_resource"
+                    "Call": "Mine"
                 },
                 {
                     "StringLiteral": "We be mining bois"
                 },
                 {
-                    "Call": "console_log"
+                    "Call": "Console Log"
                 }
             ]
         },
@@ -51,7 +51,7 @@
                     "StringLiteral": "No resource found"
                 },
                 {
-                    "Call": "console_log"
+                    "Call": "Console Log"
                 }
             ]
         }

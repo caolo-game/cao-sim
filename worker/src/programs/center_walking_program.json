@@ -16,10 +16,10 @@
                     "ScalarInt": 16
                 },
                 {
-                    "Call": "world_position"
+                    "Call": "WorldPosition"
                 },
                 {
-                    "Call": "move_bot_to_position"
+                    "Call": "Move to position"
                 },
                 {
                     "ScalarInt": 0
