@@ -7,9 +7,12 @@ pub use bot_components::*;
 pub use resources::*;
 pub use rooms::*;
 
-use crate::tables::{
-    btree::BTreeTable, dense::DenseVecTable, morton::MortonTable, Component, RoomMortonTable,
-    SpatialKey2d, TableId,
+use crate::{
+    indices::Room,
+    tables::{
+        btree::BTreeTable, dense::DenseVecTable, morton::MortonTable, Component, RoomMortonTable,
+        SpatialKey2d, TableId,
+    },
 };
 use crate::{
     indices::{EntityId, UserId, WorldPosition},
@@ -62,6 +65,10 @@ pub struct OwnedEntity {
 
 impl Component<EntityId> for OwnedEntity {
     type Table = DenseVecTable<EntityId, Self>;
+}
+
+impl Component<Room> for OwnedEntity {
+    type Table = MortonTable<Room, Self>;
 }
 
 #[derive(Default, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize)]

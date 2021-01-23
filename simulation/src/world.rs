@@ -17,7 +17,8 @@ use std::{hash::Hasher, pin::Pin};
 storage!(
     module room_store key Room,
     table RoomConnections = room_connections,
-    table RoomComponent = rooms
+    table RoomComponent = rooms,
+    table OwnedEntity = owner
 );
 
 storage!(
@@ -51,7 +52,8 @@ storage!(
     module user_store key UserId,
 
     table UserComponent = user,
-    table EntityScript = user_default_script
+    table EntityScript = user_default_script,
+    table Room = user_rooms
 
     iterby user
 );

@@ -30,16 +30,16 @@ pub fn update_program(
         &msg.reborrow()
             .get_user_id()
             .with_context(|| "Failed to get user id")
-            .map_err(UpdateProgramError::Internal)?,
+            .map_err(UpdateProgramError::BadMessage)?,
     )
-    .map_err(UpdateProgramError::Internal)?;
+    .map_err(UpdateProgramError::BadMessage)?;
     let script_id = parse_uuid(
         &msg.reborrow()
             .get_script_id()
             .with_context(|| "Failed to get user id")
-            .map_err(UpdateProgramError::Internal)?,
+            .map_err(UpdateProgramError::BadMessage)?,
     )
-    .map_err(UpdateProgramError::Internal)?;
+    .map_err(UpdateProgramError::BadMessage)?;
 
     debug!(
         logger,

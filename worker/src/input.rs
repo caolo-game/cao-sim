@@ -1,4 +1,5 @@
 //! Handle inputs received via the message bus
+mod rooms;
 mod script_update;
 mod structures;
 use anyhow::Context;
@@ -44,28 +45,35 @@ fn handle_single_message(
             let cmd = cmd.with_context(|| "Failed to get PlaceStructure message")?;
             structures::place_structure(logger.clone(), storage, &cmd).map_err(|e| {
                 warn!(logger, "Structure placement failed {:?}", e);
-                format!("{}", e)
+                e.to_string()
             })
         }
         InputPayload::UpdateScript(update) => {
             let update = update.with_context(|| "Failed to get UpdateScript message")?;
             script_update::update_program(logger.clone(), storage, &update).map_err(|e| {
                 warn!(logger, "Script update failed {:?}", e);
-                format!("{:?}", e)
+                e.to_string()
             })
         }
         InputPayload::UpdateEntityScript(update) => {
             let update = update.with_context(|| "Failed to get UpdateEntityScript message")?;
             script_update::update_entity_script(storage, &update).map_err(|e| {
                 warn!(logger, "Entity script update failed {:?}", e);
-                format!("{:?}", e)
+                e.to_string()
             })
         }
         InputPayload::SetDefaultScript(update) => {
             let update = update.with_context(|| "Failed to get SetDefaultScript message")?;
             script_update::set_default_script(storage, &update).map_err(|e| {
                 warn!(logger, "Setting dewfault script failed {:?}", e);
-                format!("{:?}", e)
+                e.to_string()
+            })
+        }
+        InputPayload::TakeRoom(cmd) => {
+            let cmd = cmd.with_context(|| "Failed to get TakeRoom message")?;
+            rooms::take_room(logger.clone(), storage, &cmd).map_err(|e| {
+                warn!(logger, "Failed to take room {:?}", e);
+                e.to_string()
             })
         }
     };
