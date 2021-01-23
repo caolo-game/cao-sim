@@ -1,14 +1,10 @@
+use crate::geometry::Axial;
 use crate::indices::ConfigKey;
 use crate::indices::WorldPosition;
 use crate::tables::{
     morton::MortonTable, unique::UniqueTable, Component, RoomMortonTable, SpatialKey2d,
 };
 use crate::terrain::TileTerrainType;
-use crate::{
-    geometry::Axial,
-    indices::{Room, UserId},
-    tables::btree::BTreeTable,
-};
 use serde::{Deserialize, Serialize};
 
 /// Represents a connection of a room to another.
@@ -57,8 +53,4 @@ pub struct RoomComponent;
 
 impl<Id: SpatialKey2d + Send + Sync> Component<Id> for RoomComponent {
     type Table = MortonTable<Id, Self>;
-}
-
-impl Component<UserId> for Room {
-    type Table = BTreeTable<UserId, Room>;
 }

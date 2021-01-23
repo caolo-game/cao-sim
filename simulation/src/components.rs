@@ -164,3 +164,9 @@ pub struct UserComponent;
 impl<Id: TableId> Component<Id> for UserComponent {
     type Table = BTreeTable<Id, Self>;
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Rooms(pub Vec<Room>);
+impl<Id: TableId> Component<Id> for Rooms {
+    type Table = BTreeTable<Id, Self>;
+}

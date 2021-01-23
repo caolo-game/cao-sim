@@ -1,3 +1,5 @@
+use serde_json::json;
+
 use super::World;
 use crate::prelude::Axial;
 use std::collections::HashMap;
@@ -62,4 +64,21 @@ pub fn json_serialize_bots(world: &World) -> serde_json::Value {
             map
         });
     serde_json::to_value(&bots).unwrap()
+}
+
+pub fn json_serialize_users(world: &World) -> serde_json::Value {
+    let users = world
+        .user
+        .iterby_user()
+        .fold(HashMap::new(), |mut map, payload| {
+            map.insert(
+                payload.__id,
+                json!({
+                    "rooms": &payload.user_rooms
+                }),
+            );
+            map
+        });
+
+    serde_json::to_value(&users).unwrap()
 }

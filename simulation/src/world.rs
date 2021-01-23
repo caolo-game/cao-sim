@@ -53,7 +53,7 @@ storage!(
 
     table UserComponent = user,
     table EntityScript = user_default_script,
-    table Room = user_rooms
+    table Rooms = user_rooms
 
     iterby user
 );
@@ -308,6 +308,7 @@ impl World {
             "terrain",
             "roomProperties",
             "gameConfig",
+            "users",
         ]
         .par_iter()
         .cloned()
@@ -316,6 +317,7 @@ impl World {
             |mut output: serde_json::Map<String, _>, key: &str| {
                 let value: serde_json::Value = match key {
                     "bots" => json_impl::json_serialize_bots(&self),
+                    "users" => json_impl::json_serialize_users(&self),
                     "structures" => json_impl::json_serialize_structures(&self),
                     "resources" => json_impl::json_serialize_resources(&self),
                     "terrain" => json_impl::json_serialize_terrain(&self),

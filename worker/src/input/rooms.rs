@@ -50,12 +50,18 @@ pub fn take_room(
         return Err(TakeRoomError::Owned);
     }
 
-    let num_rooms = world.view::<UserId, Room>().len();
+    let rooms = world
+        .view::<UserId, Rooms>()
+        .reborrow()
+        .get_by_id(&UserId(user_id));
+    let num_rooms = rooms.map(|x| x.0.len()).unwrap_or(0);
 
     // TODO: player level and/or ownable rooms?
     if num_rooms > 1 {
         return Err(TakeRoomError::MaxRoomsExceeded(1));
     }
+    let mut rooms = rooms.cloned().unwrap_or_else(|| Rooms::default());
+    rooms.0.push(Room(room_id));
 
     world
         .unsafe_view::<Room, OwnedEntity>()
@@ -69,8 +75,8 @@ pub fn take_room(
         .map_err(TakeRoomError::InternalError)?;
 
     world
-        .unsafe_view::<UserId, Room>()
-        .insert_or_update(UserId(user_id), Room(room_id));
+        .unsafe_view::<UserId, Rooms>()
+        .insert_or_update(UserId(user_id), rooms);
 
     Ok(())
 }
