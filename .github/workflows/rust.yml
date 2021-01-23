@@ -30,9 +30,12 @@ jobs:
 
       - name: Install test-all-features
         run: cargo install cargo-all-features
+      
+      - name: Check all features
+        run: cargo +${{ matrix.rust }} check-all-features
 
       - name: Run tests
-        run: cargo +${{ matrix.rust }} test-all-features --benches
+        run: cargo +${{ matrix.rust }} test --benches
         env:
           RUST_LOG: caolo_sim=trace
           RUST_BACKTRACE: 1
