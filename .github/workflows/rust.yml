@@ -33,6 +33,8 @@ jobs:
       
       - name: Check all features
         run: cargo +${{ matrix.rust }} check-all-features
+        env:
+          SQLX_OFFLINE: true
 
       - name: Run tests
         run: cargo +${{ matrix.rust }} test --benches
