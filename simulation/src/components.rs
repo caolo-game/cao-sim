@@ -8,19 +8,13 @@ pub use resources::*;
 pub use rooms::*;
 
 use crate::{
-    indices::Room,
+    indices::{EntityId, Room, UserId, WorldPosition},
     tables::{
-        btree::BTreeTable, dense::DenseVecTable, morton::MortonTable, Component, RoomMortonTable,
-        SpatialKey2d, TableId,
+        btree::BTreeTable, dense::DenseVecTable, flag::SparseFlagTable, morton::MortonTable,
+        Component, RoomMortonTable, SpatialKey2d, TableId,
     },
 };
-use crate::{
-    indices::{EntityId, UserId, WorldPosition},
-    tables::flag::SparseFlagTable,
-};
-
-use cao_lang::prelude::CompiledProgram;
-use cao_lang::vm::HistoryEntry;
+use cao_lang::{prelude::CompiledProgram, vm::HistoryEntry};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
