@@ -19,6 +19,8 @@ storage!(
     table RoomConnections = room_connections,
     table RoomComponent = rooms,
     table OwnedEntity = owner
+
+    iterby rooms
 );
 
 storage!(
@@ -309,6 +311,7 @@ impl World {
             "roomProperties",
             "gameConfig",
             "users",
+            "rooms",
         ]
         .par_iter()
         .cloned()
@@ -325,6 +328,7 @@ impl World {
                         serde_json::to_value(&self.config.room_properties.value).unwrap()
                     }
                     "gameConfig" => serde_json::to_value(&self.config.game_config.value).unwrap(),
+                    "rooms" => json_impl::json_serialize_rooms(&self),
                     _ => unreachable!(),
                 };
                 output.insert(key.to_string(), value);

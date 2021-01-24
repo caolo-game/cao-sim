@@ -39,7 +39,7 @@
                     "StringLiteral": "Failed to move"
                 },
                 {
-                    "Call": "console_log"
+                    "Call": "Console Log"
                 }
             ]
         }
