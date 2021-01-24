@@ -242,13 +242,6 @@ impl World {
         <Self as storage::HasTable<Id, C>>::unsafe_view(self)
     }
 
-    pub fn delete_entity<Id: TableId>(&mut self, id: &Id)
-    where
-        entity_store::Storage: storage::DeleteById<Id>,
-    {
-        <entity_store::Storage as storage::DeleteById<Id>>::delete(&mut self.entities, id);
-    }
-
     pub fn time(&self) -> u64 {
         let view = &self.resources.time.value;
         view.map(|Time(t)| t).unwrap_or(0)
