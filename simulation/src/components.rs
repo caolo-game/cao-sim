@@ -49,15 +49,14 @@ impl Component<WorldPosition> for EntityComponent {
 }
 
 /// Has a body so it's not `null` when serializing
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct Structure {}
-
+pub struct Structure;
 impl<Id: TableId> Component<Id> for Structure {
     type Table = SparseFlagTable<Id, Self>;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct OwnedEntity {
     pub owner_id: UserId,
@@ -158,11 +157,11 @@ impl<Id: TableId> Component<Id> for ScriptComponent {
     type Table = BTreeTable<Id, Self>;
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UserComponent;
 impl<Id: TableId> Component<Id> for UserComponent {
-    type Table = BTreeTable<Id, Self>;
+    type Table = SparseFlagTable<Id, Self>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
