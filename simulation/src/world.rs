@@ -242,7 +242,7 @@ impl World {
         <Self as storage::HasTable<Id, C>>::unsafe_view(self)
     }
 
-    pub fn delete<Id: TableId>(&mut self, id: &Id)
+    pub fn delete_entity<Id: TableId>(&mut self, id: &Id)
     where
         entity_store::Storage: storage::DeleteById<Id>,
     {
