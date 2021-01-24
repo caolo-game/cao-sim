@@ -1,7 +1,9 @@
+use std::mem;
+
 use super::{Table, TableId, TableIterator, TableRow};
 
 /// Flag table does not hold Rows. Designed for 0 sized 'flag' components
-#[derive(Default, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Default, Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct SparseFlagTable<Id, Row>
 where
     Id: TableId,
@@ -20,8 +22,8 @@ where
         self.ids.binary_search(id).is_ok()
     }
 
-    pub fn iter(&self) -> impl TableIterator<Id, &Row> {
-        self.ids.iter().map(move |id| (*id, &self.default))
+    pub fn iter(&self) -> impl TableIterator<Id, ()> + '_ {
+        self.ids.iter().map(move |id| (*id, ()))
     }
 
     pub fn clear(&mut self) {
@@ -49,7 +51,7 @@ where
     fn delete(&mut self, id: &Self::Id) -> Option<Self::Row> {
         self.ids.binary_search(id).ok().map(|i| {
             self.ids.remove(i);
-            let res = std::mem::take(&mut self.default);
+            let res = mem::take(&mut self.default);
             res
         })
     }
