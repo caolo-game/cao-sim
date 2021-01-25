@@ -158,6 +158,22 @@ impl<Id: TableId> Component<Id> for UserComponent {
     type Table = SparseFlagTable<Id, Self>;
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserProperties {
+    pub level: u16,
+}
+
+impl Default for UserProperties {
+    fn default() -> Self {
+        Self { level: 1 }
+    }
+}
+
+impl Component<UserId> for UserProperties {
+    type Table = BTreeTable<UserId, Self>;
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Rooms(pub Vec<Room>);
 impl<Id: TableId> Component<Id> for Rooms {

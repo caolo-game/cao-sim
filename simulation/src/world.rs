@@ -55,7 +55,8 @@ storage!(
 
     table UserComponent = user,
     table EntityScript = user_default_script,
-    table Rooms = user_rooms
+    table Rooms = user_rooms,
+    table UserProperties = user_props
 
     iterby user
 );

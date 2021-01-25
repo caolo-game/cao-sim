@@ -2,6 +2,7 @@
 mod rooms;
 mod script_update;
 mod structures;
+mod users;
 use anyhow::Context;
 use cao_messages::command_capnp::command::input_message::{self, Which as InputPayload};
 use cao_messages::command_capnp::command_result;
@@ -73,6 +74,13 @@ fn handle_single_message(
             let cmd = cmd.with_context(|| "Failed to get TakeRoom message")?;
             rooms::take_room(logger.clone(), storage, &cmd).map_err(|e| {
                 warn!(logger, "Failed to take room {:?}", e);
+                e.to_string()
+            })
+        }
+        InputPayload::RegisterUser(cmd) => {
+            let cmd = cmd.with_context(|| "Failed to get RegisterUser message")?;
+            users::register_user(logger.clone(), storage, &cmd).map_err(|e| {
+                warn!(logger, "Failed to register user {:?}", e);
                 e.to_string()
             })
         }

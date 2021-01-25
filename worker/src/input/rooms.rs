@@ -4,20 +4,20 @@ use cao_messages::command_capnp::take_room;
 use caolo_sim::prelude::*;
 use slog::{debug, Logger};
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum TakeRoomError {
     #[error("Invalid message {0}")]
     BadMessage(anyhow::Error),
-
     #[error("Target room already has an owner")]
     Owned,
-
     #[error("Maximum number of rooms ({0}) owned already")]
     MaxRoomsExceeded(usize),
-
     #[error("Internal error: {0}")]
     InternalError(anyhow::Error),
+    #[error("User by id {0} was not registered")]
+    NotRegistered(Uuid),
 }
 
 pub fn take_room(
@@ -56,9 +56,20 @@ pub fn take_room(
         .get_by_id(&UserId(user_id));
     let num_rooms = rooms.map(|x| x.0.len()).unwrap_or(0);
 
-    // TODO: player level and/or ownable rooms?
-    if num_rooms > 1 {
-        return Err(TakeRoomError::MaxRoomsExceeded(1));
+    let props = world
+        .view::<UserId, UserProperties>()
+        .reborrow()
+        .get_by_id(&UserId(user_id));
+
+    let available_rooms = match props.map(|p| p.level) {
+        Some(l) => l,
+        None => {
+            return Err(TakeRoomError::NotRegistered(user_id));
+        }
+    };
+
+    if num_rooms > available_rooms as usize {
+        return Err(TakeRoomError::MaxRoomsExceeded(available_rooms as usize));
     }
     let mut rooms = rooms.cloned().unwrap_or_else(|| Rooms::default());
     rooms.0.push(Room(room_id));

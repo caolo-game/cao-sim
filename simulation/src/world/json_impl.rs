@@ -71,12 +71,7 @@ pub fn json_serialize_users(world: &World) -> serde_json::Value {
         .user
         .iterby_user()
         .fold(HashMap::new(), |mut map, payload| {
-            map.insert(
-                payload.__id,
-                json!({
-                    "rooms": &payload.user_rooms
-                }),
-            );
+            map.insert(payload.__id, payload);
             map
         });
 
