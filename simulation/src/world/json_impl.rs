@@ -70,10 +70,8 @@ pub fn json_serialize_users(world: &World) -> serde_json::Value {
     let users = world
         .user
         .iterby_user()
-        .fold(HashMap::new(), |mut map, payload| {
-            map.insert(payload.__id, payload);
-            map
-        });
+        .map(|pl| (pl.__id, pl))
+        .collect::<HashMap<_, _>>();
 
     serde_json::to_value(&users).unwrap()
 }
