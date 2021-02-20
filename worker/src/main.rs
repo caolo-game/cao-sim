@@ -152,13 +152,13 @@ fn main() {
         .and_then(|x| x.parse().ok())
         .unwrap_or(1024);
 
-    let tick_freq = Duration::from_millis(game_conf.target_tick_freq_ms);
+    let tick_latency = Duration::from_millis(game_conf.target_tick_ms);
 
     info!(
         logger,
-        "Loaded Queen params:\nScript chunk size: {}\nTick freq: {:?}",
+        "Loaded Queen params:\nScript chunk size: {}\nTick latency: {:?}",
         script_chunk_size,
-        tick_freq
+        tick_latency
     );
     let database_url = env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:admin@localhost:5432/caolo".to_owned());
@@ -214,7 +214,7 @@ fn main() {
             })
             .unwrap_or(());
 
-        let mut sleep_duration = tick_freq
+        let mut sleep_duration = tick_latency
             .checked_sub(Instant::now() - start)
             .unwrap_or_else(|| Duration::from_millis(0));
 

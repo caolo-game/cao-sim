@@ -7,7 +7,7 @@ pub struct GameConfig {
     pub world_radius: u32,
     pub room_radius: u32,
     pub n_actors: u32,
-    pub target_tick_freq_ms: u64,
+    pub target_tick_ms: u64,
 }
 
 impl Default for GameConfig {
@@ -16,7 +16,7 @@ impl Default for GameConfig {
             n_actors: 10,
             room_radius: 8,
             world_radius: 8,
-            target_tick_freq_ms: 200,
+            target_tick_ms: 200,
         }
     }
 }
@@ -41,7 +41,7 @@ impl GameConfig {
                     let a = n_actors as f32;
                     ((a * 1.0 / (3.0 * 3.0f32.sqrt())).powf(0.33)).ceil() as u32
                 }),
-            target_tick_freq_ms: std::env::var("TARGET_TICK_FREQUENCY_MS")
+            target_tick_ms: std::env::var("TARGET_TICK_LATENCY_MS")
                 .map(|i| i.parse::<u64>().unwrap())
                 .unwrap_or(200),
         }

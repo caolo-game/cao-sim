@@ -144,7 +144,7 @@ fn init_config(
     mut game_conf: UnwrapViewMut<ConfigKey, caolo_sim::components::game_config::GameConfig>,
 ) {
     trace!(logger, "initializing config");
-    game_conf.target_tick_freq_ms = conf.target_tick_freq_ms;
+    game_conf.target_tick_ms = conf.target_tick_ms;
     trace!(logger, "initializing config done");
 }
 
